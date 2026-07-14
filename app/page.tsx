@@ -30,7 +30,7 @@ export default function HomePage() {
     fetchTeachers();
   }, []);
 
-  // Normal E-Posta ile Supabase Kayıt & Giriş İşlemi
+  // 🚀 Normal E-Posta ile Supabase Kayıt & Giriş İşlemi (GÜVENLİK DUVARI EKLENDİ)
   const handleAuth = async () => {
     setLoading(true);
     try {
@@ -55,35 +55,64 @@ export default function HomePage() {
         }
 
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        // --- GİRİŞ (LOGIN) İŞLEMİ ---
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
-        if (error) throw error;
+        if (authError) throw authError;
 
+        const userId = authData.user?.id;
+        if (!userId) throw new Error("Kullanıcı bilgisi alınamadı.");
+
+        // 1. KONTROL: Öğrenci Girişi Seçildiyse
         if (role === 'ogrenci') {
+          const { data: studentData, error: studentError } = await supabase
+            .from('ogrenciler')
+            .select('id')
+            .eq('user_id', userId)
+            .maybeSingle();
+
+          if (!studentData) {
+            await supabase.auth.signOut();
+            throw new Error("Yetkisiz Giriş: Bu e-posta adresi ile kayıtlı bir Öğrenci hesabı bulunmamaktadır.");
+          }
+          
           router.push('/student-dashboard'); 
-        } else {
+
+        // 2. KONTROL: Öğretmen Girişi Seçildiyse
+        } else if (role === 'ogretmen') {
+          const { data: teacherData, error: teacherError } = await supabase
+            .from('egitmenler')
+            .select('id')
+            .eq('user_id', userId)
+            .maybeSingle();
+
+          if (!teacherData) {
+            await supabase.auth.signOut();
+            throw new Error("Yetkisiz Giriş: Bu e-posta adresi ile kayıtlı bir Eğitmen hesabı bulunmamaktadır. Lütfen 'Öğrenci' sekmesinden giriş yapmayı deneyin.");
+          }
+          
           router.push('/teacher-dashboard'); 
         }
       }
       
       setShowAuthModal(false); 
     } catch (error: any) {
+      // Hata mesajını ekrana yansıtıyoruz
       alert(error.message || 'Bir hata oluştu. Lütfen bilgilerinizi kontrol edin.');
     } finally {
       setLoading(false);
     }
   };
 
-  // 🚀 YENİ: Google ile Giriş / Kayıt İşlemi
+  // Google ile Giriş / Kayıt İşlemi
   const handleGoogleAuth = async () => {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          // Google ile giriş yaptıktan sonra öğrenci paneline yönlendir
           redirectTo: `${window.location.origin}/student-dashboard`,
         }
       });
@@ -95,7 +124,6 @@ export default function HomePage() {
 
   // ARAMA VE FİLTRELEME İŞLEMİ
   const handleSearch = () => {
-    // Tıklanınca eğitmenler bölümüne yumuşak bir şekilde kaydır
     document.getElementById('teachers-section')?.scrollIntoView({ behavior: 'smooth' });
   };
 
@@ -170,7 +198,6 @@ export default function HomePage() {
             Onaylı eğitmenlerle birebir canlı dersler yapın. Hedeflerinize uygun, size özel hazırlanan programlarla akıcı konuşmaya hemen başlayın.
           </p>
           
-          {/* SADECE EĞİTMEN BUL BUTONU EKLENDİ */}
           <div style={{ display: 'flex', justifyContent: 'center' }}>
             <button 
               onClick={() => router.push('/egitmen-bul')}

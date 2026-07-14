@@ -20,7 +20,7 @@ export default function FindTeacherWizard() {
     seviye: ''
   });
 
-  // 🎯 ÖĞRETMEN BAŞVURU SAYFASIYLA BİREBİR EŞLEŞTİRİLEN SEÇENEKLER (Kilit ve Anahtar uyumu)
+  // 🎯 ÖĞRETMEN BAŞVURU SAYFASIYLA BİREBİR EŞLEŞTİRİLEN SEÇENEKLER
   const GOALS = ['Kariyer ve İş', 'Sınav Hazırlığı', 'Çocuklar İçin Türkçe', 'Kültür ve Seyahat', 'Günlük Pratik', 'Akademik Türkçe'];
   const DURATIONS = ['1-4 Hafta', '1-3 Ay', '3-6 Ay', 'Uzun Dönem', 'Tek Seferlik Hızlı Pratik'];
   const FOCUS_AREAS = ['Gramer', 'Konuşma ve Telaffuz', 'Yazma ve Okuma', 'İş Türkçesi', 'TÖMER Hazırlık', 'Yeni Başlayanlar (A1-A2)'];
@@ -31,7 +31,7 @@ export default function FindTeacherWizard() {
     setAnswers({ ...answers, [key]: value });
   };
 
-  // Sonraki Adıma Geçiş (Son adımsa hocaları getir)
+  // Sonraki Adıma Geçiş
   const nextStep = async () => {
     if (step < 4) {
       setStep(step + 1);
@@ -41,24 +41,41 @@ export default function FindTeacherWizard() {
     }
   };
 
-  // 🎯 GÜNCELLENDİ: Gerçek Eşleştirme Motoru
+  // 🚀 YENİ: Akıllı Eşleştirme Motoru (Puanlama Sistemi)
   const fetchMatchingTeachers = async () => {
     setLoading(true);
     try {
-      // Sadece profilini doldurmuş tüm eğitmenleri temel al
-      let query = supabase.from('egitmenler').select('*');
-
-      // Eğer kullanıcı bir amaç seçtiyse, "amac" sütununda bu kelimeyi İÇERENLERİ filtrele (.ilike kullanımı)
-      if (answers.amac) query = query.ilike('amac', `%${answers.amac}%`);
-      if (answers.sure) query = query.ilike('sure', `%${answers.sure}%`);
-      if (answers.odak) query = query.ilike('odak', `%${answers.odak}%`);
-      if (answers.seviye) query = query.ilike('seviye', `%${answers.seviye}%`);
-
-      // En iyi eşleşen maksimum 10 eğitmeni getir
-      const { data, error } = await query.limit(10);
-        
+      // 1. Veritabanındaki tüm eğitmenleri çek
+      const { data, error } = await supabase.from('egitmenler').select('*');
       if (error) throw error;
-      setTeachers(data || []);
+      
+      const allTeachers = data || [];
+
+      // 2. Her bir öğretmene bir "Uyum Puanı" ver
+      const scoredTeachers = allTeachers.map(teacher => {
+        let score = 0;
+        
+        // Veritabanındaki verilerle kullanıcının seçimlerini karşılaştır ve puanla
+        if (teacher.amac && teacher.amac.toLowerCase().includes(answers.amac.toLowerCase())) score += 10;
+        if (teacher.sure && teacher.sure.toLowerCase().includes(answers.sure.toLowerCase())) score += 10;
+        if (teacher.odak && teacher.odak.toLowerCase().includes(answers.odak.toLowerCase())) score += 10;
+        if (teacher.seviye && teacher.seviye.toLowerCase().includes(answers.seviye.toLowerCase())) score += 10;
+        
+        // Ekstra esneklik: Ders türü odakla eşleşiyorsa da puan ver
+        if (teacher.ders_turu && teacher.ders_turu.toLowerCase().includes(answers.odak.toLowerCase())) score += 5;
+        
+        return { ...teacher, matchScore: score };
+      });
+
+      // 3. SADECE eşleşenleri al (Puanı 0'dan büyük olanlar)
+      const matchedTeachers = scoredTeachers.filter(teacher => teacher.matchScore > 0);
+
+      // 4. Puanı en yüksek olanı (en çok kriteri karşılayanı) en üste alacak şekilde sırala
+      matchedTeachers.sort((a, b) => b.matchScore - a.matchScore);
+
+      // 5. İlk 10 sonucu ekrana bas
+      setTeachers(matchedTeachers.slice(0, 10)); 
+
     } catch (err: any) {
       console.error(err);
       alert("Eğitmenler getirilirken hata oluştu.");
@@ -67,7 +84,7 @@ export default function FindTeacherWizard() {
     }
   };
 
-  // Seçim yapılmadan İleri butonunu devre dışı bırakma kontrolü
+  // Seçim yapılmadan İleri butonunu devre dışı bırakma
   const canProceed = () => {
     if (step === 1 && !answers.amac) return false;
     if (step === 2 && !answers.sure) return false;
@@ -158,7 +175,7 @@ export default function FindTeacherWizard() {
             </div>
           )}
 
-          {/* İLERİ BUTONU (1,2,3,4. adımlar için) */}
+          {/* İLERİ BUTONU */}
           {step < 5 && (
             <div style={{ marginTop: '40px', display: 'flex', justifyContent: 'flex-end', animation: 'fadeIn 0.5s' }}>
               <button 
@@ -175,23 +192,23 @@ export default function FindTeacherWizard() {
             </div>
           )}
 
-          {/* 5. ADIM: SONUÇLAR (EŞLEŞEN EĞİTMENLER) */}
+          {/* 5. ADIM: SONUÇLAR */}
           {step === 5 && (
             <div style={{ textAlign: 'center', animation: 'fadeIn 0.5s' }}>
               {loading ? (
                 <div style={{ padding: '60px', color: '#4f46e5', fontSize: '1.2rem', fontWeight: 700 }}>
                   <div style={{ fontSize: '40px', marginBottom: '20px', animation: 'pulse 1s infinite' }}>✨</div>
-                  Harika! Kriterlerine en uygun eğitmenler veritabanında aranıyor...
+                  Harika! Kriterlerine uygun eğitmenler veritabanında aranıyor...
                 </div>
               ) : (
                 <>
                   {teachers.length > 0 ? (
                     <>
                       <div style={{ background: '#dcfce7', color: '#16a34a', padding: '12px 24px', borderRadius: '30px', display: 'inline-block', fontWeight: 700, marginBottom: '20px' }}>
-                        ✅ Senin İçin {teachers.length} Harika Eğitmen Bulduk!
+                        ✅ Kriterlerinize Uyan {teachers.length} Eğitmen Bulduk!
                       </div>
                       <h1 style={{ fontSize: '2.5rem', fontWeight: 800, color: '#0f172a', marginBottom: '10px' }}>Öğrenme Yolculuğun Başlıyor</h1>
-                      <p style={{ color: '#64748b', marginBottom: '40px' }}>Seçtiğin <strong style={{color:'#4f46e5'}}>{answers.amac}</strong> ve <strong style={{color:'#4f46e5'}}>{answers.seviye}</strong> kriterleriyle eşleşen eğitmenler listelendi.</p>
+                      <p style={{ color: '#64748b', marginBottom: '40px' }}>Seçtiğin kriterlerle eşleşen eğitmenler aşağıda listelendi.</p>
                       
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', textAlign: 'left' }}>
                         {teachers.map((t) => (
@@ -201,10 +218,16 @@ export default function FindTeacherWizard() {
                               <div>
                                 <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>{t.tam_ad}</h3>
                                 <div style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '4px' }}>
-                                  ⭐ {t.odak ? t.odak.split(',')[0] : 'Uzman Eğitmen'} {/* Sadece ilk odak alanını göster */}
+                                  ⭐ {t.odak ? t.odak.split(',')[0] : 'Uzman Eğitmen'}
                                 </div>
                               </div>
                             </div>
+                            
+                            {/* Eşleşme Puanını Gösterme Alanı (Öğrenciye güven verir) */}
+                            <div style={{ background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', fontSize: '0.85rem', color: '#475569', marginBottom: '16px', fontWeight: 600 }}>
+                              🔥 Seninle Uyum: %{Math.min(t.matchScore * 2.5, 100)} {/* 40 puanı 100'e yuvarlar */}
+                            </div>
+
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
                               <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.2rem' }}>{t.saatlik_ucret}₺</div>
                               <button onClick={() => router.push(`/teachers/${t.user_id || t.id}`)} style={{ padding: '8px 16px', background: '#eef2ff', color: '#4f46e5', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}>Profili İncele</button>
@@ -216,8 +239,8 @@ export default function FindTeacherWizard() {
                   ) : (
                     <div style={{ padding: '60px 20px', background: '#fff', borderRadius: '24px', border: '1px solid #e2e8f0' }}>
                       <div style={{ fontSize: '50px', marginBottom: '20px' }}>🕵️‍♂️</div>
-                      <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a', marginBottom: '10px' }}>Tam Eşleşme Bulunamadı</h2>
-                      <p style={{ color: '#64748b', fontSize: '1.1rem', marginBottom: '30px' }}>Şu an için seçtiğin 4 kriterin <strong>tamamına</strong> aynı anda uyan bir eğitmenimiz aktif değil. Lütfen kriterlerinden bazılarını esneterek tekrar dene.</p>
+                      <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a', marginBottom: '10px' }}>Eşleşme Bulunamadı</h2>
+                      <p style={{ color: '#64748b', fontSize: '1.1rem', marginBottom: '30px' }}>Şu an için seçtiğin kriterlerin hiçbirine uyan bir eğitmenimiz aktif değil. Lütfen kriterlerini değiştirerek tekrar dene.</p>
                       <button onClick={() => setStep(1)} style={{ padding: '16px 32px', background: '#0f172a', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 700, fontSize: '1rem', cursor: 'pointer' }}>Baştan Başla</button>
                     </div>
                   )}
