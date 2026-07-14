@@ -194,41 +194,45 @@ export default function TeacherProfilePage() {
       <div style={{ maxWidth: '1200px', margin: '40px auto 0', padding: '0 20px', display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '40px', alignItems: 'start' }}>
         
         <div>
+          {/* VİDEO ALANI */}
           <div style={{ width: '100%', height: '350px', backgroundColor: '#1e1b4b', borderRadius: '24px', overflow: 'hidden' }}>
             {teacher?.video_url ? <iframe src={embedVideoUrl || ''} style={{ width: '100%', height: '100%', border: 'none' }} allowFullScreen /> : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#6366f1' }}>Video bulunamadı</div>}
           </div>
 
           <div style={{ marginTop: '32px' }}>
-            <h2 style={{ fontSize: '2.5rem', fontWeight: 900 }}>{teacher?.tam_ad}</h2>
-            <div style={{ display: 'flex', gap: '16px', marginTop: '10px' }}>
+            {/* 🚀 YENİ: AVATAR VE İSİM BÖLÜMÜ */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+              <div style={{ position: 'relative' }}>
+                <img 
+                  src={teacher?.avatar_url || `https://ui-avatars.com/api/?name=${teacher?.tam_ad || 'Eğitmen'}&background=eef2ff&color=4f46e5&size=100&bold=true`} 
+                  alt={teacher?.tam_ad}
+                  style={{ width: '90px', height: '90px', borderRadius: '50%', objectFit: 'cover', border: '4px solid #ffffff', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }} 
+                />
+                <div style={{ position: 'absolute', bottom: 4, right: 4, width: '20px', height: '20px', backgroundColor: '#22c55e', border: '3px solid #ffffff', borderRadius: '50%' }}></div>
+              </div>
+              <h2 style={{ fontSize: '2.5rem', fontWeight: 900, margin: 0 }}>{teacher?.tam_ad}</h2>
+            </div>
+
+            <div style={{ display: 'flex', gap: '16px', marginTop: '20px' }}>
               <span style={{ padding: '6px 12px', background: '#eef2ff', color: '#4f46e5', borderRadius: '8px', fontWeight: 700 }}>{teacher?.ders_turu || 'Uzman Eğitmen'}</span>
               <span style={{ padding: '6px 12px', background: '#f8fafc', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: '8px', fontWeight: 600 }}>📍 {teacher?.konum || 'Türkiye'}</span>
             </div>
             
-            {/* 🎯 GÜNCELLENEN KISIM: ÇOKLU ETİKET GÖSTERİMİ */}
+            {/* ETİKETLER */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '20px' }}>
-              
-              {/* Hedef Kitle (Amaç) Etiketleri */}
               {teacher?.amac && teacher.amac.split(',').map((item: string, idx: number) => (
                 item.trim() && <span key={`amac-${idx}`} style={{ padding: '6px 14px', background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', borderRadius: '30px', fontSize: '0.85rem', fontWeight: 700 }}>🎯 {item.trim()}</span>
               ))}
-
-              {/* Odak Alanları Etiketleri */}
               {teacher?.odak && teacher.odak.split(',').map((item: string, idx: number) => (
                 item.trim() && <span key={`odak-${idx}`} style={{ padding: '6px 14px', background: '#fce7f3', color: '#be185d', border: '1px solid #fbcfe8', borderRadius: '30px', fontSize: '0.85rem', fontWeight: 700 }}>⭐ {item.trim()}</span>
               ))}
-
-              {/* Seviye Etiketleri */}
               {teacher?.seviye && teacher.seviye.split(',').map((item: string, idx: number) => (
                 item.trim() && <span key={`seviye-${idx}`} style={{ padding: '6px 14px', background: '#e0e7ff', color: '#4338ca', border: '1px solid #c7d2fe', borderRadius: '30px', fontSize: '0.85rem', fontWeight: 700 }}>📈 {item.trim()}</span>
               ))}
-
-              {/* Süre Etiketleri */}
               {teacher?.sure && teacher.sure.split(',').map((item: string, idx: number) => (
                 item.trim() && <span key={`sure-${idx}`} style={{ padding: '6px 14px', background: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0', borderRadius: '30px', fontSize: '0.85rem', fontWeight: 700 }}>⏱️ {item.trim()}</span>
               ))}
             </div>
-
           </div>
 
           <div style={{ marginTop: '40px', borderBottom: '2px solid #e2e8f0', display: 'flex', gap: '32px' }}>
@@ -237,11 +241,30 @@ export default function TeacherProfilePage() {
           </div>
 
           <div style={{ marginTop: '32px' }}>
+            {/* 🚀 YENİ: HAKKINDA & METODOLOJİ BİRLEŞTİRİLDİ */}
             {activeTab === 'hakkinda' && (
-              <div style={{ background: '#ffffff', padding: '32px', borderRadius: '24px', border: '1px solid #e2e8f0' }}>
-                <p style={{ lineHeight: 1.8, whiteSpace: 'pre-line' }}>{teacher?.biyografi || "Biyografi eklenmemiş."}</p>
+              <div style={{ background: '#ffffff', padding: '32px', borderRadius: '24px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '32px' }}>
+                
+                <div>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', marginBottom: '16px' }}>Eğitmen Biyografisi</h3>
+                  <p style={{ lineHeight: 1.8, color: '#475569', whiteSpace: 'pre-line', margin: 0 }}>
+                    {teacher?.biyografi || "Biyografi eklenmemiş."}
+                  </p>
+                </div>
+
+                {/* Eğer veritabanında ogretim_yaklasimi (veya metodoloji) doluysa burası görünür */}
+                {(teacher?.ogretim_yaklasimi || teacher?.metodoloji) && (
+                  <div style={{ paddingTop: '32px', borderTop: '1px solid #f1f5f9' }}>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', marginBottom: '16px' }}>Öğretim Yaklaşımı & Metodoloji</h3>
+                    <p style={{ lineHeight: 1.8, color: '#475569', whiteSpace: 'pre-line', margin: 0 }}>
+                      {teacher?.ogretim_yaklasimi || teacher?.metodoloji}
+                    </p>
+                  </div>
+                )}
+                
               </div>
             )}
+            
             {activeTab === 'yorumlar' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 {yorumlar.length > 0 ? (

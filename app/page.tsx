@@ -30,8 +30,9 @@ export default function HomePage() {
     fetchTeachers();
   }, []);
 
-  // 🚀 Normal E-Posta ile Supabase Kayıt & Giriş İşlemi (GÜVENLİK DUVARI EKLENDİ)
+  // Normal E-Posta ile Supabase Kayıt & Giriş İşlemi
   const handleAuth = async () => {
+    if (loading) return; // Eğer zaten yükleniyorsa ikinci kez çalışmasını engelle (Enter'a çift basma durumu)
     setLoading(true);
     try {
       if (authType === 'register') {
@@ -100,7 +101,6 @@ export default function HomePage() {
       
       setShowAuthModal(false); 
     } catch (error: any) {
-      // Hata mesajını ekrana yansıtıyoruz
       alert(error.message || 'Bir hata oluştu. Lütfen bilgilerinizi kontrol edin.');
     } finally {
       setLoading(false);
@@ -136,6 +136,13 @@ export default function HomePage() {
       (t.biyografi && t.biyografi.toLowerCase().includes(lowerTerm))
     );
   });
+
+  // 🚀 YENİ: Enter tuşu dinleyicisi
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !loading) {
+      handleAuth();
+    }
+  };
 
   return (
     <div style={{ fontFamily: '"Inter", system-ui, sans-serif', color: '#0f172a', backgroundColor: '#ffffff', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -275,7 +282,7 @@ export default function HomePage() {
                 >
                   <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '24px' }}>
                     <div style={{ position: 'relative' }}>
-                      <img src={t.avatar_url || 'https://via.placeholder.com/80'} style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #f8fafc', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
+                      <img src={t.avatar_url || `https://ui-avatars.com/api/?name=${t.tam_ad || 'Eğitmen'}&background=eef2ff&color=4f46e5&size=80&bold=true`} style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #f8fafc', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
                       <div style={{ position: 'absolute', bottom: 0, right: 0, width: '16px', height: '16px', backgroundColor: '#22c55e', border: '3px solid #ffffff', borderRadius: '50%' }}></div>
                     </div>
                     <div>
@@ -388,12 +395,13 @@ export default function HomePage() {
                   </div>
                 ) : (
                   <>
-                    {/* KLASİK E-POSTA İLE GİRİŞ/KAYIT FORMU */}
+                    {/* KLASİK E-POSTA İLE GİRİŞ/KAYIT FORMU (🚀 YENİ: onKeyDown eklendi) */}
                     {authType === 'register' && (
                       <input 
                         placeholder="Ad Soyad" 
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
+                        onKeyDown={handleKeyDown}
                         style={{ width: '100%', padding: '16px', borderRadius: '14px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontSize: '0.95rem', outline: 'none', fontWeight: 500 }} 
                       />
                     )}
@@ -402,6 +410,7 @@ export default function HomePage() {
                       placeholder="E-posta adresi" 
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      onKeyDown={handleKeyDown}
                       style={{ width: '100%', padding: '16px', borderRadius: '14px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontSize: '0.95rem', outline: 'none', fontWeight: 500 }} 
                     />
                     <input 
@@ -409,6 +418,7 @@ export default function HomePage() {
                       placeholder="Şifre" 
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      onKeyDown={handleKeyDown}
                       style={{ width: '100%', padding: '16px', borderRadius: '14px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontSize: '0.95rem', outline: 'none', fontWeight: 500 }} 
                     />
                     
