@@ -123,8 +123,8 @@ export default function HomePage() {
   };
 
   // ARAMA VE FİLTRELEME İŞLEMİ
-  const handleSearch = () => {
-    document.getElementById('teachers-section')?.scrollIntoView({ behavior: 'smooth' });
+ const handleSearch = () => {
+    router.push('/egitmenler');
   };
 
   const filteredTeachers = teachers.filter((t) => {

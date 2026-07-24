@@ -128,7 +128,6 @@ export default function TeacherDashboard() {
     setScheduleLessons(data || []);
   }
 
-  // DERSİ TAMAMLANDI OLARAK İŞARETLEME FONKSİYONU
   async function handleCompleteLesson(dersId: string) {
     try {
       const { error } = await supabase
@@ -145,7 +144,6 @@ export default function TeacherDashboard() {
     }
   }
 
-  // 🎯 SUPABASE İLE ETKİLEŞİMLİ VE ANINDA EKRANDAN SİLEN İPTAL FONKSİYONU
   async function handleCancelLesson(dersId: string) {
     if (!confirm("Bu dersi iptal etmek istediğinize emin misiniz? Öğrencinin takviminden de tamamen kaldırılacaktır.")) return;
     try {
@@ -182,7 +180,6 @@ export default function TeacherDashboard() {
 
   return (
     <div style={layout}>
-      {/* SIDEBAR */}
       <aside style={{
         width: '280px',
         background: '#0f172a',
@@ -256,7 +253,6 @@ export default function TeacherDashboard() {
         </div>
       </aside>
 
-      {/* MAIN CONTENT */}
       <main style={content}>
         {loadingProfile && tab !== 'messages' ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80vh', color: '#64748b', fontSize: 15, fontWeight: 500 }}>
@@ -274,12 +270,11 @@ export default function TeacherDashboard() {
                 onCancel={handleCancelLesson} 
               />
             )}
+            {/* PROFILE BİLEŞENİ ARTIK TÜM VERİLERİ GÖSTERİYOR */}
             {tab === 'profile' && <Profile profile={teacherProfile} stats={stats} />}
+            
             {tab === 'lessons' && <Lessons lessons={allLessonsList} stats={stats} onComplete={handleCompleteLesson} onCancel={handleCancelLesson} />} 
-            
-            {/* YENİ TAKVİM BİLEŞENİ ÇAĞRISI BURADA */}
             {tab === 'schedule' && <Schedule profile={teacherProfile} userId={userId} onProfileUpdate={loadTeacherProfile} />}
-            
             {tab === 'students' && <Students students={myStudentsList} stats={stats} />}
             {tab === 'messages' && <Messages userId={userId} />}
             {tab === 'earnings' && <Earnings profile={teacherProfile} stats={stats} />}
@@ -360,7 +355,7 @@ function Dashboard({ profile, stats, upcomingLessons, userId, onComplete, onCanc
         <Box title="Toplam Öğrenci" value={stats.totalStudents} icon="👨‍🎓" />
         <Box title="Toplam Ders" value={stats.totalLessons} icon="📚" />
         <Box title="Saatlik Ücretiniz" value={`${profile?.saatlik_ucret || 0} TL`} icon="💰" />
-        <Box title="Ortalama Puan" value="5.0 ⭐" icon="📈" />
+        <Box title="Ortalama Puan" value={`${profile?.ortalama_puan || 5.0} ⭐`} icon="📈" />
       </div>
 
       <div style={{ ...grid, marginTop: 24 }}>
@@ -426,7 +421,7 @@ function Dashboard({ profile, stats, upcomingLessons, userId, onComplete, onCanc
 
 const summaryRow = { display: 'flex', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' };
 
-/* ---------------- 2. PROFILE COMPONENT ---------------- */
+/* ---------------- 2. GÜNCELLENMİŞ PROFILE (ÖNİZLEME) COMPONENT ---------------- */
 function Profile({ profile, stats }: any) {
   return (
     <div>
@@ -472,35 +467,50 @@ function Profile({ profile, stats }: any) {
 
         <div style={{ paddingTop: '65px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               <h1 style={{ fontSize: '24px', fontWeight: 800, margin: 0, color: '#0f172a', letterSpacing: '-0.5px' }}>
-                {profile?.tam_ad || "Egemen Tüzmen"}
+                {profile?.tam_ad || "Belirtilmemiş"}
               </h1>
-              <span style={{ background: '#dcfce7', color: '#15803d', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.5px' }}>
-                ✓ DOĞRULANMIŞ EĞİTMEN
+              {profile?.super_ogretmen && (
+                <span style={{ background: '#fef3c7', color: '#d97706', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 700 }}>
+                  🏆 SÜPER ÖĞRETMEN
+                </span>
+              )}
+              <span style={{ background: '#dcfce7', color: '#15803d', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 700 }}>
+                ✓ DOĞRULANMIŞ
               </span>
+              
+              {/* YENİ: ÖNE ÇIKAN ETİKET */}
+              {profile?.one_cikan_etiket && (
+                <span style={{ background: '#fce7f3', color: '#9d174d', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 700 }}>
+                  ✨ {profile.one_cikan_etiket}
+                </span>
+              )}
             </div>
             <p style={{ margin: '6px 0 0 0', color: '#475569', fontSize: '15px', fontWeight: 500 }}>
-              {profile?.ders_turu || "Türkçe (Yabancılar İçin)"} Uzmanı
+              {profile?.ders_turu || "Uzmanlık Belirtilmemiş"}
             </p>
             
-            <div style={{ display: 'flex', gap: '15px', marginTop: '12px', fontSize: '13px', color: '#64748b' }}>
-              <span>📍 {profile?.konum || "Ankara, Türkiye"}</span>
-              <span>🎓 {profile?.egitim || "Gazi Üniversitesi (Ph.D. Adayı)"}</span>
-              <span>🗣️ {profile?.diller || "Türkçe (Ana Dil)"}</span>
+            <div style={{ display: 'flex', gap: '15px', marginTop: '12px', fontSize: '13px', color: '#64748b', flexWrap: 'wrap' }}>
+              <span>📍 {profile?.konum || "Konum Belirtilmemiş"}</span>
+              <span>🎓 {profile?.egitim || "Eğitim Belirtilmemiş"}</span>
+              <span>🗣️ {profile?.diller || "Diller Belirtilmemiş"}</span>
+              {/* YENİ: SEVİYE */}
+              {profile?.seviye && <span>📈 Seviye: {profile.seviye}</span>}
             </div>
           </div>
 
           <div style={{ textAlign: 'right', background: '#f8fafc', padding: '12px 20px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
             <div style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Saatlik Ücret</div>
             <div style={{ fontSize: '24px', fontWeight: 800, color: '#2563eb', margin: '2px 0' }}>{profile?.saatlik_ucret || 0} TL</div>
-            <div style={{ fontSize: '13px', color: '#d97706', fontWeight: 600 }}>⭐ 5.0 (Mükemmel Skor)</div>
+            <div style={{ fontSize: '13px', color: '#d97706', fontWeight: 600 }}>⭐ {profile?.ortalama_puan || "5.0"} (Puan)</div>
           </div>
         </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr', gap: '24px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          
           <div style={cardStyle}>
             <h3 style={cardTitleStyle}>📝 Hakkımda / Biyografi</h3>
             <p style={{ color: '#334155', lineHeight: 1.7, fontSize: '15px', margin: 0, whiteSpace: 'pre-line' }}>
@@ -511,9 +521,25 @@ function Profile({ profile, stats }: any) {
           <div style={cardStyle}>
             <h3 style={cardTitleStyle}>🎯 Öğretim Yaklaşımı & Metodoloji</h3>
             <p style={{ color: '#334155', lineHeight: 1.7, fontSize: '15px', margin: 0, whiteSpace: 'pre-line' }}>
-              {profile?.metodoloji || "Derslerimde tamamen iletişimsel yaklaşımı (Communicative Approach) benimsiyorum. Dil öğrenimini sadece gramer kalıplarından ibaret görmüyor, ilk dersten itibaren öğrencilerin aktif şekilde Türkçe konuşmasını hedefliyorum. Yapay zeka destekli materyaller ogüncel kaynaklarla desteklenen ders süreçleri, her öğrencinin kendi öğrenme hızına özel olarak yapılandırılmaktadır."}
+              {profile?.metodoloji || "Öğretim metodolojisi belirtilmemiş."}
             </p>
           </div>
+
+          {/* YENİ: AMAÇ VE ODAK BÖLÜMÜ EKLENDİ */}
+          {(profile?.amac || profile?.odak) && (
+            <div style={cardStyle}>
+              <h3 style={cardTitleStyle}>🎯 Uzmanlık & Odak Alanları</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '14px', color: '#334155' }}>
+                {profile?.amac && (
+                  <div><strong style={{ color: '#0f172a' }}>Hedeflenen Amaç:</strong> {profile.amac}</div>
+                )}
+                {profile?.odak && (
+                  <div><strong style={{ color: '#0f172a' }}>Ders Odak Noktası:</strong> {profile.odak}</div>
+                )}
+              </div>
+            </div>
+          )}
+
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -670,7 +696,7 @@ function Lessons({ lessons, stats, onComplete, onCancel }: any) {
   );
 }
 
-/* ---------------- 4. YEPYENİ 7x24 ÇALIŞMA SAATLERİ (SCHEDULE) COMPONENT ---------------- */
+/* ---------------- 4. SCHEDULE COMPONENT ---------------- */
 function Schedule({ profile, userId, onProfileUpdate }: any) {
   const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
   const HOURS = Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`);
@@ -678,8 +704,6 @@ function Schedule({ profile, userId, onProfileUpdate }: any) {
   const [blockedSlots, setBlockedSlots] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
-  // 🚀 EKSİK OLAN HAYATİ KOD BURASI: 
-  // Sekme her açıldığında veya profil güncellendiğinde kayıtlı saatleri ekrana getirir.
   useEffect(() => {
     if (profile?.musait_olmayan_saatler) {
       setBlockedSlots(profile.musait_olmayan_saatler);
@@ -872,11 +896,11 @@ function Students({ students, stats }: any) {
   );
 }
 
-/* ---------------- 6. MESSAGES COMPONENT (GÜNCELLENDİ) ---------------- */
+/* ---------------- 6. MESSAGES COMPONENT ---------------- */
 function Messages({ userId }: any) {
-  const [students, setStudents] = useState<any[]>([]); // İletişim listesi
-  const [selectedStudent, setSelectedStudent] = useState<any>(null); // Seçili öğrenci
-  const [messages, setMessages] = useState<any[]>([]); // Mesaj geçmişi
+  const [students, setStudents] = useState<any[]>([]); 
+  const [selectedStudent, setSelectedStudent] = useState<any>(null); 
+  const [messages, setMessages] = useState<any[]>([]); 
   const [text, setText] = useState('');
 
   useEffect(() => {
@@ -889,7 +913,6 @@ function Messages({ userId }: any) {
     
     loadMessages();
     
-    // Canlı mesaj dinleyicisi
     const channel = supabase
       .channel('chat-room')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mesajlar' }, (payload: any) => {
@@ -898,7 +921,6 @@ function Messages({ userId }: any) {
                            (msg.gonderen_id === selectedStudent.id && msg.alici_id === userId);
         
         if (isRelevant) {
-          // Eğer mesaj zaten local olarak eklenmediyse (çift eklenmeyi önlemek için kontrol)
           setMessages(prev => {
             const exists = prev.some(m => m.id === msg.id || (m.icerik === msg.icerik && m.gonderen_id === msg.gonderen_id));
             return exists ? prev : [...prev, msg];
@@ -912,7 +934,6 @@ function Messages({ userId }: any) {
     };
   }, [selectedStudent, userId]);
 
-  // 🎯 Öğrenci İsimlerini ogrenciler Tablosundan Çeken Akıllı Fonksiyon
   async function loadStudents() {
     const { data, error } = await supabase
       .from('mesajlar')
@@ -921,7 +942,6 @@ function Messages({ userId }: any) {
 
     if (!data || error) return;
     
-    // Kendimiz dışındaki tüm benzersiz kullanıcı ID'lerini toplayalım
     const ids = new Set<string>();
     data.forEach(m => {
       if (m.gonderen_id !== userId) ids.add(m.gonderen_id);
@@ -931,13 +951,11 @@ function Messages({ userId }: any) {
     const idList = Array.from(ids);
     if (idList.length === 0) return;
 
-    // Öğrenciler tablosundan bu ID'lere sahip kişilerin gerçek adlarını çekiyoruz
     const { data: ogrenciProfilleri } = await supabase
       .from('ogrenciler')
       .select('user_id, tam_ad')
       .in('user_id', idList);
 
-    // ID'leri gerçek isimlerle eşleştiriyoruz
     const mappedStudents = idList.map(id => {
       const profil = ogrenciProfilleri?.find(p => p.user_id === id);
       return {
@@ -958,14 +976,11 @@ function Messages({ userId }: any) {
     setMessages(data || []);
   }
 
-  // 🎯 Mesajın Ekranda Kaybolmasını Engelleyen Gönderme Fonksiyonu
   async function send() {
     if (!text || !selectedStudent) return;
     
     const mesajIcerigi = text;
     
-    // Mesajı Supabase'e göndermeden ÖNCE ekrana anında yazdırıyoruz
-    // DÜZELTME YAPILDI: "anlikMesajTaslagi" bitişik yazıldı
     const anlikMesajTaslagi = {
       gonderen_id: userId,
       alici_id: selectedStudent.id,
@@ -974,16 +989,14 @@ function Messages({ userId }: any) {
     };
     
     setMessages(prev => [...prev, anlikMesajTaslagi]);
-    setText(''); // Giriş kutusunu hemen temizle
+    setText(''); 
 
-    // Şimdi arka planda sessizce Supabase'e kaydediyoruz
     const { error } = await supabase
       .from('mesajlar')
       .insert({ gonderen_id: userId, alici_id: selectedStudent.id, icerik: mesajIcerigi });
 
     if (error) {
       alert("Mesaj iletilemedi: " + error.message);
-      // Eğer veritabanı kaydı başarısız olursa ekrandan geri siliyoruz
       setMessages(prev => prev.filter(m => m !== anlikMesajTaslagi));
       setText(mesajIcerigi);
     }
@@ -991,19 +1004,16 @@ function Messages({ userId }: any) {
 
   return (
     <div style={{ display: 'flex', height: '72vh', gap: 20, background: 'white', padding: 20, borderRadius: 16, border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)' }}>
-      {/* SOL MENÜ: KİŞİ LİSTESİ */}
       <div style={{ width: 280, borderRight: '1px solid #f1f5f9', paddingRight: 16, overflowY: 'auto' }}>
         <div style={{ padding: '0 0 12px 4px', fontWeight: 700, fontSize: 16, color: '#0f172a' }}>👨‍🎓 Mesajlaştığım Öğrenciler</div>
         {students.map((s, i) => (
           <div key={i} onClick={() => setSelectedStudent(s)} style={{ padding: '12px 14px', borderRadius: 10, cursor: 'pointer', marginBottom: 6, transition: 'all 0.2s', background: selectedStudent?.id === s.id ? '#eff6ff' : 'transparent' }}>
-            {/* BURADA ARTIK GERÇEK İSİM YAZIYOR */}
             <div style={{ fontWeight: 600, color: selectedStudent?.id === s.id ? '#2563eb' : '#334155', fontSize: 14 }}>{s.tam_ad}</div>
             <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3 }}>ID: {s.id.slice(0, 8)}...</div>
           </div>
         ))}
       </div>
       
-      {/* SAĞ MENÜ: SOHBET PENCERESİ */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <div style={{ paddingBottom: 12, borderBottom: '1px solid #f1f5f9', fontWeight: 600, color: '#1e293b' }}>
           {selectedStudent ? `💬 Aktif Sohbet: ${selectedStudent.tam_ad}` : 'Lütfen soldan bir sohbet seçin'}
@@ -1067,6 +1077,11 @@ function Settings({ profile, userId, onProfileUpdate }: any) {
   const [metodoloji, setMetodoloji] = useState(profile?.metodoloji || "");
   const [videoUrl, setVideoUrl] = useState(profile?.video_url || "");
   
+  const [etiket, setEtiket] = useState(profile?.one_cikan_etiket || "");
+  const [amac, setAmac] = useState(profile?.amac || "");
+  const [odak, setOdak] = useState(profile?.odak || "");
+  const [seviye, setSeviye] = useState(profile?.seviye || "");
+  
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || "");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -1083,6 +1098,11 @@ function Settings({ profile, userId, onProfileUpdate }: any) {
       setMetodoloji(profile.metodoloji || "");
       setAvatarUrl(profile.avatar_url || "");
       setVideoUrl(profile.video_url || "");
+      
+      setEtiket(profile.one_cikan_etiket || "");
+      setAmac(profile.amac || "");
+      setOdak(profile.odak || "");
+      setSeviye(profile.seviye || "");
     }
   }, [profile]);
 
@@ -1132,7 +1152,11 @@ function Settings({ profile, userId, onProfileUpdate }: any) {
         diller: diller,
         metodoloji: metodoloji,
         avatar_url: avatarUrl,
-        video_url: videoUrl
+        video_url: videoUrl,
+        one_cikan_etiket: etiket,
+        amac: amac,
+        odak: odak,
+        seviye: seviye
       };
 
       let error;
@@ -1145,7 +1169,7 @@ function Settings({ profile, userId, onProfileUpdate }: any) {
       }
 
       if (error) throw error;
-      alert("Değişiklikler başarıyla kaydedildi!");
+      alert("Değişiklikler başarıyla kaydedildi! Profilinize yansıdı.");
       onProfileUpdate();
     } catch (err: any) {
       console.error(err);
@@ -1197,6 +1221,7 @@ function Settings({ profile, userId, onProfileUpdate }: any) {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div>
                 <label style={labelStyle}>Ad Soyad</label>
@@ -1204,29 +1229,49 @@ function Settings({ profile, userId, onProfileUpdate }: any) {
               </div>
               <div>
                 <label style={labelStyle}>Uzmanlık / Ders Türü</label>
-                <input value={subject} onChange={(e) => setSubject(e.target.value)} style={localInputStyle} />
+                <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Örn: Türkçe Eğitmeni" style={localInputStyle} />
               </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
               <div>
                 <label style={labelStyle}>📍 Konum (Şehir, Ülke)</label>
-                <input value={konum} onChange={(e) => setKonum(e.target.value)} style={localInputStyle} />
+                <input value={konum} onChange={(e) => setKonum(e.target.value)} placeholder="Örn: Ankara, Türkiye" style={localInputStyle} />
               </div>
               <div>
                 <label style={labelStyle}>🎓 Eğitim / Akademik Ünvan</label>
-                <input value={egitim} onChange={(e) => setEgitim(e.target.value)} style={localInputStyle} />
+                <input value={egitim} onChange={(e) => setEgitim(e.target.value)} placeholder="Örn: Gazi Üniversitesi" style={localInputStyle} />
               </div>
               <div>
                 <label style={labelStyle}>🗣️ Konuştuğu Diller</label>
-                <input value={diller} onChange={(e) => setDiller(e.target.value)} style={localInputStyle} />
+                <input value={diller} onChange={(e) => setDiller(e.target.value)} placeholder="Örn: Türkçe (Ana Dil), İngilizce (B2)" style={localInputStyle} />
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div>
                 <label style={labelStyle}>Saatlik Ücret (TL)</label>
                 <input value={price} type="number" onChange={(e) => setPrice(Number(e.target.value))} style={localInputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>✨ Öne Çıkan Etiket (Pembe Kutu)</label>
+                <input value={etiket} onChange={(e) => setEtiket(e.target.value)} placeholder="Örn: Etkileşimli, samimi ve sabırlı" style={localInputStyle} />
+                <span style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', display: 'block' }}>Eğitmenler listesinde isminizin altında görünecek dikkat çekici renkli yazı.</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+              <div>
+                <label style={labelStyle}>🎯 Amacınız</label>
+                <input value={amac} onChange={(e) => setAmac(e.target.value)} placeholder="Örn: Sınava Hazırlık, İş Türkçesi" style={localInputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>⭐ Odak Noktası</label>
+                <input value={odak} onChange={(e) => setOdak(e.target.value)} placeholder="Örn: Konuşma Pratiği, Dilbilgisi" style={localInputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>📈 Uygun Seviye</label>
+                <input value={seviye} onChange={(e) => setSeviye(e.target.value)} placeholder="Örn: Başlangıç (A1-A2)" style={localInputStyle} />
               </div>
             </div>
 
