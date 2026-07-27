@@ -39,6 +39,20 @@ export default function TeacherDashboard() {
     }
   }, [userId]);
 
+  // 🚀 ÖĞRETMENİ "ONLİNE" YAPMA SİNYALİ BURAYA EKLENDİ
+  useEffect(() => {
+    if (!userId) return;
+
+    async function setOnlineStatus() {
+      await supabase.from('egitmenler').update({ son_gorulme: new Date().toISOString() }).eq('user_id', userId);
+    }
+
+    setOnlineStatus(); // Panele ilk girdiğinde anında online yap
+    const interval = setInterval(setOnlineStatus, 5 * 60 * 1000); // 5 dakikada bir "hala buradayım" sinyali gönder
+
+    return () => clearInterval(interval);
+  }, [userId]);
+
   async function loadUser() {
     const { data } = await supabase.auth.getUser();
     setUserId(data?.user?.id || '');
@@ -480,7 +494,6 @@ function Profile({ profile, stats }: any) {
                 ✓ DOĞRULANMIŞ
               </span>
               
-              {/* YENİ: ÖNE ÇIKAN ETİKET */}
               {profile?.one_cikan_etiket && (
                 <span style={{ background: '#fce7f3', color: '#9d174d', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 700 }}>
                   ✨ {profile.one_cikan_etiket}
@@ -495,7 +508,6 @@ function Profile({ profile, stats }: any) {
               <span>📍 {profile?.konum || "Konum Belirtilmemiş"}</span>
               <span>🎓 {profile?.egitim || "Eğitim Belirtilmemiş"}</span>
               <span>🗣️ {profile?.diller || "Diller Belirtilmemiş"}</span>
-              {/* YENİ: SEVİYE */}
               {profile?.seviye && <span>📈 Seviye: {profile.seviye}</span>}
             </div>
           </div>
@@ -525,7 +537,6 @@ function Profile({ profile, stats }: any) {
             </p>
           </div>
 
-          {/* YENİ: AMAÇ VE ODAK BÖLÜMÜ EKLENDİ */}
           {(profile?.amac || profile?.odak) && (
             <div style={cardStyle}>
               <h3 style={cardTitleStyle}>🎯 Uzmanlık & Odak Alanları</h3>

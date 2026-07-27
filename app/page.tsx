@@ -32,7 +32,7 @@ export default function HomePage() {
 
   // Normal E-Posta ile Supabase Kayıt & Giriş İşlemi
   const handleAuth = async () => {
-    if (loading) return; // Eğer zaten yükleniyorsa ikinci kez çalışmasını engelle (Enter'a çift basma durumu)
+    if (loading) return; 
     setLoading(true);
     try {
       if (authType === 'register') {
@@ -107,13 +107,15 @@ export default function HomePage() {
     }
   };
 
-  // Google ile Giriş / Kayıt İşlemi
+  // 🚀 GÜNCELLENDİ: Google ile Giriş / Kayıt İşlemi (Dinamik Yönlendirme)
   const handleGoogleAuth = async () => {
     try {
+      const redirectPath = role === 'ogretmen' ? '/teacher-dashboard' : '/student-dashboard';
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/student-dashboard`,
+          redirectTo: `${window.location.origin}${redirectPath}`,
         }
       });
       if (error) throw error;
@@ -123,7 +125,7 @@ export default function HomePage() {
   };
 
   // ARAMA VE FİLTRELEME İŞLEMİ
- const handleSearch = () => {
+  const handleSearch = () => {
     router.push('/egitmenler');
   };
 
@@ -137,7 +139,7 @@ export default function HomePage() {
     );
   });
 
-  // 🚀 YENİ: Enter tuşu dinleyicisi
+  // Enter tuşu dinleyicisi
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !loading) {
       handleAuth();
@@ -395,7 +397,7 @@ export default function HomePage() {
                   </div>
                 ) : (
                   <>
-                    {/* KLASİK E-POSTA İLE GİRİŞ/KAYIT FORMU (🚀 YENİ: onKeyDown eklendi) */}
+                    {/* KLASİK E-POSTA İLE GİRİŞ/KAYIT FORMU */}
                     {authType === 'register' && (
                       <input 
                         placeholder="Ad Soyad" 

@@ -11,12 +11,11 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
 
   // Aktif Sekme Yönetimi
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'teachers' | 'messages' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'messages' | 'settings'>('dashboard');
 
   // Supabase Veri State'leri
   const [stats, setStats] = useState({ seviye: '-', durum: '-', created_at: '' });
   const [upcomingLessons, setUpcomingLessons] = useState<any[]>([]);
-  const [allTeachers, setAllTeachers] = useState<any[]>([]);
   
   // Mesajlaşma State'leri
   const [chatList, setChatList] = useState<any[]>([]);
@@ -43,15 +42,16 @@ export default function StudentDashboard() {
         
         let fetchedName = currentUser.user_metadata?.full_name;
 
-        // 1. Öğrenci Verilerini Çek
+        // 1. Öğrenci Verilerini Çek (🚀 YENİ: single yerine maybeSingle kullanıyoruz)
         const { data: profile } = await supabase
           .from('ogrenciler')
           .select('tam_ad, email, seviye, durum, created_at')
           .eq('user_id', currentUser.id)
-          .single();
+          .maybeSingle();
           
         if (profile) {
-          fetchedName = fetchedName || profile.tam_ad;
+          // 👉 KULLANICI ZATEN KAYITLIYSA
+          fetchedName = profile.tam_ad || fetchedName;
           setStats({
             seviye: profile.seviye || '-',
             durum: profile.durum || '-',
@@ -61,6 +61,36 @@ export default function StudentDashboard() {
             tamAd: profile.tam_ad || '',
             telefon: '' 
           });
+        } else {
+          // 🚀 YENİ KULLANICI: GOOGLE İLE İLK DEFA GİRDİYSE OTOMATİK KAYIT YAP
+          const newStudentData = {
+            user_id: currentUser.id,
+            email: currentUser.email,
+            tam_ad: currentUser.user_metadata?.full_name || 'Yeni Öğrenci',
+            seviye: 'Belirlenmedi',
+            durum: 'Aktif'
+            // Eğer tablonda avatar_url sütunu varsa bunu da ekleyebilirsin:
+            // avatar_url: currentUser.user_metadata?.avatar_url
+          };
+
+          const { data: newProfile, error: insertError } = await supabase
+            .from('ogrenciler')
+            .insert([newStudentData])
+            .select()
+            .single();
+
+          if (!insertError && newProfile) {
+            fetchedName = newProfile.tam_ad;
+            setStats({
+              seviye: newProfile.seviye || '-',
+              durum: newProfile.durum || '-',
+              created_at: newProfile.created_at || new Date().toISOString()
+            });
+            setSettingsForm({
+              tamAd: newProfile.tam_ad || '',
+              telefon: '' 
+            });
+          }
         }
         setUserName(fetchedName || 'Öğrenci');
 
@@ -74,11 +104,7 @@ export default function StudentDashboard() {
           
         if (lessons) setUpcomingLessons(lessons);
 
-        // 3. Tüm Eğitmenleri Çek
-        const { data: teachersData } = await supabase.from('egitmenler').select('*');
-        if (teachersData) setAllTeachers(teachersData);
-
-        // 4. 🎯 GÜNCELLENDİ: Sohbet Geçmişindeki Eğitmenleri 'egitmenler' Tablosundan Çek
+        // 3. Sohbet Geçmişindeki Eğitmenleri 'egitmenler' Tablosundan Çek
         const { data: initialMsgs } = await supabase
           .from('mesajlar')
           .select('gonderen_id, alici_id')
@@ -93,7 +119,6 @@ export default function StudentDashboard() {
           
           const idList = Array.from(ids);
           if (idList.length > 0) {
-            // EĞİTMENLER tablosundan isimleri ve avatarları alıyoruz
             const { data: egitmenProfilleri } = await supabase
               .from('egitmenler')
               .select('user_id, tam_ad, avatar_url')
@@ -121,7 +146,6 @@ export default function StudentDashboard() {
     fetchData();
   }, [router]);
 
-  // Aktif Sohbet Değiştiğinde Mesajları Getir ve Canlı Dinle
   useEffect(() => {
     if (!activeChatTeacher || !user) return;
 
@@ -145,7 +169,6 @@ export default function StudentDashboard() {
           (newMsg.gonderen_id === user.id && newMsg.alici_id === activeChatTeacher.user_id) ||
           (newMsg.gonderen_id === activeChatTeacher.user_id && newMsg.alici_id === user.id)
         ) {
-          // 🎯 Çift mesaj eklenmesini engelle
           setChatMessages(prev => {
             const exists = prev.some(m => m.id === newMsg.id || (m.icerik === newMsg.icerik && m.gonderen_id === newMsg.gonderen_id));
             return exists ? prev : [...prev, newMsg];
@@ -159,14 +182,12 @@ export default function StudentDashboard() {
     };
   }, [activeChatTeacher, user]);
 
-  // 🎯 GÜNCELLENDİ: Mesajın Anında Ekrana Basılması (Kaybolma sorunu çözüldü)
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !activeChatTeacher || !user) return;
 
     const mesajIcerigi = newMessage;
     
-    // 1. Önce ekrana anında yazdırıyoruz
     const anlikMesajTaslagi = {
       gonderen_id: user.id,
       alici_id: activeChatTeacher.user_id,
@@ -175,9 +196,8 @@ export default function StudentDashboard() {
     };
     
     setChatMessages(prev => [...prev, anlikMesajTaslagi]);
-    setNewMessage(''); // Inputu temizle
+    setNewMessage(''); 
 
-    // 2. Arka planda Supabase'e gönderiyoruz
     try {
       const { error } = await supabase
         .from('mesajlar')
@@ -191,7 +211,6 @@ export default function StudentDashboard() {
       if (error) throw error;
     } catch (err: any) {
       alert("Mesaj gönderilemedi: " + err.message);
-      // Hata olursa mesajı ekrandan sil ve inputa geri koy
       setChatMessages(prev => prev.filter(m => m !== anlikMesajTaslagi));
       setNewMessage(mesajIcerigi);
     }
@@ -228,7 +247,7 @@ export default function StudentDashboard() {
       {/* SOL MENÜ (SIDEBAR) */}
       <aside style={{ width: '280px', backgroundColor: '#ffffff', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', padding: '30px 20px', position: 'sticky', top: 0, height: '100vh' }}>
         <div style={{ marginBottom: '40px', paddingLeft: '10px' }}>
-          <h2 onClick={() => router.push('/')} style={{ fontSize: '1.4rem', fontWeight: 900, color: '#1e1b4b', letterSpacing: '-0.5px', margin: 0, cursor: 'pointer' }}>
+          <h2 onClick={() => setActiveTab('dashboard')} style={{ fontSize: '1.4rem', fontWeight: 900, color: '#1e1b4b', letterSpacing: '-0.5px', margin: 0, cursor: 'pointer' }}>
             Turkish Learning Academy<span style={{ color: '#4f46e5' }}>.</span>
           </h2>
         </div>
@@ -237,9 +256,11 @@ export default function StudentDashboard() {
           <button onClick={() => setActiveTab('dashboard')} style={{ padding: '14px 20px', borderRadius: '12px', backgroundColor: activeTab === 'dashboard' ? '#eef2ff' : 'transparent', color: activeTab === 'dashboard' ? '#4f46e5' : '#64748b', fontWeight: 700, border: 'none', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.95rem' }}>
             📊 Ana Görünüm
           </button>
-          <button onClick={() => setActiveTab('teachers')} style={{ padding: '14px 20px', borderRadius: '12px', backgroundColor: activeTab === 'teachers' ? '#eef2ff' : 'transparent', color: activeTab === 'teachers' ? '#4f46e5' : '#64748b', fontWeight: 700, border: 'none', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.95rem' }}>
+          
+          <button onClick={() => router.push('/egitmenler')} style={{ padding: '14px 20px', borderRadius: '12px', backgroundColor: 'transparent', color: '#64748b', fontWeight: 700, border: 'none', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.95rem', transition: 'background 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
             👨‍🏫 Eğitmenleri Keşfet
           </button>
+          
           <button onClick={() => setActiveTab('messages')} style={{ padding: '14px 20px', borderRadius: '12px', backgroundColor: activeTab === 'messages' ? '#eef2ff' : 'transparent', color: activeTab === 'messages' ? '#4f46e5' : '#64748b', fontWeight: 700, border: 'none', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.95rem' }}>
             ✉️ Mesajlar Merkezi
           </button>
@@ -258,12 +279,10 @@ export default function StudentDashboard() {
       {/* SAĞ İÇERİK ALANI */}
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
         
-        {/* Üst Profil Barı */}
         <header style={{ padding: '24px 60px', backgroundColor: '#ffffff', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
           <div>
             <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', margin: 0, letterSpacing: '-0.5px' }}>
               {activeTab === 'dashboard' && `Tekrar hoş geldin, ${userName} 👋`}
-              {activeTab === 'teachers' && 'Eğitmen Havuzu'}
               {activeTab === 'messages' && 'Mesajlaşma Merkezi'}
               {activeTab === 'settings' && 'Hesap Ayarları'}
             </h1>
@@ -279,13 +298,11 @@ export default function StudentDashboard() {
           </div>
         </header>
 
-        {/* DİNAMİK İÇERİK DEĞİŞİM ALANI */}
         <div style={{ flex: 1, padding: activeTab === 'messages' ? '0' : '40px 60px', overflowY: 'auto' }}>
           
-          {/* SEKME 1: ANA GÖRÜNÜM (DASHBOARD) */}
+          {/* SEKME 1: ANA GÖRÜNÜM */}
           {activeTab === 'dashboard' && (
             <>
-              {/* İstatistik Kartları */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '40px' }}>
                 <div style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
                   <div style={{ color: '#64748b', fontWeight: 600, marginBottom: '8px', fontSize: '0.95rem' }}>Dil Seviyesi</div>
@@ -301,13 +318,12 @@ export default function StudentDashboard() {
                 </div>
               </div>
 
-              {/* Yaklaşan Ders Paneli */}
               <div style={{ backgroundColor: '#ffffff', padding: '32px', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.01)' }}>
                 <h3 style={{ margin: '0 0 24px 0', fontSize: '1.3rem', fontWeight: 800 }}>Yaklaşan Canlı Dersleriniz</h3>
                 {upcomingLessons.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b', backgroundColor: '#f8fafc', borderRadius: '16px', border: '1px dashed #cbd5e1' }}>
                     <p style={{ margin: 0, fontWeight: 500 }}>Planlanmış bir canlı dersiniz bulunmuyor.</p>
-                    <button onClick={() => setActiveTab('teachers')} style={{ marginTop: '16px', padding: '10px 24px', backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>Eğitmen Keşfet</button>
+                    <button onClick={() => router.push('/egitmenler')} style={{ marginTop: '16px', padding: '10px 24px', backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>Eğitmen Keşfet</button>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -332,44 +348,9 @@ export default function StudentDashboard() {
             </>
           )}
 
-          {/* SEKME 2: EĞİTMENLERİ KEŞFET */}
-          {activeTab === 'teachers' && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '24px' }}>
-              {allTeachers.map((t) => (
-                <div 
-                  key={t.id} 
-                  onClick={() => router.push(`/teachers/${t.user_id || t.id}`)}
-                  style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', cursor: 'pointer', transition: 'box-shadow 0.2s, transform 0.2s' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 10px 25px -5px rgba(0,0,0,0.1)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(0)'; }}
-                >
-                  <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                    <img src={t.avatar_url || 'https://via.placeholder.com/80'} style={{ width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover' }} />
-                    <div>
-                      <h4 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800 }}>{t.tam_ad}</h4>
-                      <p style={{ margin: '4px 0 0 0', color: '#4f46e5', fontSize: '0.85rem', fontWeight: 600 }}>{t.ders_turu}</p>
-                    </div>
-                  </div>
-                  <p style={{ color: '#475569', fontSize: '0.9rem', lineHeight: 1.5, margin: 0, height: '3em', overflow: 'hidden' }}>{t.biyografi || 'Deneyimli öğretmen ile Türkçe pratik yapın.'}</p>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
-                    <span style={{ fontWeight: 800, fontSize: '1.1rem' }}>{t.saatlik_ucret} ₺ <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 400 }}>/ ders</span></span>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); setActiveChatTeacher(t); setActiveTab('messages'); }}
-                      style={{ padding: '8px 16px', backgroundColor: '#eef2ff', color: '#4f46e5', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', zIndex: 2 }}
-                    >
-                      Mesaj Gönder
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
           {/* SEKME 3: CANLI MESAJLAŞMA MERKEZİ */}
           {activeTab === 'messages' && (
             <div style={{ display: 'flex', height: '100%', backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-              
-              {/* Sol Sohbet Listesi */}
               <div style={{ width: '320px', borderRight: '1px solid #e2e8f0', overflowY: 'auto', backgroundColor: '#fff' }}>
                 {chatList.length === 0 ? (
                   <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8', fontSize: '0.95rem' }}>Henüz aktif bir sohbetiniz bulunmuyor.</div>
@@ -390,11 +371,9 @@ export default function StudentDashboard() {
                 )}
               </div>
 
-              {/* Sağ Sohbet Penceresi */}
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#f8fafc' }}>
                 {activeChatTeacher ? (
                   <>
-                    {/* Chat Başlığı */}
                     <div style={{ padding: '20px 30px', backgroundColor: '#ffffff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '14px' }}>
                       <img src={activeChatTeacher.avatar_url || 'https://via.placeholder.com/80'} style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover' }} />
                       <div>
@@ -403,7 +382,6 @@ export default function StudentDashboard() {
                       </div>
                     </div>
 
-                    {/* Mesaj Akışı */}
                     <div style={{ flex: 1, padding: '30px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                       {chatMessages.length === 0 && (
                         <div style={{ textAlign: 'center', color: '#94a3b8', marginTop: '40px' }}>Sohbeti başlatmak için ilk mesajınızı gönderin.</div>
@@ -421,7 +399,6 @@ export default function StudentDashboard() {
                       })}
                     </div>
 
-                    {/* Mesaj Yazma Paneli */}
                     <form onSubmit={handleSendMessage} style={{ padding: '20px 30px', backgroundColor: '#ffffff', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '16px' }}>
                       <input 
                         value={newMessage}

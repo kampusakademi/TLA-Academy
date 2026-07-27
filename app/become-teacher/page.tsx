@@ -9,7 +9,7 @@ export default function BecomeTeacher() {
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
 
-  // Başvuru Bilgileri (Şifre tamamen kaldırıldı)
+  // Başvuru Bilgileri
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -41,12 +41,34 @@ export default function BecomeTeacher() {
     });
   };
 
+  // 🚀 YENİ: 1. Adım Doğrulama Kontrolü
+  const handleNextStep = () => {
+    if (!formData.fullName.trim() || !formData.email.trim() || !formData.price || !formData.bio.trim()) {
+      alert("⚠️ Lütfen sonraki adıma geçmeden önce tüm bilgileri eksiksiz doldurun.");
+      return;
+    }
+    
+    if (!formData.email.includes('@')) {
+      alert("⚠️ Lütfen geçerli bir e-posta adresi girin.");
+      return;
+    }
+
+    setStep(2);
+  };
+
   const handleApply = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // 🚀 YENİ: 2. Adım Doğrulama Kontrolü (En az 1 seçim yapılmalı)
+    const hasSelection = specialties.amac.length > 0 || specialties.odak.length > 0 || specialties.seviye.length > 0;
+    if (!hasSelection) {
+      alert("⚠️ Lütfen başvurunuzu tamamlamadan önce en az bir hedef kitle, seviye veya odak alanı seçin.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // 🎯 DOĞRUDAN BASVURULAR TABLOSUNA EKLEME YAPIYORUZ (Auth ile işimiz yok)
       const { error } = await supabase
         .from('basvurular')
         .insert([{
@@ -127,7 +149,9 @@ export default function BecomeTeacher() {
                 <label style={{ display: 'block', fontWeight: 700, color: '#1e293b', marginBottom: '8px' }}>Kısa Biyografi (Öğrenciler Görecek)</label>
                 <textarea required rows={3} value={formData.bio} onChange={e => setFormData({...formData, bio: e.target.value})} style={{ ...inputStyle, resize: 'none' }} placeholder="Kendinizden ve eğitim geçmişinizden kısaca bahsedin..." />
               </div>
-              <button type="button" onClick={() => setStep(2)} style={nextBtnStyle}>Sonraki Adım: Uzmanlık Alanları →</button>
+              
+              {/* 🚀 DİKKAT: Buton onClick fonksiyonu handleNextStep olarak değiştirildi */}
+              <button type="button" onClick={handleNextStep} style={nextBtnStyle}>Sonraki Adım: Uzmanlık Alanları →</button>
             </div>
           )}
 

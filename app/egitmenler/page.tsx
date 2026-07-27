@@ -32,12 +32,40 @@ export default function TeachersListPage() {
     );
   });
 
+  // ÇEVRİMİÇİ DURUM KONTROLCÜSÜ
+  const isOnline = (dateStr: string) => {
+    if (!dateStr) return false;
+    const lastSeen = new Date(dateStr).getTime();
+    const now = new Date().getTime();
+    return (now - lastSeen) < 15 * 60 * 1000;
+  };
+
+  // 🚀 YENİ: LOGOYA TIKLANINCA ÇALIŞACAK AKILLI YÖNLENDİRME
+  const handleLogoClick = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      // 1. Ziyaretçiyse ana sayfaya
+      router.push('/'); 
+      return;
+    }
+
+    // 2. Giriş yapmışsa yetkisine bak (Öğretmen mi Öğrenci mi?)
+    const { data: isTeacher } = await supabase.from('egitmenler').select('id').eq('user_id', user.id).maybeSingle();
+    
+    if (isTeacher) {
+      router.push('/teacher-dashboard'); // <-- Eğer öğretmen dashboard linkin farklıysa burayı düzelt
+    } else {
+      router.push('/student-dashboard'); // <-- Eğer öğrenci dashboard linkin farklıysa burayı düzelt
+    }
+  };
+
   return (
     <div style={{ fontFamily: '"Inter", system-ui, sans-serif', color: '#121117', backgroundColor: '#f8fafc', minHeight: '100vh', paddingBottom: '80px' }}>
       
-      {/* NAVBAR */}
       <nav style={{ padding: '16px 8%', backgroundColor: '#ffffff', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 50 }}>
-        <div onClick={() => router.push('/')} style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+        {/* LOGO KISMI ARTIK handleLogoClick FONKSİYONUNU ÇAĞIRIYOR */}
+        <div onClick={handleLogoClick} style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
           <h1 style={{ fontSize: '1.4rem', fontWeight: 900, color: '#121117', margin: 0 }}>
             Turkish Learning Academy<span style={{ color: '#f472b6' }}>.</span>
           </h1>
@@ -64,13 +92,14 @@ export default function TeachersListPage() {
           />
         </div>
 
-        {/* EĞİTMEN KARTLARI */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '60px', color: '#6b7280', fontSize: '1.2rem' }}>Eğitmenler yükleniyor...</div>
           ) : filteredTeachers.length > 0 ? (
             filteredTeachers.map((t) => {
               const dillerMetni = t.konustugu_diller || t.diller || '';
+              const onlineStatus = isOnline(t.son_gorulme); 
+              
               return (
                 <div 
                   key={t.id} 
@@ -79,7 +108,6 @@ export default function TeachersListPage() {
                     padding: '24px', display: 'flex', gap: '24px', position: 'relative'
                   }}
                 >
-                  {/* Fotoğraf */}
                   <div style={{ flexShrink: 0, cursor: 'pointer' }} onClick={() => router.push(`/teachers/${t.user_id || t.id}`)}>
                     <div style={{ position: 'relative' }}>
                       <img 
@@ -87,11 +115,12 @@ export default function TeachersListPage() {
                         alt={t.tam_ad}
                         style={{ width: '160px', height: '160px', borderRadius: '12px', objectFit: 'cover', border: '1px solid #e5e7eb' }} 
                       />
-                      <div style={{ position: 'absolute', bottom: -6, right: -6, width: '20px', height: '20px', backgroundColor: '#16a34a', border: '3px solid #ffffff', borderRadius: '50%' }}></div>
+                      {onlineStatus && (
+                        <div style={{ position: 'absolute', bottom: -6, right: -6, width: '20px', height: '20px', backgroundColor: '#16a34a', border: '3px solid #ffffff', borderRadius: '50%' }}></div>
+                      )}
                     </div>
                   </div>
 
-                  {/* Öğretmen Detayları */}
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <h2 onClick={() => router.push(`/teachers/${t.user_id || t.id}`)} style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: '#121117', cursor: 'pointer' }}>
@@ -102,23 +131,17 @@ export default function TeachersListPage() {
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '0.9rem', color: '#374151', fontWeight: 600, flexWrap: 'wrap' }}>
-                      {t.super_ogretmen && (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>🏆 Süper Öğretmen</span>
-                      )}
+                      {t.super_ogretmen && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>🏆 Süper Öğretmen</span>}
                       <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>🎓 {t.ders_turu || 'Türkçe Eğitmeni'}</span>
-                      {t.seviye && (
-                        <span style={{ background: '#e0e7ff', color: '#3730a3', padding: '2px 8px', borderRadius: '6px', fontSize: '0.8rem' }}>📈 {t.seviye}</span>
-                      )}
+                      {t.seviye && <span style={{ background: '#e0e7ff', color: '#3730a3', padding: '2px 8px', borderRadius: '6px', fontSize: '0.8rem' }}>📈 {t.seviye}</span>}
                     </div>
 
-                    {/* Diller */}
                     {dillerMetni && (
                       <div style={{ fontSize: '0.9rem', color: '#4b5563', marginTop: '2px' }}>
                         <strong>🗣 Konuştuğu diller:</strong> {dillerMetni}
                       </div>
                     )}
 
-                    {/* Öne Çıkan Etiket (Pembe Kutu) */}
                     {t.one_cikan_etiket && (
                       <div style={{ marginTop: '4px' }}>
                         <span style={{ padding: '4px 10px', backgroundColor: '#fce7f3', color: '#9d174d', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 700 }}>
@@ -127,13 +150,11 @@ export default function TeachersListPage() {
                       </div>
                     )}
 
-                    {/* Biyografi Özeti */}
                     <p style={{ margin: '8px 0 0 0', fontSize: '0.95rem', color: '#374151', lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                       <strong>{t.biyografi ? t.biyografi.split('.')[0] + '.' : ''}</strong> {t.biyografi || 'Eğitmen henüz detaylı biyografi eklememiş.'}
                     </p>
                   </div>
 
-                  {/* Sağ Kart: Fiyat & İstatistikler */}
                   <div style={{ width: '220px', borderLeft: '1px solid #e5e7eb', paddingLeft: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     <button style={{ position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#9ca3af' }}>♡</button>
 
@@ -178,7 +199,6 @@ export default function TeachersListPage() {
                         Mesaj gönder
                       </button>
                     </div>
-                    
                   </div>
                 </div>
               );

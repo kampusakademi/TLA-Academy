@@ -14,12 +14,13 @@ export default function TeacherProfilePage() {
   const [loading, setLoading] = useState(true);
   const [bookingLoading, setBookingLoading] = useState(false);
 
-  // MESAJLAŞMA POP-UP STATE'LERİ
   const [showMsgModal, setShowMsgModal] = useState(false);
   const [msgText, setMsgText] = useState('');
   const [sendingMsg, setSendingMsg] = useState(false);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [loadingChat, setLoadingChat] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // TAKVİM STATE'LERİ
   const [availableDates, setAvailableDates] = useState<{date: Date, dayName: string, label: string}[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedHour, setSelectedHour] = useState<string | null>(null);
@@ -86,6 +87,52 @@ export default function TeacherProfilePage() {
     }
   }
 
+  useEffect(() => {
+    if (showMsgModal && teacher) {
+      checkAndLoadChat();
+    }
+  }, [showMsgModal, teacher]);
+
+  async function checkAndLoadChat() {
+    setLoadingChat(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      setCurrentUserId(user.id);
+      const targetId = teacher.user_id || teacher.id;
+      const { data } = await supabase
+        .from('mesajlar')
+        .select('*')
+        .or(`and(gonderen_id.eq.${user.id},alici_id.eq.${targetId}),and(gonderen_id.eq.${targetId},alici_id.eq.${user.id})`)
+        .order('olusturulma_tarihi', { ascending: true });
+      
+      if (data) setChatMessages(data);
+    }
+    setLoadingChat(false);
+  }
+
+  useEffect(() => {
+    if (!showMsgModal || !currentUserId || !teacher) return;
+    const targetId = teacher.user_id || teacher.id;
+    
+    const channel = supabase
+      .channel('profil-mini-chat')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mesajlar' }, (payload: any) => {
+        const newMsg = payload.new;
+        if (
+          (newMsg.gonderen_id === currentUserId && newMsg.alici_id === targetId) ||
+          (newMsg.gonderen_id === targetId && newMsg.alici_id === currentUserId)
+        ) {
+          setChatMessages(prev => {
+            const exists = prev.some(m => m.id === newMsg.id || (m.icerik === newMsg.icerik && m.gonderen_id === newMsg.gonderen_id));
+            return exists ? prev : [...prev, newMsg];
+          });
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [showMsgModal, currentUserId, teacher]);
+
   function checkSlotStatus(date: Date, hour: string) {
     if (!teacher) return { disabled: true, reason: '' };
 
@@ -99,7 +146,7 @@ export default function TeacherProfilePage() {
         return { disabled: true, reason: 'Geçti' };
     }
 
-    const dayMap = { 0: 'Pazartesi', 1: 'Salı', 2: 'Çarşamba', 3: 'Perşembe', 4: 'Cuma', 5: 'Cumartesi', 6: 'Pazar' };
+    const dayMap = { 0: 'Pazar', 1: 'Pazartesi', 2: 'Salı', 3: 'Çarşamba', 4: 'Perşembe', 5: 'Cuma', 6: 'Cumartesi' };
     const dayName = dayMap[date.getDay() as keyof typeof dayMap];
     const slotKey = `${dayName}-${hour}`;
 
@@ -183,7 +230,8 @@ export default function TeacherProfilePage() {
     }
   }
 
-  async function handleSendMessage() {
+  async function handleSendMessage(e?: React.FormEvent) {
+    if (e) e.preventDefault();
     if (!msgText.trim()) return;
     setSendingMsg(true);
 
@@ -196,20 +244,29 @@ export default function TeacherProfilePage() {
         return;
       }
 
+      const targetId = teacher.user_id || teacher.id;
+      const mesajIcerigi = msgText;
+
+      const anlikMesaj = {
+        gonderen_id: user.id,
+        alici_id: targetId,
+        icerik: mesajIcerigi,
+        olusturulma_tarihi: new Date().toISOString()
+      };
+      
+      setChatMessages(prev => [...prev, anlikMesaj]);
+      setMsgText(''); 
+
       const { error: insertError } = await supabase
         .from('mesajlar')
         .insert([{
           gonderen_id: user.id,
-          alici_id: teacher.user_id || teacher.id,
-          icerik: msgText,
+          alici_id: targetId,
+          icerik: mesajIcerigi,
           okundu: false
         }]);
 
       if (insertError) throw insertError;
-
-      alert("Mesajınız eğitmene başarıyla iletildi! ✅");
-      setMsgText(''); 
-      setShowMsgModal(false); 
 
     } catch (error: any) {
       console.error(error);
@@ -219,11 +276,20 @@ export default function TeacherProfilePage() {
     }
   }
 
+  // 🚀 ÇEVRİMİÇİ DURUM KONTROLCÜSÜ
+  const isOnline = (dateStr: string) => {
+    if (!dateStr) return false;
+    const lastSeen = new Date(dateStr).getTime();
+    const now = new Date().getTime();
+    return (now - lastSeen) < 15 * 60 * 1000;
+  };
+
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontWeight: 600, color: '#475569' }}>Bilgiler yükleniyor...</div>;
   if (!teacher) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontWeight: 600, color: '#ef4444' }}>Eğitmen profili bulunamadı.</div>;
 
   const embedVideoUrl = getYouTubeEmbedUrl(teacher?.video_url);
   const dillerMetni = teacher?.konustugu_diller || teacher?.diller || '';
+  const isTeacherOnline = isOnline(teacher?.son_gorulme); // Eğitmenin güncel durumu
 
   return (
     <div style={{ fontFamily: '"Inter", system-ui, sans-serif', color: '#121117', backgroundColor: '#f4f4f5', minHeight: '100vh', paddingBottom: '80px' }}>
@@ -239,7 +305,6 @@ export default function TeacherProfilePage() {
         {/* SOL TARAF */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
-          {/* 1. ÜST BİLGİ KARTI */}
           <div style={{ backgroundColor: '#ffffff', padding: '32px', borderRadius: '16px', border: '1px solid #dcdce5', display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
             <div style={{ position: 'relative', flexShrink: 0 }}>
               <img 
@@ -247,7 +312,10 @@ export default function TeacherProfilePage() {
                 alt={teacher?.tam_ad}
                 style={{ width: '120px', height: '120px', borderRadius: '12px', objectFit: 'cover' }} 
               />
-              <div style={{ position: 'absolute', bottom: 4, right: -4, width: '18px', height: '18px', backgroundColor: '#16a34a', border: '3px solid #ffffff', borderRadius: '50%' }}></div>
+              {/* 🚀 EĞER ONLİNE İSE YEŞİL NOKTAYI GÖSTER */}
+              {isTeacherOnline && (
+                <div style={{ position: 'absolute', bottom: 4, right: -4, width: '18px', height: '18px', backgroundColor: '#16a34a', border: '3px solid #ffffff', borderRadius: '50%' }}></div>
+              )}
             </div>
             
             <div style={{ flex: 1 }}>
@@ -270,7 +338,6 @@ export default function TeacherProfilePage() {
                 </div>
               </div>
 
-              {/* DİLLER VE PEMBE ETİKET */}
               <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {dillerMetni && (
                   <div style={{ fontSize: '0.95rem', color: '#4b5563' }}>
@@ -287,28 +354,14 @@ export default function TeacherProfilePage() {
                 )}
               </div>
 
-              {/* ETİKETLER / ROZETLER */}
               <div style={{ marginTop: '20px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {teacher?.konum && (
-                  <span style={{ padding: '4px 12px', background: '#f3f4f6', color: '#374151', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 600 }}>
-                    📍 Konum: {teacher.konum}
-                  </span>
-                )}
-                {teacher?.seviye && (
-                  <span style={{ padding: '4px 12px', background: '#e0e7ff', color: '#3730a3', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 600 }}>
-                    🎓 Seviye: {teacher.seviye}
-                  </span>
-                )}
-                {teacher?.egitim && (
-                  <span style={{ padding: '4px 12px', background: '#fef3c7', color: '#92400e', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 600 }}>
-                    📚 {teacher.egitim}
-                  </span>
-                )}
+                {teacher?.konum && <span style={{ padding: '4px 12px', background: '#f3f4f6', color: '#374151', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 600 }}>📍 Konum: {teacher.konum}</span>}
+                {teacher?.seviye && <span style={{ padding: '4px 12px', background: '#e0e7ff', color: '#3730a3', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 600 }}>🎓 Seviye: {teacher.seviye}</span>}
+                {teacher?.egitim && <span style={{ padding: '4px 12px', background: '#fef3c7', color: '#92400e', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 600 }}>📚 {teacher.egitim}</span>}
               </div>
             </div>
           </div>
 
-          {/* 2. VİDEO ALANI */}
           <div style={{ width: '100%', height: '400px', backgroundColor: '#000000', borderRadius: '16px', overflow: 'hidden', border: '1px solid #dcdce5' }}>
             {teacher?.video_url ? (
               <iframe src={embedVideoUrl || ''} style={{ width: '100%', height: '100%', border: 'none' }} allowFullScreen />
@@ -317,7 +370,6 @@ export default function TeacherProfilePage() {
             )}
           </div>
 
-          {/* 3. BİYOGRAFİ & METODOLOJİ */}
           <div style={{ backgroundColor: '#ffffff', padding: '32px', borderRadius: '16px', border: '1px solid #dcdce5' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#121117', marginBottom: '20px' }}>Eğitmen Hakkında</h2>
             <p style={{ lineHeight: 1.7, color: '#3f3a5a', fontSize: '1.05rem', whiteSpace: 'pre-line', margin: 0 }}>
@@ -333,7 +385,6 @@ export default function TeacherProfilePage() {
               </div>
             )}
 
-            {/* AMAÇ VE ODAK ALANLARI */}
             {(teacher?.amac || teacher?.odak) && (
               <div style={{ marginTop: '32px', paddingTop: '32px', borderTop: '1px solid #e5e7eb' }}>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '16px' }}>Uzmanlık ve Odak Alanları</h3>
@@ -342,19 +393,17 @@ export default function TeacherProfilePage() {
                     item.trim() && <span key={`amac-${idx}`} style={{ padding: '8px 16px', background: '#f3f4f6', color: '#111827', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 500 }}>🎯 {item.trim()}</span>
                   ))}
                   {teacher?.odak && teacher.odak.split(',').map((item: string, idx: number) => (
-  item.trim() && <span key={`odak-${idx}`} style={{ padding: '8px 16px', background: '#f3f4f6', color: '#111827', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 500 }}>⭐ {item.trim()}</span>
-))}
+                    item.trim() && <span key={`odak-${idx}`} style={{ padding: '8px 16px', background: '#f3f4f6', color: '#111827', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 500 }}>⭐ {item.trim()}</span>
+                  ))}
                 </div>
               </div>
             )}
           </div>
 
-          {/* 4. YORUMLAR */}
           <div style={{ backgroundColor: '#ffffff', padding: '32px', borderRadius: '16px', border: '1px solid #dcdce5', marginBottom: '40px' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#121117', marginBottom: '24px' }}>
               Öğrenci Yorumları <span style={{ color: '#6b7280', fontSize: '1.2rem', fontWeight: 500 }}>({yorumlar.length})</span>
             </h2>
-            
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               {yorumlar.length > 0 ? (
                 yorumlar.map((y, i) => (
@@ -378,9 +427,8 @@ export default function TeacherProfilePage() {
           </div>
         </div>
 
-        {/* SAĞ TARAF (TAKİP VE REZERVASYON) */}
+        {/* SAĞ TARAF */}
         <div style={{ position: 'sticky', top: '24px' }}>
-          
           <div style={{ background: '#ffffff', padding: '24px', borderRadius: '16px', border: '1px solid #dcdce5', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
             
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '24px' }}>
@@ -463,47 +511,88 @@ export default function TeacherProfilePage() {
             >
               ✉️ Mesaj gönder
             </button>
-            
-            <p style={{ textAlign: 'center', color: '#6b7280', fontSize: '0.85rem', marginTop: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-              ⚡ Genellikle 1 saat içinde yanıt verir
-            </p>
-
+            <p style={{ textAlign: 'center', color: '#6b7280', fontSize: '0.85rem', marginTop: '16px' }}>⚡ Genellikle 1 saat içinde yanıt verir</p>
           </div>
         </div>
       </div>
 
+      {/* 🚀 AKILLI MINI-CHAT MODALI */}
       {showMsgModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0, 0, 0, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', width: '100%', maxWidth: '500px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
+          <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', width: '100%', maxWidth: '500px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '85vh' }}>
             
-            <div style={{ padding: '24px 32px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#121117' }}>Eğitmene mesaj gönder</h3>
-              <button onClick={() => setShowMsgModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#9ca3af' }}>×</button>
-            </div>
-
-            <div style={{ padding: '32px' }}>
-              <p style={{ color: '#4b5563', marginBottom: '16px', fontSize: '0.95rem' }}>Eğitmene hedeflerinizden, şu anki seviyenizden ve beklentilerinizden bahsedin.</p>
-              
-              <textarea 
-                value={msgText}
-                onChange={(e) => setMsgText(e.target.value)}
-                placeholder={`Merhaba ${teacher?.tam_ad?.split(' ')[0] || 'Öğretmenim'}, ders almak istiyorum...`}
-                style={{ width: '100%', minHeight: '150px', padding: '16px', borderRadius: '8px', border: '1px solid #dcdce5', backgroundColor: '#ffffff', fontSize: '1rem', outline: 'none', resize: 'vertical', fontFamily: 'inherit' }}
-                onFocus={(e) => e.target.style.borderColor = '#121117'}
-                onBlur={(e) => e.target.style.borderColor = '#dcdce5'}
-              />
-
-              <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-                <button 
-                  onClick={handleSendMessage}
-                  disabled={sendingMsg || !msgText.trim()}
-                  style={{ width: '100%', padding: '16px', borderRadius: '8px', border: 'none', backgroundColor: (sendingMsg || !msgText.trim()) ? '#e5e7eb' : '#121117', color: (sendingMsg || !msgText.trim()) ? '#9ca3af' : '#ffffff', fontWeight: 700, fontSize: '1.05rem', cursor: (sendingMsg || !msgText.trim()) ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}
-                >
-                  {sendingMsg ? 'Gönderiliyor...' : 'Mesajı Gönder'}
-                </button>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ position: 'relative' }}>
+                  <img src={teacher?.avatar_url || `https://ui-avatars.com/api/?name=${teacher?.tam_ad || 'Eğitmen'}&background=eef2ff&color=4f46e5`} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
+                  {isTeacherOnline && (
+                    <div style={{ position: 'absolute', bottom: 0, right: 0, width: '12px', height: '12px', backgroundColor: '#16a34a', border: '2px solid #ffffff', borderRadius: '50%' }}></div>
+                  )}
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#121117' }}>{teacher?.tam_ad}</h3>
+                  {/* 🚀 DİNAMİK YAZI */}
+                  <span style={{ color: isTeacherOnline ? '#16a34a' : '#94a3b8', fontSize: '0.8rem', fontWeight: 600 }}>
+                    {isTeacherOnline ? 'Çevrimiçi' : 'Son görülme: Yakınlarda'}
+                  </span>
+                </div>
               </div>
+              <button onClick={() => setShowMsgModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.8rem', cursor: 'pointer', color: '#9ca3af' }}>×</button>
             </div>
 
+            {loadingChat ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>Geçmiş mesajlarınız kontrol ediliyor...</div>
+            ) : chatMessages.length > 0 ? (
+              <>
+                <div style={{ padding: '20px', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: '#ffffff', minHeight: '300px' }}>
+                  {chatMessages.map((msg, idx) => {
+                    const isMe = msg.gonderen_id === currentUserId;
+                    return (
+                      <div key={idx} style={{ alignSelf: isMe ? 'flex-end' : 'flex-start', maxWidth: '75%', backgroundColor: isMe ? '#4f46e5' : '#f1f5f9', color: isMe ? '#ffffff' : '#0f172a', padding: '12px 16px', borderRadius: isMe ? '16px 16px 0 16px' : '16px 16px 16px 0', fontSize: '0.95rem', lineHeight: 1.4 }}>
+                        {msg.icerik}
+                        <div style={{ fontSize: '0.7rem', textAlign: 'right', marginTop: '6px', color: isMe ? '#c7d2fe' : '#94a3b8' }}>
+                          {new Date(msg.olusturulma_tarihi).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <form onSubmit={handleSendMessage} style={{ padding: '16px 20px', borderTop: '1px solid #e5e7eb', display: 'flex', gap: '10px', backgroundColor: '#f8fafc' }}>
+                  <input 
+                    value={msgText}
+                    onChange={(e) => setMsgText(e.target.value)}
+                    placeholder="Mesaj yazın..."
+                    style={{ flex: 1, padding: '14px 16px', borderRadius: '12px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.95rem' }}
+                  />
+                  <button type="submit" disabled={sendingMsg || !msgText.trim()} style={{ padding: '0 24px', backgroundColor: (sendingMsg || !msgText.trim()) ? '#94a3b8' : '#4f46e5', color: '#ffffff', border: 'none', borderRadius: '12px', fontWeight: 700, cursor: (sendingMsg || !msgText.trim()) ? 'not-allowed' : 'pointer' }}>
+                    Gönder
+                  </button>
+                </form>
+              </>
+            ) : (
+              <>
+                <div style={{ padding: '32px' }}>
+                  <p style={{ color: '#4b5563', marginBottom: '16px', fontSize: '0.95rem' }}>Eğitmene hedeflerinizden, şu anki seviyenizden ve beklentilerinizden bahsedin.</p>
+                  
+                  <textarea 
+                    value={msgText}
+                    onChange={(e) => setMsgText(e.target.value)}
+                    placeholder={`Merhaba ${teacher?.tam_ad?.split(' ')[0] || 'Öğretmenim'}, ders almak istiyorum...`}
+                    style={{ width: '100%', minHeight: '120px', padding: '16px', borderRadius: '12px', border: '1px solid #dcdce5', backgroundColor: '#ffffff', fontSize: '1rem', outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                  />
+
+                  <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+                    <button 
+                      onClick={handleSendMessage}
+                      disabled={sendingMsg || !msgText.trim()}
+                      style={{ width: '100%', padding: '14px', borderRadius: '12px', border: 'none', backgroundColor: (sendingMsg || !msgText.trim()) ? '#e5e7eb' : '#121117', color: (sendingMsg || !msgText.trim()) ? '#9ca3af' : '#ffffff', fontWeight: 700, fontSize: '1.05rem', cursor: (sendingMsg || !msgText.trim()) ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}
+                    >
+                      {sendingMsg ? 'Gönderiliyor...' : 'İlk Mesajı Gönder'}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
