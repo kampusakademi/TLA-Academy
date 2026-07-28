@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import LiveRoom from "../components/LiveRoom";
+import VideoRoom from "../ders-odasi/VideoRoom";
 
 export default function CanliDersEntegrasyonPage() {
   const [roomUrl, setRoomUrl] = useState<string | null>(null);
@@ -111,7 +111,7 @@ export default function CanliDersEntegrasyonPage() {
           </div>
           
           {/* Esas video ekranı */}
-          <LiveRoom roomUrl={roomUrl} />
+          <VideoRoom channelName={roomUrl} />
         </div>
       )}
     </div>
