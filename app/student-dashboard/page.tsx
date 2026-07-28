@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import CanliDersButonu from '@/app/components/CanliDersButonu'; // 🚀 YENİ EKLENEN BİLEŞEN
+import CanliDersButonu from '@/app/components/CanliDersButonu';
 
 export default function StudentDashboard() {
   const router = useRouter();
@@ -12,11 +12,12 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
 
   // Aktif Sekme Yönetimi
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'messages' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'messages' | 'settings' | 'past_lessons'>('dashboard');
 
   // Supabase Veri State'leri
   const [stats, setStats] = useState({ seviye: '-', durum: '-', created_at: '' });
   const [upcomingLessons, setUpcomingLessons] = useState<any[]>([]);
+  const [pastLessons, setPastLessons] = useState<any[]>([]); 
   
   // Mesajlaşma State'leri
   const [chatList, setChatList] = useState<any[]>([]);
@@ -26,6 +27,12 @@ export default function StudentDashboard() {
 
   // Ayarlar Form State'leri
   const [settingsForm, setSettingsForm] = useState({ tamAd: '', telefon: '' });
+
+  // Değerlendirme State'leri
+  const [degerlendirmeModali, setDegerlendirmeModali] = useState<string | null>(null);
+  const [secilenPuan, setSecilenPuan] = useState(0);
+  const [yazilanYorum, setYazilanYorum] = useState("");
+  const [ratingLoading, setRatingLoading] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -57,12 +64,8 @@ export default function StudentDashboard() {
             durum: profile.durum || '-',
             created_at: profile.created_at || new Date().toISOString()
           });
-          setSettingsForm({
-            tamAd: profile.tam_ad || '',
-            telefon: '' 
-          });
+          setSettingsForm({ tamAd: profile.tam_ad || '', telefon: '' });
         } else {
-          // Yeni Kullanıcı
           const newStudentData = {
             user_id: currentUser.id,
             email: currentUser.email,
@@ -70,39 +73,37 @@ export default function StudentDashboard() {
             seviye: 'Belirlenmedi',
             durum: 'Aktif'
           };
-
-          const { data: newProfile, error: insertError } = await supabase
-            .from('ogrenciler')
-            .insert([newStudentData])
-            .select()
-            .single();
-
+          const { data: newProfile, error: insertError } = await supabase.from('ogrenciler').insert([newStudentData]).select().single();
           if (!insertError && newProfile) {
             fetchedName = newProfile.tam_ad;
-            setStats({
-              seviye: newProfile.seviye || '-',
-              durum: newProfile.durum || '-',
-              created_at: newProfile.created_at || new Date().toISOString()
-            });
-            setSettingsForm({
-              tamAd: newProfile.tam_ad || '',
-              telefon: '' 
-            });
+            setStats({ seviye: newProfile.seviye || '-', durum: newProfile.durum || '-', created_at: newProfile.created_at || new Date().toISOString() });
+            setSettingsForm({ tamAd: newProfile.tam_ad || '', telefon: '' });
           }
         }
         setUserName(fetchedName || 'Öğrenci');
 
-        // 2. Yaklaşan Dersleri Çek
+        // 🚀 BÜYÜK DEĞİŞİKLİK: Saat yerine doğrudan veritabanındaki "durum" sütununa bakıyoruz
+        // SADECE durumu "Yaklaşan" olan dersleri ana ekrana al. (Öğretmen bunu değiştirdiği an buradan kaybolur)
         const { data: lessons } = await supabase
           .from('dersler')
           .select('*, egitmenler(user_id, tam_ad, avatar_url, ders_turu)')
           .eq('ogrenci_id', currentUser.id)
-          .gte('tarih_saat', new Date().toISOString())
+          .eq('durum', 'Yaklaşan') 
           .order('tarih_saat', { ascending: true });
           
         if (lessons) setUpcomingLessons(lessons);
 
-        // 3. Sohbet Geçmişindeki Eğitmenleri Çek
+        // 🚀 DURUM MANTIĞI: Durumu "Tamamlanan" veya "İptal" olanları geçmiş derslere al.
+        const { data: past } = await supabase
+          .from('dersler')
+          .select('*, egitmenler(user_id, tam_ad, avatar_url, ders_turu)')
+          .eq('ogrenci_id', currentUser.id)
+          .in('durum', ['Tamamlanan', 'İptal', 'İptal Edildi']) 
+          .order('tarih_saat', { ascending: false }); 
+          
+        if (past) setPastLessons(past);
+
+        // 4. Sohbet Geçmişi
         const { data: initialMsgs } = await supabase
           .from('mesajlar')
           .select('gonderen_id, alici_id')
@@ -117,23 +118,14 @@ export default function StudentDashboard() {
           
           const idList = Array.from(ids);
           if (idList.length > 0) {
-            const { data: egitmenProfilleri } = await supabase
-              .from('egitmenler')
-              .select('user_id, tam_ad, avatar_url')
-              .in('user_id', idList);
-            
+            const { data: egitmenProfilleri } = await supabase.from('egitmenler').select('user_id, tam_ad, avatar_url').in('user_id', idList);
             const mappedTeachers = idList.map(id => {
               const profil = egitmenProfilleri?.find(p => p.user_id === id);
-              return {
-                user_id: id,
-                tam_ad: profil?.tam_ad || `Eğitmen (${id.slice(0, 4)})`,
-                avatar_url: profil?.avatar_url || null
-              };
+              return { user_id: id, tam_ad: profil?.tam_ad || `Eğitmen (${id.slice(0, 4)})`, avatar_url: profil?.avatar_url || null };
             });
             setChatList(mappedTeachers);
           }
         }
-
       } catch (err) {
         console.error("Veriler çekilirken bir hata oluştu:", err);
       } finally {
@@ -144,68 +136,35 @@ export default function StudentDashboard() {
     fetchData();
   }, [router]);
 
+  // Mesajlaşma Ayarları
   useEffect(() => {
     if (!activeChatTeacher || !user) return;
-
     async function fetchSpecificMessages() {
-      const { data: msgs } = await supabase
-        .from('mesajlar')
-        .select('*')
-        .or(`and(gonderen_id.eq.${user.id},alici_id.eq.${activeChatTeacher.user_id}),and(gonderen_id.eq.${activeChatTeacher.user_id},alici_id.eq.${user.id})`)
-        .order('olusturulma_tarihi', { ascending: true });
-
+      const { data: msgs } = await supabase.from('mesajlar').select('*').or(`and(gonderen_id.eq.${user.id},alici_id.eq.${activeChatTeacher.user_id}),and(gonderen_id.eq.${activeChatTeacher.user_id},alici_id.eq.${user.id})`).order('olusturulma_tarihi', { ascending: true });
       if (msgs) setChatMessages(msgs);
     }
-
     fetchSpecificMessages();
-
-    const channel = supabase
-      .channel('canli-mesajlar')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mesajlar' }, (payload: any) => {
-        const newMsg = payload.new;
-        if (
-          (newMsg.gonderen_id === user.id && newMsg.alici_id === activeChatTeacher.user_id) ||
-          (newMsg.gonderen_id === activeChatTeacher.user_id && newMsg.alici_id === user.id)
-        ) {
-          setChatMessages(prev => {
-            const exists = prev.some(m => m.id === newMsg.id || (m.icerik === newMsg.icerik && m.gonderen_id === newMsg.gonderen_id));
-            return exists ? prev : [...prev, newMsg];
-          });
-        }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    const channel = supabase.channel('canli-mesajlar').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mesajlar' }, (payload: any) => {
+      const newMsg = payload.new;
+      if ((newMsg.gonderen_id === user.id && newMsg.alici_id === activeChatTeacher.user_id) || (newMsg.gonderen_id === activeChatTeacher.user_id && newMsg.alici_id === user.id)) {
+        setChatMessages(prev => {
+          const exists = prev.some(m => m.id === newMsg.id || (m.icerik === newMsg.icerik && m.gonderen_id === newMsg.gonderen_id));
+          return exists ? prev : [...prev, newMsg];
+        });
+      }
+    }).subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [activeChatTeacher, user]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !activeChatTeacher || !user) return;
-
     const mesajIcerigi = newMessage;
-    
-    const anlikMesajTaslagi = {
-      gonderen_id: user.id,
-      alici_id: activeChatTeacher.user_id,
-      icerik: mesajIcerigi,
-      olusturulma_tarihi: new Date().toISOString()
-    };
-    
+    const anlikMesajTaslagi = { gonderen_id: user.id, alici_id: activeChatTeacher.user_id, icerik: mesajIcerigi, olusturulma_tarihi: new Date().toISOString() };
     setChatMessages(prev => [...prev, anlikMesajTaslagi]);
     setNewMessage(''); 
-
     try {
-      const { error } = await supabase
-        .from('mesajlar')
-        .insert([{
-          gonderen_id: user.id,
-          alici_id: activeChatTeacher.user_id,
-          icerik: mesajIcerigi,
-          okundu: false
-        }]);
-
+      const { error } = await supabase.from('mesajlar').insert([{ gonderen_id: user.id, alici_id: activeChatTeacher.user_id, icerik: mesajIcerigi, okundu: false }]);
       if (error) throw error;
     } catch (err: any) {
       alert("Mesaj gönderilemedi: " + err.message);
@@ -217,11 +176,7 @@ export default function StudentDashboard() {
   const handleUpdateSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const { error } = await supabase
-        .from('ogrenciler')
-        .update({ tam_ad: settingsForm.tamAd })
-        .eq('user_id', user.id);
-
+      const { error } = await supabase.from('ogrenciler').update({ tam_ad: settingsForm.tamAd }).eq('user_id', user.id);
       if (error) throw error;
       setUserName(settingsForm.tamAd);
       alert("Profil ayarlarınız başarıyla güncellendi!");
@@ -235,6 +190,27 @@ export default function StudentDashboard() {
     router.push('/');
   };
 
+  const handleSubmitRating = async (dersId: string) => {
+    if (secilenPuan === 0) return alert("Lütfen 1 ile 5 arası bir yıldız seçin!");
+    setRatingLoading(true);
+    try {
+      const response = await fetch("/api/ders-degerlendir", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dersId, puan: secilenPuan, yorum: yazilanYorum }),
+      });
+      if (response.ok) {
+        alert("Değerlendirmeniz başarıyla kaydedildi!");
+        setPastLessons(pastLessons.map(d => d.id === dersId ? { ...d, puan: secilenPuan, yorum: yazilanYorum } : d));
+        setDegerlendirmeModali(null);
+        setSecilenPuan(0);
+        setYazilanYorum("");
+      } else {
+        alert("Değerlendirme kaydedilirken bir hata oluştu.");
+      }
+    } catch (error) { console.error(error); } finally { setRatingLoading(false); }
+  };
+
   if (loading) {
     return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f8fafc', color: '#4f46e5', fontSize: '1.2rem', fontWeight: 600 }}>TLA yüklüyor...</div>;
   }
@@ -242,7 +218,7 @@ export default function StudentDashboard() {
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f8fafc', fontFamily: '"Inter", system-ui, sans-serif', color: '#0f172a' }}>
       
-      {/* SOL MENÜ (SIDEBAR) */}
+      {/* SOL MENÜ */}
       <aside style={{ width: '280px', backgroundColor: '#ffffff', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', padding: '30px 20px', position: 'sticky', top: 0, height: '100vh' }}>
         <div style={{ marginBottom: '40px', paddingLeft: '10px' }}>
           <h2 onClick={() => setActiveTab('dashboard')} style={{ fontSize: '1.4rem', fontWeight: 900, color: '#1e1b4b', letterSpacing: '-0.5px', margin: 0, cursor: 'pointer' }}>
@@ -259,6 +235,10 @@ export default function StudentDashboard() {
             👨‍🏫 Eğitmenleri Keşfet
           </button>
           
+          <button onClick={() => setActiveTab('past_lessons')} style={{ padding: '14px 20px', borderRadius: '12px', backgroundColor: activeTab === 'past_lessons' ? '#eef2ff' : 'transparent', color: activeTab === 'past_lessons' ? '#4f46e5' : '#64748b', fontWeight: 700, border: 'none', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.95rem' }}>
+            📚 Geçmiş Derslerim
+          </button>
+
           <button onClick={() => setActiveTab('messages')} style={{ padding: '14px 20px', borderRadius: '12px', backgroundColor: activeTab === 'messages' ? '#eef2ff' : 'transparent', color: activeTab === 'messages' ? '#4f46e5' : '#64748b', fontWeight: 700, border: 'none', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.95rem' }}>
             ✉️ Mesajlar Merkezi
           </button>
@@ -281,6 +261,7 @@ export default function StudentDashboard() {
           <div>
             <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', margin: 0, letterSpacing: '-0.5px' }}>
               {activeTab === 'dashboard' && `Tekrar hoş geldin, ${userName} 👋`}
+              {activeTab === 'past_lessons' && 'Geçmiş Dersler ve Değerlendirmeler'}
               {activeTab === 'messages' && 'Mesajlaşma Merkezi'}
               {activeTab === 'settings' && 'Hesap Ayarları'}
             </h1>
@@ -320,7 +301,7 @@ export default function StudentDashboard() {
                 <h3 style={{ margin: '0 0 24px 0', fontSize: '1.3rem', fontWeight: 800 }}>Yaklaşan Canlı Dersleriniz</h3>
                 {upcomingLessons.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b', backgroundColor: '#f8fafc', borderRadius: '16px', border: '1px dashed #cbd5e1' }}>
-                    <p style={{ margin: 0, fontWeight: 500 }}>Planlanmış bir canlı dersiniz bulunmuyor.</p>
+                    <p style={{ margin: 0, fontWeight: 500 }}>Şu an "Yaklaşan" durumunda bir canlı dersiniz bulunmuyor.</p>
                     <button onClick={() => router.push('/egitmenler')} style={{ marginTop: '16px', padding: '10px 24px', backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>Eğitmen Keşfet</button>
                   </div>
                 ) : (
@@ -331,24 +312,75 @@ export default function StudentDashboard() {
                           <img src={ders.egitmenler?.avatar_url || 'https://via.placeholder.com/80'} style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover' }} />
                           <div>
                             <h4 style={{ margin: '0 0 4px 0', fontSize: '1.1rem', fontWeight: 700 }}>{ders.egitmenler?.tam_ad}</h4>
-                            <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>{ders.egitmenler?.ders_turu} • Birebir Görüşme</p>
+                            <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>{ders.egitmenler?.ders_turu || 'Ders'} • Birebir Görüşme</p>
                           </div>
                         </div>
                         
-                        {/* 🚀 DEĞİŞİKLİK BURADA: AKILLI BUTON EKLENDİ */}
                         <div style={{ textAlign: 'right' }}>
                           <div style={{ color: '#4f46e5', fontWeight: 800, marginBottom: '6px' }}>
                             {new Date(ders.tarih_saat).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
                           </div>
                           <CanliDersButonu dersId={ders.id} tarihSaat={ders.tarih_saat} />
                         </div>
-
                       </div>
                     ))}
                   </div>
                 )}
               </div>
             </>
+          )}
+
+          {/* SEKME 2: GEÇMİŞ DERSLER VE DEĞERLENDİRME */}
+          {activeTab === 'past_lessons' && (
+            <div style={{ backgroundColor: '#ffffff', padding: '32px', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.01)', maxWidth: '800px' }}>
+              
+              {pastLessons.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b', backgroundColor: '#f8fafc', borderRadius: '16px', border: '1px dashed #cbd5e1' }}>
+                  <p style={{ margin: 0, fontWeight: 500 }}>Geçmişte tamamlanmış veya iptal edilmiş bir dersiniz bulunmuyor.</p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  {pastLessons.map((ders) => (
+                    <div key={ders.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px", backgroundColor: "#f8fafc", borderRadius: "16px", border: "1px solid #e2e8f0" }}>
+                      
+                      <div>
+                        {/* 🚀 YENİ DURUM ETİKETLERİ EKLENDİ */}
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '4px' }}>
+                          <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: "#0f172a" }}>{ders.egitmenler?.ders_turu || 'Özel Ders'}</h4>
+                          {ders.durum.includes('İptal') ? (
+                            <span style={{ backgroundColor: '#fee2e2', color: '#ef4444', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700 }}>İptal Edildi</span>
+                          ) : (
+                            <span style={{ backgroundColor: '#dcfce3', color: '#22c55e', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700 }}>Tamamlandı</span>
+                          )}
+                        </div>
+                        
+                        <p style={{ color: "#64748b", fontSize: "0.9rem", margin: 0 }}>👨‍🏫 {ders.egitmenler?.tam_ad} • 📅 {new Date(ders.tarih_saat).toLocaleDateString('tr-TR')}</p>
+                        
+                        {/* Puan verildiyse göster */}
+                        {ders.puan && (
+                          <div style={{ marginTop: "12px", backgroundColor: "#f0fdf4", padding: "8px 12px", borderRadius: "8px", display: "inline-block", border: "1px solid #bbf7d0" }}>
+                            <span style={{ color: "#eab308", fontSize: "1.1rem", letterSpacing: "2px" }}>
+                              {"★".repeat(ders.puan)}{"☆".repeat(5 - ders.puan)}
+                            </span>
+                            {ders.yorum && <p style={{ fontSize: "0.85rem", color: "#166534", marginTop: "4px", fontStyle: "italic", margin: "4px 0 0 0" }}>"{ders.yorum}"</p>}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 🚀 DEĞİŞİKLİK: Eğer ders iptal edildiyse değerlendirme butonu çıkmasın! */}
+                      {!ders.puan && !ders.durum.includes('İptal') && (
+                        <button 
+                          onClick={() => setDegerlendirmeModali(ders.id)}
+                          style={{ backgroundColor: "#3b82f6", color: "white", padding: "10px 16px", borderRadius: "8px", border: "none", cursor: "pointer", fontWeight: "600", whiteSpace: "nowrap" }}
+                        >
+                          ⭐️ Dersi Değerlendir
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
           {/* SEKME 3: CANLI MESAJLAŞMA MERKEZİ */}
@@ -439,9 +471,53 @@ export default function StudentDashboard() {
               </form>
             </div>
           )}
-
         </div>
       </main>
+
+      {/* DEĞERLENDİRME MODALI (POPUP) */}
+      {degerlendirmeModali && (
+        <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", backgroundColor: "rgba(15, 23, 42, 0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}>
+          <div style={{ backgroundColor: "white", padding: "32px", borderRadius: "24px", width: "100%", maxWidth: "450px", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)" }}>
+            <h3 style={{ fontSize: "1.3rem", fontWeight: "800", marginBottom: "8px", textAlign: "center", color: "#0f172a" }}>Dersi Nasıl Buldunuz?</h3>
+            <p style={{ textAlign: "center", color: "#64748b", fontSize: "0.95rem", marginBottom: "24px" }}>Eğitmenimize destek olmak için puan verin.</p>
+            
+            <div style={{ display: "flex", justifyContent: "center", gap: "8px", fontSize: "3rem", cursor: "pointer", marginBottom: "24px" }}>
+              {[1, 2, 3, 4, 5].map((yildiz) => (
+                <span 
+                  key={yildiz} 
+                  onClick={() => setSecilenPuan(yildiz)}
+                  style={{ color: secilenPuan >= yildiz ? "#eab308" : "#cbd5e1", transition: "color 0.2s", userSelect: "none" }}
+                >
+                  ★
+                </span>
+              ))}
+            </div>
+
+            <textarea 
+              placeholder="Ders hakkındaki düşünceleriniz... (İsteğe bağlı)"
+              value={yazilanYorum}
+              onChange={(e) => setYazilanYorum(e.target.value)}
+              style={{ width: "100%", height: "120px", padding: "16px", borderRadius: "12px", border: "1px solid #cbd5e1", marginBottom: "24px", resize: "none", outline: "none", fontSize: "0.95rem", backgroundColor: "#f8fafc" }}
+            />
+
+            <div style={{ display: "flex", gap: "12px" }}>
+              <button 
+                onClick={() => { setDegerlendirmeModali(null); setSecilenPuan(0); setYazilanYorum(""); }} 
+                style={{ flex: 1, padding: "14px", backgroundColor: "#f1f5f9", color: "#475569", border: "none", borderRadius: "12px", fontWeight: "bold", cursor: "pointer", fontSize: "1rem" }}
+              >
+                İptal
+              </button>
+              <button 
+                onClick={() => handleSubmitRating(degerlendirmeModali)}
+                disabled={ratingLoading}
+                style={{ flex: 2, padding: "14px", backgroundColor: "#4f46e5", color: "white", border: "none", borderRadius: "12px", fontWeight: "bold", cursor: "pointer", fontSize: "1rem" }}
+              >
+                {ratingLoading ? "Kaydediliyor..." : "Puanı Gönder"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
