@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import CanliDersButonu from '@/app/components/CanliDersButonu'; // 🚀 YENİ EKLENEN BİLEŞEN
 
 export default function StudentDashboard() {
   const router = useRouter();
@@ -42,7 +43,7 @@ export default function StudentDashboard() {
         
         let fetchedName = currentUser.user_metadata?.full_name;
 
-        // 1. Öğrenci Verilerini Çek (🚀 YENİ: single yerine maybeSingle kullanıyoruz)
+        // 1. Öğrenci Verilerini Çek
         const { data: profile } = await supabase
           .from('ogrenciler')
           .select('tam_ad, email, seviye, durum, created_at')
@@ -50,7 +51,6 @@ export default function StudentDashboard() {
           .maybeSingle();
           
         if (profile) {
-          // 👉 KULLANICI ZATEN KAYITLIYSA
           fetchedName = profile.tam_ad || fetchedName;
           setStats({
             seviye: profile.seviye || '-',
@@ -62,15 +62,13 @@ export default function StudentDashboard() {
             telefon: '' 
           });
         } else {
-          // 🚀 YENİ KULLANICI: GOOGLE İLE İLK DEFA GİRDİYSE OTOMATİK KAYIT YAP
+          // Yeni Kullanıcı
           const newStudentData = {
             user_id: currentUser.id,
             email: currentUser.email,
             tam_ad: currentUser.user_metadata?.full_name || 'Yeni Öğrenci',
             seviye: 'Belirlenmedi',
             durum: 'Aktif'
-            // Eğer tablonda avatar_url sütunu varsa bunu da ekleyebilirsin:
-            // avatar_url: currentUser.user_metadata?.avatar_url
           };
 
           const { data: newProfile, error: insertError } = await supabase
@@ -104,7 +102,7 @@ export default function StudentDashboard() {
           
         if (lessons) setUpcomingLessons(lessons);
 
-        // 3. Sohbet Geçmişindeki Eğitmenleri 'egitmenler' Tablosundan Çek
+        // 3. Sohbet Geçmişindeki Eğitmenleri Çek
         const { data: initialMsgs } = await supabase
           .from('mesajlar')
           .select('gonderen_id, alici_id')
@@ -336,10 +334,15 @@ export default function StudentDashboard() {
                             <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>{ders.egitmenler?.ders_turu} • Birebir Görüşme</p>
                           </div>
                         </div>
+                        
+                        {/* 🚀 DEĞİŞİKLİK BURADA: AKILLI BUTON EKLENDİ */}
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{ color: '#4f46e5', fontWeight: 800, marginBottom: '6px' }}>{new Date(ders.tarih_saat).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}</div>
-                          <button style={{ padding: '8px 20px', backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>Sınıfa Giriş Yap</button>
+                          <div style={{ color: '#4f46e5', fontWeight: 800, marginBottom: '6px' }}>
+                            {new Date(ders.tarih_saat).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                          <CanliDersButonu dersId={ders.id} tarihSaat={ders.tarih_saat} />
                         </div>
+
                       </div>
                     ))}
                   </div>

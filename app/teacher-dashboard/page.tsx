@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import CanliDersButonu from '../components/CanliDersButonu'; // 🚀 AKILLI BUTON EKLENDİ
 
 export default function TeacherDashboard() {
   const [tab, setTab] = useState('dashboard');
@@ -284,9 +285,7 @@ export default function TeacherDashboard() {
                 onCancel={handleCancelLesson} 
               />
             )}
-            {/* PROFILE BİLEŞENİ ARTIK TÜM VERİLERİ GÖSTERİYOR */}
             {tab === 'profile' && <Profile profile={teacherProfile} stats={stats} />}
-            
             {tab === 'lessons' && <Lessons lessons={allLessonsList} stats={stats} onComplete={handleCompleteLesson} onCancel={handleCancelLesson} />} 
             {tab === 'schedule' && <Schedule profile={teacherProfile} userId={userId} onProfileUpdate={loadTeacherProfile} />}
             {tab === 'students' && <Students students={myStudentsList} stats={stats} />}
@@ -398,19 +397,26 @@ function Dashboard({ profile, stats, upcomingLessons, userId, onComplete, onCanc
                     <div style={{ fontWeight: 600, color: '#2563eb', fontSize: 14 }}>
                       {new Date(lesson.tarih_saat).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
                     </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                    
+                    {/* 🚀 DEĞİŞTİRİLEN KISIM: AKILLI BUTON BURAYA EKLENDİ */}
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                       <button 
                         onClick={() => onCancel(lesson.id)}
-                        style={{ background: '#fef2f2', color: '#ef4444', border: '1px solid #fca5a5', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
+                        style={{ background: '#fef2f2', color: '#ef4444', border: '1px solid #fca5a5', padding: '6px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', height: 'fit-content' }}
                       >
                         ✕ İptal
                       </button>
                       <button 
                         onClick={() => onComplete(lesson.id)}
-                        style={{ background: '#10b981', color: 'white', border: 'none', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
+                        style={{ background: '#10b981', color: 'white', border: 'none', padding: '7px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', height: 'fit-content' }}
                       >
                         ✓ Tamamlandı
                       </button>
+                      
+                      <CanliDersButonu 
+                        dersId={lesson.id} 
+                        tarihSaat={lesson.tarih_saat} 
+                      />
                     </div>
                   </div>
                 </div>
