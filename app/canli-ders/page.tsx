@@ -1,12 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import VideoRoom from "../ders-odasi/VideoRoom";
+import dynamic from "next/dynamic";
+
+// 🚀 ÖNEMLİ: VideoRoom bileşenini sunucuda (SSR) çalıştırmamak için dinamik yüklüyoruz!
+const VideoRoom = dynamic(() => import("../ders-odasi/VideoRoom"), {
+  ssr: false,
+});
 
 export default function CanliDersEntegrasyonPage() {
   const [roomUrl, setRoomUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [role, setRole] = useState<"secim" | "ogretmen" | "ogrenci">("secim");
+  
+  // YENİ: Öğrencinin linki unutan tarayıcısına karşı manuel giriş alanı
+  const [manuelLink, setManuelLink] = useState("");
 
   // Sayfa açıldığında aktif bir ders var mı diye kontrol et (Öğrenci için)
   useEffect(() => {
@@ -28,27 +36,30 @@ export default function CanliDersEntegrasyonPage() {
 
       const data = await response.json();
 
-      if (data.roomUrl) {
-        setRoomUrl(data.roomUrl);
-        // Linki sanki veritabanına yazar gibi tarayıcı hafızasına kaydediyoruz!
-        localStorage.setItem("aktif_ders_linki", data.roomUrl);
-      } else {
-        // Kart girilmediği için uyarı verirse bile test amaçlı sahte bir linkle devam etmesini sağlıyoruz!
-        const sahteLink = "https://demo.daily.co/test-odasi";
-        setRoomUrl(sahteLink);
-        localStorage.setItem("aktif_ders_linki", sahteLink);
-      }
+      // Agora için temiz bir kanal adı üretiyoruz
+      const kanalAdi = data.roomUrl ? encodeURIComponent(data.roomUrl) : `tla-academy-oda-${Date.now()}`;
+      
+      setRoomUrl(kanalAdi);
+      localStorage.setItem("aktif_ders_linki", kanalAdi);
+
     } catch (error) {
       console.error(error);
-      alert("Sistem simüle ediliyor...");
+      // Hata alsa bile test için temiz bir kanal adı atıyoruz
+      const guvenliOda = "tla-academy-test-odasi";
+      setRoomUrl(guvenliOda);
+      localStorage.setItem("aktif_ders_linki", guvenliOda);
     } finally {
       setLoading(false);
     }
   };
 
-  // Ders Kapatma (Hafızayı temizler)
+  // Ders Kapatma (Öğretmen ve Öğrenci ayrımı)
   const dersiKapat = () => {
-    localStorage.removeItem("aktif_ders_linki");
+    // Sadece öğretmen "Dersi Bitir" derse linki hafızadan tamamen sil.
+    if (role === "ogretmen") {
+      localStorage.removeItem("aktif_ders_linki");
+    }
+    // Öğrenci sadece odadan çıkar, link silinmez.
     setRoomUrl(null);
     setRole("secim");
   };
@@ -91,16 +102,38 @@ export default function CanliDersEntegrasyonPage() {
         </div>
       )}
 
-      {/* ÖĞRENCİ EKRANI */}
+      {/* ÖĞRENCİ EKRANI (MANUEL GİRİŞ EKLENDİ) */}
       {role === "ogrenci" && !roomUrl && (
         <div style={{ textAlign: "center", padding: "2rem", border: "1px solid #e2e8f0", borderRadius: "0.75rem", backgroundColor: "#f0f9ff" }}>
-          <h3 style={{ color: "#0369a1", marginBottom: "1rem" }}>Canlı Ders Kontrol Ediliyor...</h3>
-          <p style={{ color: "#0c4a6e" }}>Öğretmen henüz dersi başlatmamış olabilir. Sayfayı yenileyerek kontrol edebilirsiniz.</p>
-          <button onClick={() => setRole("secim")} style={{ marginTop: "1rem", background: "none", border: "underline", cursor: "pointer", color: "#64748b" }}>Geri Dön</button>
+          <h3 style={{ color: "#0369a1", marginBottom: "1rem" }}>Dersi Bekliyorsunuz veya Tekrar Katılın</h3>
+          <p style={{ color: "#0c4a6e", marginBottom: "1rem" }}>Eğer sistem açık dersi otomatik bulamadıysa, Öğretmenin sol üst köşesinde yazan <strong>Ders ID</strong>'sini buraya girin:</p>
+          
+          <div style={{ display: "flex", justifyContent: "center", gap: "0.5rem", marginBottom: "1.5rem" }}>
+            <input 
+              type="text" 
+              placeholder="Örn: tla-academy-oda-1721..." 
+              value={manuelLink}
+              onChange={(e) => setManuelLink(e.target.value)}
+              style={{ padding: "0.75rem 1rem", borderRadius: "0.5rem", border: "1px solid #94a3b8", width: "100%", maxWidth: "300px" }}
+            />
+            <button 
+              onClick={() => {
+                if(manuelLink) {
+                  setRoomUrl(manuelLink);
+                  localStorage.setItem("aktif_ders_linki", manuelLink); // Hafızaya tekrar kazı!
+                }
+              }}
+              style={{ backgroundColor: "#0ea5e9", color: "white", border: "none", padding: "0.75rem 1.5rem", borderRadius: "0.5rem", cursor: "pointer", fontWeight: "600" }}
+            >
+              Derse Katıl
+            </button>
+          </div>
+
+          <button onClick={() => setRole("secim")} style={{ background: "none", border: "none", textDecoration: "underline", cursor: "pointer", color: "#64748b" }}>Geri Dön</button>
         </div>
       )}
 
-      {/* CANLI YAYIN ODASI (Burası entegre olan kısım) */}
+      {/* CANLI YAYIN ODASI */}
       {roomUrl && (
         <div>
           <div style={{ backgroundColor: "#f1f5f9", padding: "1rem", borderRadius: "0.5rem", marginBottom: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -110,8 +143,7 @@ export default function CanliDersEntegrasyonPage() {
             </button>
           </div>
           
-          {/* Esas video ekranı */}
-          <VideoRoom channelName={roomUrl} />
+          <VideoRoom channelName={roomUrl} userRole={role} />
         </div>
       )}
     </div>
