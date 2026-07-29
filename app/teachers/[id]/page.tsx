@@ -67,6 +67,7 @@ export default function TeacherProfilePage() {
         setTeacher(teacherData);
         const targetUserId = teacherData.user_id || teacherData.id;
 
+        // 1. Eğitmenin aktif/yaklaşan derslerini çek (Takvim doluluk kontrolü için)
         const { data: lessonData } = await supabase
           .from('dersler')
           .select('*')
@@ -74,11 +75,34 @@ export default function TeacherProfilePage() {
           .neq('durum', 'İptal Edilen');
         setBookedLessons(lessonData || []);
 
+        // 🚀 2. BÜYÜK GÜNCELLEME: Gerçek öğrenci yorumlarını 'dersler' tablosundan çekiyoruz!
+        // Sadece 'yorum' VEYA 'puan' verilmiş olan geçmiş dersleri alıyoruz.
+        const { data: dersYorumlari } = await supabase
+          .from('dersler')
+          .select('id, ogrenci_adi, puan, yorum, tarih_saat')
+          .eq('user_id', targetUserId)
+          .not('puan', 'is', null) // Puan verilmiş olanları kesin getir
+          .order('tarih_saat', { ascending: false });
+
+        // Eski yorumlar tablosunda bir veri varsa onları da kaybetmemek için birleştiriyoruz
         const { data: yorumData } = await supabase
           .from('yorumlar')
           .select('*')
           .eq('egitmen_id', targetUserId);
-        setYorumlar(yorumData || []);
+
+        const eskiYorumlar = (yorumData || []).map(y => ({
+          ogrenci_adi: y.ogrenci_adi || 'Öğrenci',
+          puan: y.puan || 5,
+          yorum_metni: y.yorum_metni || y.yorum || ''
+        }));
+
+        const yeniDersYorumlari = (dersYorumlari || []).map(dy => ({
+          ogrenci_adi: dy.ogrenci_adi || 'Öğrenci',
+          puan: dy.puan || 5,
+          yorum_metni: dy.yorum || 'Değerlendirme yapıldı.'
+        }));
+
+        setYorumlar([...yeniDersYorumlari, ...eskiYorumlar]);
       }
     } catch (err) {
       console.error("Veri yüklenirken hata:", err);
@@ -276,7 +300,6 @@ export default function TeacherProfilePage() {
     }
   }
 
-  // 🚀 ÇEVRİMİÇİ DURUM KONTROLCÜSÜ
   const isOnline = (dateStr: string) => {
     if (!dateStr) return false;
     const lastSeen = new Date(dateStr).getTime();
@@ -289,7 +312,12 @@ export default function TeacherProfilePage() {
 
   const embedVideoUrl = getYouTubeEmbedUrl(teacher?.video_url);
   const dillerMetni = teacher?.konustugu_diller || teacher?.diller || '';
-  const isTeacherOnline = isOnline(teacher?.son_gorulme); // Eğitmenin güncel durumu
+  const isTeacherOnline = isOnline(teacher?.son_gorulme);
+
+  // 🚀 DİNAMİK ORTALAMA PUAN HESAPLAMA:
+  const dinamikOrtalama = yorumlar.length > 0
+    ? (yorumlar.reduce((acc, curr) => acc + (Number(curr.puan) || 5), 0) / yorumlar.length).toFixed(1)
+    : (teacher?.ortalama_puan || "5.0");
 
   return (
     <div style={{ fontFamily: '"Inter", system-ui, sans-serif', color: '#121117', backgroundColor: '#f4f4f5', minHeight: '100vh', paddingBottom: '80px' }}>
@@ -312,7 +340,6 @@ export default function TeacherProfilePage() {
                 alt={teacher?.tam_ad}
                 style={{ width: '120px', height: '120px', borderRadius: '12px', objectFit: 'cover' }} 
               />
-              {/* 🚀 EĞER ONLİNE İSE YEŞİL NOKTAYI GÖSTER */}
               {isTeacherOnline && (
                 <div style={{ position: 'absolute', bottom: 4, right: -4, width: '18px', height: '18px', backgroundColor: '#16a34a', border: '3px solid #ffffff', borderRadius: '50%' }}></div>
               )}
@@ -328,12 +355,13 @@ export default function TeacherProfilePage() {
                   <p style={{ margin: 0, fontSize: '1.1rem', color: '#3f3a5a', fontWeight: 500 }}>{teacher?.ders_turu || 'Türkçe Eğitmeni'}</p>
                 </div>
                 
+                {/* 🚀 DİNAMİK YILDIZ VE YORUM SAYISI */}
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: '1.25rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
-                    ⭐ {teacher?.ortalama_puan || "5.0"}
+                    ⭐ {dinamikOrtalama}
                   </div>
                   <div style={{ fontSize: '0.9rem', color: '#6b7280', marginTop: '4px' }}>
-                    {teacher?.yorum_sayisi || yorumlar.length || 0} değerlendirme
+                    {yorumlar.length} değerlendirme
                   </div>
                 </div>
               </div>
@@ -414,7 +442,10 @@ export default function TeacherProfilePage() {
                       </div>
                       <div>
                         <div style={{ fontWeight: 700, color: '#121117', fontSize: '1.05rem' }}>{y.ogrenci_adi || 'Öğrenci'}</div>
-                        <div style={{ color: '#f59e0b', fontSize: '0.9rem' }}>⭐⭐⭐⭐⭐</div>
+                        {/* 🚀 DİNAMİK YILDIZ BASIMI */}
+                        <div style={{ color: '#f59e0b', fontSize: '0.9rem', letterSpacing: '1px' }}>
+                          {"★".repeat(Number(y.puan) || 5)}{"☆".repeat(5 - (Number(y.puan) || 5))}
+                        </div>
                       </div>
                     </div>
                     <p style={{ color: '#3f3a5a', margin: 0, lineHeight: 1.6 }}>{y.yorum_metni}</p>
@@ -427,7 +458,7 @@ export default function TeacherProfilePage() {
           </div>
         </div>
 
-        {/* SAĞ TARAF */}
+        {/* SAĞ TARAF (TAKVİM VE PROGRAM AYNI KALIYOR) */}
         <div style={{ position: 'sticky', top: '24px' }}>
           <div style={{ background: '#ffffff', padding: '24px', borderRadius: '16px', border: '1px solid #dcdce5', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
             
@@ -516,7 +547,7 @@ export default function TeacherProfilePage() {
         </div>
       </div>
 
-      {/* 🚀 AKILLI MINI-CHAT MODALI */}
+      {/* AKILLI MINI-CHAT MODALI */}
       {showMsgModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0, 0, 0, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
           <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', width: '100%', maxWidth: '500px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '85vh' }}>
@@ -531,7 +562,6 @@ export default function TeacherProfilePage() {
                 </div>
                 <div>
                   <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#121117' }}>{teacher?.tam_ad}</h3>
-                  {/* 🚀 DİNAMİK YAZI */}
                   <span style={{ color: isTeacherOnline ? '#16a34a' : '#94a3b8', fontSize: '0.8rem', fontWeight: 600 }}>
                     {isTeacherOnline ? 'Çevrimiçi' : 'Son görülme: Yakınlarda'}
                   </span>
