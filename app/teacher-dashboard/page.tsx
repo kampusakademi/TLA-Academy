@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import CanliDersButonu from '../components/CanliDersButonu'; // 🚀 AKILLI BUTON EKLENDİ
+import CanliDersButonu from '../components/CanliDersButonu';
 
 export default function TeacherDashboard() {
   const [tab, setTab] = useState('dashboard');
@@ -40,7 +40,7 @@ export default function TeacherDashboard() {
     }
   }, [userId]);
 
-  // 🚀 ÖĞRETMENİ "ONLİNE" YAPMA SİNYALİ BURAYA EKLENDİ
+  // 🚀 ÖĞRETMENİ "ONLİNE" YAPMA SİNYALİ
   useEffect(() => {
     if (!userId) return;
 
@@ -294,6 +294,7 @@ export default function TeacherDashboard() {
             {tab === 'settings' && (
               <Settings 
                 profile={teacherProfile} 
+                stats={stats}
                 userId={userId} 
                 onProfileUpdate={() => {
                   loadTeacherProfile();
@@ -398,7 +399,6 @@ function Dashboard({ profile, stats, upcomingLessons, userId, onComplete, onCanc
                       {new Date(lesson.tarih_saat).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
                     </div>
                     
-                    {/* 🚀 DEĞİŞTİRİLEN KISIM: AKILLI BUTON BURAYA EKLENDİ */}
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                       <button 
                         onClick={() => onCancel(lesson.id)}
@@ -441,7 +441,7 @@ function Dashboard({ profile, stats, upcomingLessons, userId, onComplete, onCanc
 
 const summaryRow = { display: 'flex', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' };
 
-/* ---------------- 2. GÜNCELLENMİŞ PROFILE (ÖNİZLEME) COMPONENT ---------------- */
+/* ---------------- 2. GÜNCELLENMİŞ PROFILE COMPONENT ---------------- */
 function Profile({ profile, stats }: any) {
   return (
     <div>
@@ -500,11 +500,10 @@ function Profile({ profile, stats }: any) {
                 ✓ DOĞRULANMIŞ
               </span>
               
-              {profile?.one_cikan_etiket && (
-                <span style={{ background: '#fce7f3', color: '#9d174d', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 700 }}>
-                  ✨ {profile.one_cikan_etiket}
-                </span>
-              )}
+              {/* 🚀 DEĞİŞİKLİK: Pembe Etiket yerine Toplam Tamamlanan Ders Rozeti */}
+              <span style={{ background: '#f0fdf4', color: '#16a34a', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 700, border: '1px solid #bbf7d0' }}>
+                🏆 {stats?.completedLessons || 0} Ders Tamamlandı
+              </span>
             </div>
             <p style={{ margin: '6px 0 0 0', color: '#475569', fontSize: '15px', fontWeight: 500 }}>
               {profile?.ders_turu || "Uzmanlık Belirtilmemiş"}
@@ -1070,7 +1069,7 @@ function Earnings({ profile, stats }: any) {
 }
 
 /* ---------------- 8. SETTINGS COMPONENT ---------------- */
-function Settings({ profile, userId, onProfileUpdate }: any) {
+function Settings({ profile, stats, userId, onProfileUpdate }: any) {
   const localInputStyle = { 
     width: "100%", 
     padding: '12px', 
@@ -1094,7 +1093,7 @@ function Settings({ profile, userId, onProfileUpdate }: any) {
   const [metodoloji, setMetodoloji] = useState(profile?.metodoloji || "");
   const [videoUrl, setVideoUrl] = useState(profile?.video_url || "");
   
-  const [etiket, setEtiket] = useState(profile?.one_cikan_etiket || "");
+  // 🚀 Geliştirilmiş Amaç ve Odak Alanları Eyaletleri
   const [amac, setAmac] = useState(profile?.amac || "");
   const [odak, setOdak] = useState(profile?.odak || "");
   const [seviye, setSeviye] = useState(profile?.seviye || "");
@@ -1116,7 +1115,6 @@ function Settings({ profile, userId, onProfileUpdate }: any) {
       setAvatarUrl(profile.avatar_url || "");
       setVideoUrl(profile.video_url || "");
       
-      setEtiket(profile.one_cikan_etiket || "");
       setAmac(profile.amac || "");
       setOdak(profile.odak || "");
       setSeviye(profile.seviye || "");
@@ -1170,7 +1168,6 @@ function Settings({ profile, userId, onProfileUpdate }: any) {
         metodoloji: metodoloji,
         avatar_url: avatarUrl,
         video_url: videoUrl,
-        one_cikan_etiket: etiket,
         amac: amac,
         odak: odak,
         seviye: seviye
@@ -1270,25 +1267,41 @@ function Settings({ profile, userId, onProfileUpdate }: any) {
                 <label style={labelStyle}>Saatlik Ücret (TL)</label>
                 <input value={price} type="number" onChange={(e) => setPrice(Number(e.target.value))} style={localInputStyle} />
               </div>
-              <div>
-                <label style={labelStyle}>✨ Öne Çıkan Etiket (Pembe Kutu)</label>
-                <input value={etiket} onChange={(e) => setEtiket(e.target.value)} placeholder="Örn: Etkileşimli, samimi ve sabırlı" style={localInputStyle} />
-                <span style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', display: 'block' }}>Eğitmenler listesinde isminizin altında görünecek dikkat çekici renkli yazı.</span>
+              {/* 🚀 DEĞİŞİKLİK: Pembe Kutu kaldırıldı, yerine Toplam Ders Bilgi Kutusu konuldu */}
+              <div style={{ background: '#f8fafc', padding: '10px 16px', borderRadius: '10px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <label style={{ ...labelStyle, marginBottom: '2px', color: '#64748b' }}>🏆 Toplam Verdiğiniz Ders</label>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: '#16a34a' }}>
+                  {stats?.completedLessons || 0} Ders
+                </div>
+                <span style={{ fontSize: '11px', color: '#94a3b8' }}>Supabase'deki "Tamamlanan" derslerinizden otomatik hesaplanır.</span>
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+            {/* Sınırsız Alan Tanımlama Çözümü */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
               <div>
-                <label style={labelStyle}>🎯 Amacınız</label>
-                <input value={amac} onChange={(e) => setAmac(e.target.value)} placeholder="Örn: Sınava Hazırlık, İş Türkçesi" style={localInputStyle} />
+                <label style={labelStyle}>🎯 Hedeflenen Amaç & Uzmanlıklar</label>
+                <input 
+                  value={amac} 
+                  onChange={(e) => setAmac(e.target.value)} 
+                  placeholder="Örn: Günlük Konuşma, İş Türkçesi, Diksiyon, Dilbilgisi" 
+                  style={localInputStyle} 
+                />
+                <span style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', display: 'block' }}>
+                  Aralarına virgül koyarak dilediğiniz kadar uzmanlık ekleyebilirsiniz.
+                </span>
               </div>
               <div>
-                <label style={labelStyle}>⭐ Odak Noktası</label>
-                <input value={odak} onChange={(e) => setOdak(e.target.value)} placeholder="Örn: Konuşma Pratiği, Dilbilgisi" style={localInputStyle} />
-              </div>
-              <div>
-                <label style={labelStyle}>📈 Uygun Seviye</label>
-                <input value={seviye} onChange={(e) => setSeviye(e.target.value)} placeholder="Örn: Başlangıç (A1-A2)" style={localInputStyle} />
+                <label style={labelStyle}>⭐ Ders Odak Noktaları</label>
+                <input 
+                  value={odak} 
+                  onChange={(e) => setOdak(e.target.value)} 
+                  placeholder="Örn: Yeni Başlayanlar, Çocuklar, İleri Seviye (C1)" 
+                  style={localInputStyle} 
+                />
+                <span style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', display: 'block' }}>
+                  Aralarına virgül koyarak dilediğiniz kadar odak alanı belirtebilirsiniz.
+                </span>
               </div>
             </div>
 

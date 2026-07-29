@@ -12,11 +12,62 @@ export default function TeachersListPage() {
 
   useEffect(() => {
     async function fetchTeachers() {
-      const { data, error } = await supabase.from('egitmenler').select('*');
-      if (error) console.error(error);
-      setTeachers(data || []);
+      // 1. Tüm eğitmenleri çekiyoruz
+      const { data: teacherList, error } = await supabase.from('egitmenler').select('*');
+      if (error) {
+        console.error("Eğitmenler çekilirken hata:", error);
+        setLoading(false);
+        return;
+      }
+
+      // 2. Her eğitmen için gerçek tamamlanan ders sayısını ve yorum ortalamalarını ekliyoruz
+      const teachersWithStats = await Promise.all(
+        (teacherList || []).map(async (t) => {
+          const targetId = t.user_id || t.id;
+
+          // A) Tamamlanan Ders Sayısını Hesapla
+          const { data: lessonData } = await supabase
+            .from('dersler')
+            .select('durum')
+            .eq('user_id', targetId)
+            .eq('durum', 'Tamamlanan');
+          
+          const tamamlananDers = lessonData ? lessonData.length : 0;
+
+          // B) Gerçek Değerlendirme Ortalamasını Hesapla
+          const { data: dersYorumlari } = await supabase
+            .from('dersler')
+            .select('puan')
+            .eq('user_id', targetId)
+            .not('puan', 'is', null);
+
+          const { data: digerYorumlar } = await supabase
+            .from('yorumlar')
+            .select('puan')
+            .eq('egitmen_id', targetId);
+
+          const tumPuanlar = [
+            ...(dersYorumlari || []).map((y) => Number(y.puan)),
+            ...(digerYorumlar || []).map((y) => Number(y.puan)),
+          ].filter((p) => p > 0 && p <= 5);
+
+          const dinamikPuan = tumPuanlar.length > 0
+            ? (tumPuanlar.reduce((acc, val) => acc + val, 0) / tumPuanlar.length).toFixed(1)
+            : null;
+
+          return {
+            ...t,
+            gercek_tamamlanan_ders: tamamlananDers,
+            gercek_puan_ortalamasi: dinamikPuan,
+            gercek_yorum_sayisi: tumPuanlar.length,
+          };
+        })
+      );
+
+      setTeachers(teachersWithStats);
       setLoading(false);
     }
+
     fetchTeachers();
   }, []);
 
@@ -40,23 +91,21 @@ export default function TeachersListPage() {
     return (now - lastSeen) < 15 * 60 * 1000;
   };
 
-  // 🚀 YENİ: LOGOYA TIKLANINCA ÇALIŞACAK AKILLI YÖNLENDİRME
+  // LOGOYA TIKLANINCA ÇALIŞACAK AKILLI YÖNLENDİRME
   const handleLogoClick = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
-      // 1. Ziyaretçiyse ana sayfaya
       router.push('/'); 
       return;
     }
 
-    // 2. Giriş yapmışsa yetkisine bak (Öğretmen mi Öğrenci mi?)
     const { data: isTeacher } = await supabase.from('egitmenler').select('id').eq('user_id', user.id).maybeSingle();
     
     if (isTeacher) {
-      router.push('/teacher-dashboard'); // <-- Eğer öğretmen dashboard linkin farklıysa burayı düzelt
+      router.push('/teacher-dashboard');
     } else {
-      router.push('/student-dashboard'); // <-- Eğer öğrenci dashboard linkin farklıysa burayı düzelt
+      router.push('/student-dashboard');
     }
   };
 
@@ -64,7 +113,6 @@ export default function TeachersListPage() {
     <div style={{ fontFamily: '"Inter", system-ui, sans-serif', color: '#121117', backgroundColor: '#f8fafc', minHeight: '100vh', paddingBottom: '80px' }}>
       
       <nav style={{ padding: '16px 8%', backgroundColor: '#ffffff', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 50 }}>
-        {/* LOGO KISMI ARTIK handleLogoClick FONKSİYONUNU ÇAĞIRIYOR */}
         <div onClick={handleLogoClick} style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
           <h1 style={{ fontSize: '1.4rem', fontWeight: 900, color: '#121117', margin: 0 }}>
             Turkish Learning Academy<span style={{ color: '#f472b6' }}>.</span>
@@ -100,6 +148,9 @@ export default function TeachersListPage() {
               const dillerMetni = t.konustugu_diller || t.diller || '';
               const onlineStatus = isOnline(t.son_gorulme); 
               
+              // Gerçek ortalamaya göre kaç yıldız doldurulacağını hesaplıyoruz
+              const doluYildiz = t.gercek_puan_ortalamasi ? Math.round(Number(t.gercek_puan_ortalamasi)) : 0;
+
               return (
                 <div 
                   key={t.id} 
@@ -132,7 +183,7 @@ export default function TeachersListPage() {
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '0.9rem', color: '#374151', fontWeight: 600, flexWrap: 'wrap' }}>
                       {t.super_ogretmen && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>🏆 Süper Öğretmen</span>}
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>🎓 {t.ders_turu || 'Türkçe Eğitmeni'}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>🎓 {t.ders_turu || 'Türkçe (Yabancılar İçin)'}</span>
                       {t.seviye && <span style={{ background: '#e0e7ff', color: '#3730a3', padding: '2px 8px', borderRadius: '6px', fontSize: '0.8rem' }}>📈 {t.seviye}</span>}
                     </div>
 
@@ -142,13 +193,12 @@ export default function TeachersListPage() {
                       </div>
                     )}
 
-                    {t.one_cikan_etiket && (
-                      <div style={{ marginTop: '4px' }}>
-                        <span style={{ padding: '4px 10px', backgroundColor: '#fce7f3', color: '#9d174d', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 700 }}>
-                          ✨ {t.one_cikan_etiket}
-                        </span>
-                      </div>
-                    )}
+                    {/* 🚀 DEĞİŞİKLİK: Pembe etiket kaldırıldı, yerine Tamamlanan Ders Rozeti eklendi */}
+                    <div style={{ marginTop: '2px' }}>
+                      <span style={{ padding: '4px 10px', backgroundColor: '#f0fdf4', color: '#16a34a', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 700, border: '1px solid #bbf7d0', display: 'inline-block' }}>
+                        🏆 {t.gercek_tamamlanan_ders || 0} Ders Tamamlandı
+                      </span>
+                    </div>
 
                     <p style={{ margin: '8px 0 0 0', fontSize: '0.95rem', color: '#374151', lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                       <strong>{t.biyografi ? t.biyografi.split('.')[0] + '.' : ''}</strong> {t.biyografi || 'Eğitmen henüz detaylı biyografi eklememiş.'}
@@ -162,19 +212,35 @@ export default function TeachersListPage() {
                       <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#121117' }}>₺{t.saatlik_ucret || '0'}</div>
                       <div style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '20px' }}>50 dakikalık ders</div>
 
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '24px', textAlign: 'center' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-around', fontSize: '0.8rem', marginBottom: '24px', textAlign: 'center' }}>
+                        
+                        {/* 🚀 DEĞİŞİKLİK: Aktif Yıldızlı Gerçek Puan Gösterimi */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          <div style={{ fontWeight: 800, color: '#121117', fontSize: '1rem' }}>{t.ortalama_puan ? `${t.ortalama_puan} ★` : 'Yeni'}</div>
-                          <div style={{ color: '#6b7280' }}>{t.yorum_sayisi || 0} değ.</div>
+                          {t.gercek_puan_ortalamasi ? (
+                            <>
+                              <div style={{ fontWeight: 800, color: '#f59e0b', fontSize: '0.95rem' }}>
+                                {"★".repeat(doluYildiz)}{"☆".repeat(5 - doluYildiz)}
+                              </div>
+                              <div style={{ fontWeight: 800, color: '#121117', fontSize: '0.95rem' }}>
+                                {t.gercek_puan_ortalamasi}
+                              </div>
+                              <div style={{ color: '#6b7280' }}>{t.gercek_yorum_sayisi} değ.</div>
+                            </>
+                          ) : (
+                            <>
+                              <div style={{ fontWeight: 700, color: '#3b82f6', background: '#eff6ff', padding: '2px 6px', borderRadius: '6px', fontSize: '0.75rem' }}>
+                                ✨ Yeni
+                              </div>
+                              <div style={{ color: '#94a3b8', marginTop: '4px' }}>Puan yok</div>
+                            </>
+                          )}
                         </div>
+
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          <div style={{ fontWeight: 800, color: '#121117', fontSize: '1rem' }}>{t.ogrenci_sayisi || 0}</div>
-                          <div style={{ color: '#6b7280' }}>öğrenci</div>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          <div style={{ fontWeight: 800, color: '#121117', fontSize: '1rem' }}>{t.toplam_ders_sayisi || 0}</div>
+                          <div style={{ fontWeight: 800, color: '#121117', fontSize: '1rem' }}>{t.gercek_tamamlanan_ders || 0}</div>
                           <div style={{ color: '#6b7280' }}>ders</div>
                         </div>
+
                       </div>
                     </div>
 

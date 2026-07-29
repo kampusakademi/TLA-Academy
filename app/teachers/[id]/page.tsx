@@ -14,6 +14,9 @@ export default function TeacherProfilePage() {
   const [loading, setLoading] = useState(true);
   const [bookingLoading, setBookingLoading] = useState(false);
 
+  // 🚀 YENİ: Toplam Tamamlanan Ders Sayısı State'i
+  const [tamamlananDersSayisi, setTamamlananDersSayisi] = useState(0);
+
   const [showMsgModal, setShowMsgModal] = useState(false);
   const [msgText, setMsgText] = useState('');
   const [sendingMsg, setSendingMsg] = useState(false);
@@ -67,7 +70,17 @@ export default function TeacherProfilePage() {
         setTeacher(teacherData);
         const targetUserId = teacherData.user_id || teacherData.id;
 
-        // 1. Eğitmenin aktif/yaklaşan derslerini çek (Takvim doluluk kontrolü için)
+        // 🚀 YENİ: Eğitmenin 'Tamamlanan' ders sayısını buluyoruz
+        const { data: tumDerslerData } = await supabase
+          .from('dersler')
+          .select('durum')
+          .eq('user_id', targetUserId);
+        
+        if (tumDerslerData) {
+          const bitenSayisi = tumDerslerData.filter(l => l.durum === 'Tamamlanan').length;
+          setTamamlananDersSayisi(bitenSayisi);
+        }
+
         const { data: lessonData } = await supabase
           .from('dersler')
           .select('*')
@@ -75,16 +88,13 @@ export default function TeacherProfilePage() {
           .neq('durum', 'İptal Edilen');
         setBookedLessons(lessonData || []);
 
-        // 🚀 2. BÜYÜK GÜNCELLEME: Gerçek öğrenci yorumlarını 'dersler' tablosundan çekiyoruz!
-        // Sadece 'yorum' VEYA 'puan' verilmiş olan geçmiş dersleri alıyoruz.
         const { data: dersYorumlari } = await supabase
           .from('dersler')
           .select('id, ogrenci_adi, puan, yorum, tarih_saat')
           .eq('user_id', targetUserId)
-          .not('puan', 'is', null) // Puan verilmiş olanları kesin getir
+          .not('puan', 'is', null)
           .order('tarih_saat', { ascending: false });
 
-        // Eski yorumlar tablosunda bir veri varsa onları da kaybetmemek için birleştiriyoruz
         const { data: yorumData } = await supabase
           .from('yorumlar')
           .select('*')
@@ -314,10 +324,16 @@ export default function TeacherProfilePage() {
   const dillerMetni = teacher?.konustugu_diller || teacher?.diller || '';
   const isTeacherOnline = isOnline(teacher?.son_gorulme);
 
-  // 🚀 DİNAMİK ORTALAMA PUAN HESAPLAMA:
-  const dinamikOrtalama = yorumlar.length > 0
-    ? (yorumlar.reduce((acc, curr) => acc + (Number(curr.puan) || 5), 0) / yorumlar.length).toFixed(1)
-    : (teacher?.ortalama_puan || "5.0");
+  // 🚀 GERÇEK VE AKTİF PUAN HESAPLAMA:
+  // Sadece puanı 0'dan büyük ve geçerli (1-5 arası) olan yorumları hesaba katıyoruz
+  const gecerliPuanlar = yorumlar.filter(y => Number(y.puan) > 0 && Number(y.puan) <= 5);
+  
+  const dinamikOrtalama = gecerliPuanlar.length > 0
+    ? (gecerliPuanlar.reduce((acc, curr) => acc + Number(curr.puan), 0) / gecerliPuanlar.length).toFixed(1)
+    : (teacher?.ortalama_puan ? Number(teacher.ortalama_puan).toFixed(1) : null);
+
+  // Sayısal puana göre kaç tane dolu yıldız (★) gösterileceğini hesaplar
+  const doluYildizSayisi = dinamikOrtalama ? Math.round(Number(dinamikOrtalama)) : 0;
 
   return (
     <div style={{ fontFamily: '"Inter", system-ui, sans-serif', color: '#121117', backgroundColor: '#f4f4f5', minHeight: '100vh', paddingBottom: '80px' }}>
@@ -333,6 +349,7 @@ export default function TeacherProfilePage() {
         {/* SOL TARAF */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
+          {/* 🚀 ÜST PROFİL KARTI - SADELEŞTİRİLDİ */}
           <div style={{ backgroundColor: '#ffffff', padding: '32px', borderRadius: '16px', border: '1px solid #dcdce5', display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
             <div style={{ position: 'relative', flexShrink: 0 }}>
               <img 
@@ -352,44 +369,60 @@ export default function TeacherProfilePage() {
                     {teacher?.tam_ad}
                     <span style={{ color: '#3b82f6', fontSize: '1.2rem' }} title="Onaylı Eğitmen">✔</span>
                   </h1>
-                  <p style={{ margin: 0, fontSize: '1.1rem', color: '#3f3a5a', fontWeight: 500 }}>{teacher?.ders_turu || 'Türkçe Eğitmeni'}</p>
-                </div>
-                
-                {/* 🚀 DİNAMİK YILDIZ VE YORUM SAYISI */}
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
-                    ⭐ {dinamikOrtalama}
-                  </div>
-                  <div style={{ fontSize: '0.9rem', color: '#6b7280', marginTop: '4px' }}>
-                    {yorumlar.length} değerlendirme
-                  </div>
-                </div>
-              </div>
+                  {/* Sadece Türkçe (Yabancılar İçin) / Ders Türü */}
+                  <p style={{ margin: 0, fontSize: '1.1rem', color: '#3f3a5a', fontWeight: 500 }}>{teacher?.ders_turu || 'Türkçe (Yabancılar İçin)'}</p>
 
-              <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {dillerMetni && (
-                  <div style={{ fontSize: '0.95rem', color: '#4b5563' }}>
-                    <strong>🗣 Konuştuğu diller:</strong> {dillerMetni}
-                  </div>
-                )}
-                
-                {teacher?.one_cikan_etiket && (
-                  <div>
-                    <span style={{ padding: '4px 10px', backgroundColor: '#fce7f3', color: '#9d174d', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 700 }}>
-                      ✨ {teacher.one_cikan_etiket}
+                  {/* 🚀 YENİ: Pembe Etiket yerine dinamik Toplam Tamamlanan Ders Rozeti */}
+                  <div style={{ marginTop: '10px' }}>
+                    <span style={{ padding: '4px 10px', backgroundColor: '#f0fdf4', color: '#16a34a', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 700, border: '1px solid #bbf7d0', display: 'inline-block' }}>
+                      🏆 {tamamlananDersSayisi} Ders Tamamlandı
                     </span>
                   </div>
-                )}
+                </div>
+                
+                {/* 🚀 AKTİF VE DİNAMİK YILDIZLI PUANLAMA ALANI */}
+                <div style={{ textAlign: 'right' }}>
+                  {dinamikOrtalama ? (
+                    <>
+                      <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#121117', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
+                        <span style={{ color: '#f59e0b', letterSpacing: '2px' }}>
+                          {"★".repeat(doluYildizSayisi)}{"☆".repeat(5 - doluYildizSayisi)}
+                        </span>
+                        <span>{dinamikOrtalama}</span>
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '4px', fontWeight: 600 }}>
+                        {gecerliPuanlar.length} gerçek değerlendirme
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ fontSize: '1rem', fontWeight: 700, color: '#3b82f6', background: '#eff6ff', padding: '4px 10px', borderRadius: '8px', display: 'inline-block' }}>
+                        ✨ Yeni Eğitmen
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '4px', fontWeight: 500 }}>
+                        Henüz puanlanmadı
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
 
+              {/* SADECE KONUŞTUĞU DİLLER */}
+              {dillerMetni && (
+                <div style={{ marginTop: '16px', fontSize: '0.95rem', color: '#4b5563' }}>
+                  <strong>🗣 Konuştuğu diller:</strong> {dillerMetni}
+                </div>
+              )}
+
+              {/* SADECE KONUM VE OKUL (EĞİTİM) */}
               <div style={{ marginTop: '20px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {teacher?.konum && <span style={{ padding: '4px 12px', background: '#f3f4f6', color: '#374151', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 600 }}>📍 Konum: {teacher.konum}</span>}
-                {teacher?.seviye && <span style={{ padding: '4px 12px', background: '#e0e7ff', color: '#3730a3', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 600 }}>🎓 Seviye: {teacher.seviye}</span>}
-                {teacher?.egitim && <span style={{ padding: '4px 12px', background: '#fef3c7', color: '#92400e', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 600 }}>📚 {teacher.egitim}</span>}
+                {teacher?.konum && <span style={{ padding: '6px 14px', background: '#f3f4f6', color: '#374151', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 600 }}>📍 Konum: {teacher.konum}</span>}
+                {teacher?.egitim && <span style={{ padding: '6px 14px', background: '#fef3c7', color: '#92400e', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 600 }}>📚 {teacher.egitim}</span>}
               </div>
             </div>
           </div>
 
+          {/* VİDEO ALANI */}
           <div style={{ width: '100%', height: '400px', backgroundColor: '#000000', borderRadius: '16px', overflow: 'hidden', border: '1px solid #dcdce5' }}>
             {teacher?.video_url ? (
               <iframe src={embedVideoUrl || ''} style={{ width: '100%', height: '100%', border: 'none' }} allowFullScreen />
@@ -398,24 +431,21 @@ export default function TeacherProfilePage() {
             )}
           </div>
 
-          <div style={{ backgroundColor: '#ffffff', padding: '32px', borderRadius: '16px', border: '1px solid #dcdce5' }}>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#121117', marginBottom: '20px' }}>Eğitmen Hakkında</h2>
-            <p style={{ lineHeight: 1.7, color: '#3f3a5a', fontSize: '1.05rem', whiteSpace: 'pre-line', margin: 0 }}>
-              {teacher?.biyografi || "Eğitmen henüz bir biyografi eklememiş."}
-            </p>
+          {/* SIRALAMA İLE BİLGİ KARTLARI */}
+          <div style={{ backgroundColor: '#ffffff', padding: '32px', borderRadius: '16px', border: '1px solid #dcdce5', display: 'flex', flexDirection: 'column', gap: '32px' }}>
+            
+            {/* 1. ÖĞRETİM YAKLAŞIMI VE METODOLOJİ */}
+            <div>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#121117', marginBottom: '16px' }}>Öğretim Yaklaşımı ve Metodoloji</h2>
+              <p style={{ lineHeight: 1.7, color: '#3f3a5a', fontSize: '1.05rem', whiteSpace: 'pre-line', margin: 0 }}>
+                {teacher?.ogretim_yaklasimi || teacher?.metodoloji || "Eğitmen henüz öğretim yaklaşımı bilgisi eklememiş."}
+              </p>
+            </div>
 
-            {(teacher?.ogretim_yaklasimi || teacher?.metodoloji) && (
-              <div style={{ marginTop: '32px', paddingTop: '32px', borderTop: '1px solid #e5e7eb' }}>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#121117', marginBottom: '20px' }}>Öğretim Yaklaşımı ve Metodoloji</h2>
-                <p style={{ lineHeight: 1.7, color: '#3f3a5a', fontSize: '1.05rem', whiteSpace: 'pre-line', margin: 0 }}>
-                  {teacher?.ogretim_yaklasimi || teacher?.metodoloji}
-                </p>
-              </div>
-            )}
-
-            {(teacher?.amac || teacher?.odak) && (
-              <div style={{ marginTop: '32px', paddingTop: '32px', borderTop: '1px solid #e5e7eb' }}>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '16px' }}>Uzmanlık ve Odak Alanları</h3>
+            {/* 2. UZMANLIK VE ODAK ALANLARI */}
+            <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '32px' }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#121117', marginBottom: '16px' }}>Uzmanlık ve Odak Alanları</h2>
+              {(teacher?.amac || teacher?.odak) ? (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                   {teacher?.amac && teacher.amac.split(',').map((item: string, idx: number) => (
                     item.trim() && <span key={`amac-${idx}`} style={{ padding: '8px 16px', background: '#f3f4f6', color: '#111827', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 500 }}>🎯 {item.trim()}</span>
@@ -424,10 +454,22 @@ export default function TeacherProfilePage() {
                     item.trim() && <span key={`odak-${idx}`} style={{ padding: '8px 16px', background: '#f3f4f6', color: '#111827', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 500 }}>⭐ {item.trim()}</span>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <p style={{ color: '#6b7280', margin: 0, fontSize: '0.95rem' }}>Eğitmen henüz uzmanlık alanı belirtmemiş.</p>
+              )}
+            </div>
+
+            {/* 3. EĞİTMEN HAKKINDA (BİYOGRAFİ) */}
+            <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '32px' }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#121117', marginBottom: '16px' }}>Eğitmen Hakkında</h2>
+              <p style={{ lineHeight: 1.7, color: '#3f3a5a', fontSize: '1.05rem', whiteSpace: 'pre-line', margin: 0 }}>
+                {teacher?.biyografi || "Eğitmen henüz bir biyografi eklememiş."}
+              </p>
+            </div>
+
           </div>
 
+          {/* 4. ÖĞRENCİ YORUMLARI */}
           <div style={{ backgroundColor: '#ffffff', padding: '32px', borderRadius: '16px', border: '1px solid #dcdce5', marginBottom: '40px' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#121117', marginBottom: '24px' }}>
               Öğrenci Yorumları <span style={{ color: '#6b7280', fontSize: '1.2rem', fontWeight: 500 }}>({yorumlar.length})</span>
@@ -442,7 +484,6 @@ export default function TeacherProfilePage() {
                       </div>
                       <div>
                         <div style={{ fontWeight: 700, color: '#121117', fontSize: '1.05rem' }}>{y.ogrenci_adi || 'Öğrenci'}</div>
-                        {/* 🚀 DİNAMİK YILDIZ BASIMI */}
                         <div style={{ color: '#f59e0b', fontSize: '0.9rem', letterSpacing: '1px' }}>
                           {"★".repeat(Number(y.puan) || 5)}{"☆".repeat(5 - (Number(y.puan) || 5))}
                         </div>
@@ -458,7 +499,7 @@ export default function TeacherProfilePage() {
           </div>
         </div>
 
-        {/* SAĞ TARAF (TAKVİM VE PROGRAM AYNI KALIYOR) */}
+        {/* SAĞ TARAF - TAKVİM VE PROGRAM */}
         <div style={{ position: 'sticky', top: '24px' }}>
           <div style={{ background: '#ffffff', padding: '24px', borderRadius: '16px', border: '1px solid #dcdce5', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
             

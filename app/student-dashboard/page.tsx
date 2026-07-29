@@ -82,26 +82,39 @@ export default function StudentDashboard() {
         }
         setUserName(fetchedName || 'Öğrenci');
 
-        // 🚀 BÜYÜK DEĞİŞİKLİK: Saat yerine doğrudan veritabanındaki "durum" sütununa bakıyoruz
-        // SADECE durumu "Yaklaşan" olan dersleri ana ekrana al. (Öğretmen bunu değiştirdiği an buradan kaybolur)
-        const { data: lessons } = await supabase
+        // 🚀 BÜYÜK GÜNCELLEME: Tüm dersleri tek sorguda çekip SAATE GÖRE akıllı ayırıyoruz
+        const { data: allLessons } = await supabase
           .from('dersler')
           .select('*, egitmenler(user_id, tam_ad, avatar_url, ders_turu)')
           .eq('ogrenci_id', currentUser.id)
-          .eq('durum', 'Yaklaşan') 
           .order('tarih_saat', { ascending: true });
-          
-        if (lessons) setUpcomingLessons(lessons);
 
-        // 🚀 DURUM MANTIĞI: Durumu "Tamamlanan" veya "İptal" olanları geçmiş derslere al.
-        const { data: past } = await supabase
-          .from('dersler')
-          .select('*, egitmenler(user_id, tam_ad, avatar_url, ders_turu)')
-          .eq('ogrenci_id', currentUser.id)
-          .in('durum', ['Tamamlanan', 'İptal', 'İptal Edildi']) 
-          .order('tarih_saat', { ascending: false }); 
-          
-        if (past) setPastLessons(past);
+        if (allLessons) {
+          const suAn = new Date().getTime();
+
+          // 🚀 YAKLAŞAN DERSLER:
+          // Durumu İptal/Tamamlandı OLMAYAN ve üzerinden 2 saatten (-120 dk) FAZLA zaman geçmeyenler
+          const guncelYaklasanlar = allLessons.filter(ders => {
+            const dersZamani = new Date(ders.tarih_saat).getTime();
+            const dakikaFarki = (dersZamani - suAn) / (1000 * 60);
+            const iptalVeyaTamam = ['Tamamlanan', 'İptal', 'İptal Edildi', 'İptal Edilen'].includes(ders.durum);
+            
+            return !iptalVeyaTamam && dakikaFarki >= -120;
+          });
+
+          // 🚀 GEÇMİŞ DERSLER:
+          // Durumu elle bitirilmiş/iptal edilmiş OLANLAR -VEYA- üzerinden 2 saatten (-120 dk) FAZLA zaman geçenler
+          const guncelGecmis = allLessons.filter(ders => {
+            const dersZamani = new Date(ders.tarih_saat).getTime();
+            const dakikaFarki = (dersZamani - suAn) / (1000 * 60);
+            const iptalVeyaTamam = ['Tamamlanan', 'İptal', 'İptal Edildi', 'İptal Edilen'].includes(ders.durum);
+
+            return iptalVeyaTamam || dakikaFarki < -120;
+          }).reverse(); // En son biten ders en üstte görünsün diye ters çeviriyoruz
+
+          setUpcomingLessons(guncelYaklasanlar);
+          setPastLessons(guncelGecmis);
+        }
 
         // 4. Sohbet Geçmişi
         const { data: initialMsgs } = await supabase

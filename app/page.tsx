@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabaseClient';
 export default function HomePage() {
   const router = useRouter();
   const [teachers, setTeachers] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<any[]>([]); // 🚀 YENİ: Ortalama puan ve yorum sayısı hesabı için
   
   // Arama State'i
   const [searchTerm, setSearchTerm] = useState('');
@@ -22,17 +23,65 @@ export default function HomePage() {
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // 🚀 GÜNCELLENDİ: Eğitmenleri (esnek filtreyle) ve Yorumları çekme
   useEffect(() => {
-    async function fetchTeachers() {
-      const { data } = await supabase.from('egitmenler').select('*');
-      setTeachers(data || []);
+    async function fetchData() {
+      const { data: teacherData, error: teacherError } = await supabase
+        .from('egitmenler')
+        .select('*');
+
+      if (teacherError) {
+        console.error("Eğitmenler çekilirken hata:", teacherError);
+      } else if (teacherData) {
+        // "Beklemede", "İptal" veya "Pasif" olmayan (Aktif ya da boş olan) tüm eğitmenleri getirir
+        const aktifEgitmenler = teacherData.filter(t => {
+          const d = t.durum ? t.durum.toLowerCase() : 'aktif';
+          return d !== 'beklemede' && d !== 'iptal' && d !== 'pasif';
+        });
+
+        setTeachers(aktifEgitmenler);
+      }
+
+      // Ortalama puanları hesaplamak için geçmiş ders ve yorum verilerini getir
+      const { data: dersYorumlari } = await supabase
+        .from('dersler')
+        .select('user_id, egitmen_id, puan')
+        .not('puan', 'is', null);
+
+      const { data: yorumData } = await supabase
+        .from('yorumlar')
+        .select('egitmen_id, puan');
+
+      setReviews([...(dersYorumlari || []), ...(yorumData || [])]);
     }
-    fetchTeachers();
+    fetchData();
   }, []);
+
+  // 🚀 YENİ: Eğitmenin Ortalama Puanını ve Yorum Sayısını Hesapla
+  const calculateAverageRating = (teacher: any) => {
+    const targetId = teacher.user_id || teacher.id;
+    const teacherReviews = reviews.filter(
+      (r) => r.user_id === targetId || r.egitmen_id === targetId
+    );
+
+    if (teacherReviews.length === 0) return { avg: "5.0", count: 0 };
+
+    const total = teacherReviews.reduce((acc, curr) => acc + (Number(curr.puan) || 5), 0);
+    const avg = (total / teacherReviews.length).toFixed(1);
+    return { avg, count: teacherReviews.length };
+  };
+
+  // 🚀 YENİ: Son görülme 15 dakika içindeyse 'Çevrimiçi' say
+  const isOnline = (dateStr: string) => {
+    if (!dateStr) return false;
+    const lastSeen = new Date(dateStr).getTime();
+    const now = new Date().getTime();
+    return (now - lastSeen) < 15 * 60 * 1000;
+  };
 
   // Normal E-Posta ile Supabase Kayıt & Giriş İşlemi
   const handleAuth = async () => {
-    if (loading) return; 
+    if (loading) return;
     setLoading(true);
     try {
       if (authType === 'register') {
@@ -42,7 +91,7 @@ export default function HomePage() {
           options: {
             data: {
               full_name: fullName,
-              role: role, 
+              role: role,
             }
           }
         });
@@ -50,9 +99,9 @@ export default function HomePage() {
         if (error) throw error;
 
         if (role === 'ogrenci') {
-          router.push('/student-dashboard'); 
+          router.push('/student-dashboard');
         } else {
-          router.push('/teacher-dashboard'); 
+          router.push('/teacher-dashboard');
         }
 
       } else {
@@ -69,7 +118,7 @@ export default function HomePage() {
 
         // 1. KONTROL: Öğrenci Girişi Seçildiyse
         if (role === 'ogrenci') {
-          const { data: studentData, error: studentError } = await supabase
+          const { data: studentData } = await supabase
             .from('ogrenciler')
             .select('id')
             .eq('user_id', userId)
@@ -80,11 +129,11 @@ export default function HomePage() {
             throw new Error("Yetkisiz Giriş: Bu e-posta adresi ile kayıtlı bir Öğrenci hesabı bulunmamaktadır.");
           }
           
-          router.push('/student-dashboard'); 
+          router.push('/student-dashboard');
 
         // 2. KONTROL: Öğretmen Girişi Seçildiyse
         } else if (role === 'ogretmen') {
-          const { data: teacherData, error: teacherError } = await supabase
+          const { data: teacherData } = await supabase
             .from('egitmenler')
             .select('id')
             .eq('user_id', userId)
@@ -95,11 +144,11 @@ export default function HomePage() {
             throw new Error("Yetkisiz Giriş: Bu e-posta adresi ile kayıtlı bir Eğitmen hesabı bulunmamaktadır. Lütfen 'Öğrenci' sekmesinden giriş yapmayı deneyin.");
           }
           
-          router.push('/teacher-dashboard'); 
+          router.push('/teacher-dashboard');
         }
       }
       
-      setShowAuthModal(false); 
+      setShowAuthModal(false);
     } catch (error: any) {
       alert(error.message || 'Bir hata oluştu. Lütfen bilgilerinizi kontrol edin.');
     } finally {
@@ -107,7 +156,7 @@ export default function HomePage() {
     }
   };
 
-  // 🚀 GÜNCELLENDİ: Google ile Giriş / Kayıt İşlemi (Dinamik Yönlendirme)
+  // Google ile Giriş / Kayıt İşlemi (Dinamik Yönlendirme)
   const handleGoogleAuth = async () => {
     try {
       const redirectPath = role === 'ogretmen' ? '/teacher-dashboard' : '/student-dashboard';
@@ -209,7 +258,7 @@ export default function HomePage() {
           
           <div style={{ display: 'flex', justifyContent: 'center' }}>
             <button 
-              onClick={() => router.push('/egitmen-bul')}
+              onClick={() => router.push('/egitmenler')}
               style={{ 
                 padding: '20px 48px', 
                 backgroundColor: '#4f46e5', 
@@ -262,7 +311,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 4. EĞİTMENLER GRID */}
+      {/* 🚀 4. EĞİTMENLER GRID - SENKRONİZE EDİLMİŞ VE MODERN KART TASARIMI */}
       <section id="teachers-section" style={{ padding: '100px 8%', backgroundColor: '#f8fafc', flex: 1, borderTop: '1px solid #f1f5f9' }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '48px' }}>
@@ -272,39 +321,78 @@ export default function HomePage() {
                 En yüksek puan alan öğretmenlerimizle tanışın.
               </p>
             </div>
+            <button 
+              onClick={() => router.push('/egitmenler')}
+              style={{ padding: '12px 24px', backgroundColor: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '12px', fontWeight: 700, color: '#0f172a', cursor: 'pointer', transition: 'all 0.2s' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
+            >
+              Tümünü Gör →
+            </button>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '32px' }}>
             {filteredTeachers.length > 0 ? (
-              filteredTeachers.map((t) => (
-                <div key={t.id} onClick={() => router.push(`/teachers/${t.user_id || t.id}`)} 
-                  style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '24px', padding: '32px', cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)'; e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
-                >
-                  <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '24px' }}>
-                    <div style={{ position: 'relative' }}>
-                      <img src={t.avatar_url || `https://ui-avatars.com/api/?name=${t.tam_ad || 'Eğitmen'}&background=eef2ff&color=4f46e5&size=80&bold=true`} style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #f8fafc', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
-                      <div style={{ position: 'absolute', bottom: 0, right: 0, width: '16px', height: '16px', backgroundColor: '#22c55e', border: '3px solid #ffffff', borderRadius: '50%' }}></div>
-                    </div>
+              filteredTeachers.map((t) => {
+                const { avg, count } = calculateAverageRating(t);
+                const online = isOnline(t.son_gorulme);
+
+                return (
+                  <div key={t.id} onClick={() => router.push(`/teachers/${t.user_id || t.id}`)}
+                    style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '24px', padding: '32px', cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)'; e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                  >
                     <div>
-                      <h4 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800, color: '#0f172a' }}>{t.tam_ad}</h4>
-                      <p style={{ margin: '4px 0 0 0', color: '#4f46e5', fontSize: '0.95rem', fontWeight: 600 }}>{t.ders_turu}</p>
+                      {/* ÜST PROFİL VE RESİM ALANI */}
+                      <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '20px' }}>
+                        <div style={{ position: 'relative' }}>
+                          <img 
+                            src={t.avatar_url || `https://ui-avatars.com/api/?name=${t.tam_ad || 'Eğitmen'}&background=eef2ff&color=4f46e5&size=80&bold=true`} 
+                            style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #f8fafc', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} 
+                          />
+                          {online && (
+                            <div style={{ position: 'absolute', bottom: 0, right: 0, width: '16px', height: '16px', backgroundColor: '#22c55e', border: '3px solid #ffffff', borderRadius: '50%' }}></div>
+                          )}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <h4 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800, color: '#0f172a' }}>{t.tam_ad}</h4>
+                          <p style={{ margin: '4px 0 6px 0', color: '#4f46e5', fontSize: '0.95rem', fontWeight: 600 }}>{t.ders_turu || 'Türkçe Eğitmeni'}</p>
+                          
+                          {/* YILDIZ ORTALAMASI VE YORUM SAYISI */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.9rem', fontWeight: 700, color: '#f59e0b' }}>
+                            <span>⭐ {avg}</span>
+                            <span style={{ color: '#94a3b8', fontWeight: 500 }}>({count} değerlendirme)</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* BİYOGRAFİ */}
+                      <p style={{ color: '#475569', lineHeight: 1.6, fontSize: '0.95rem', height: '4.8em', overflow: 'hidden', margin: '0 0 16px 0' }}>
+                        {t.biyografi || 'Alanında uzman, ana dili Türkçe olan deneyimli eğitmen ile pratik yapmaya hemen başlayın.'}
+                      </p>
+
+                      {/* ÖNE ÇIKAN ETİKET */}
+                      {t.one_cikan_etiket && (
+                        <div style={{ marginBottom: '16px' }}>
+                          <span style={{ padding: '4px 10px', backgroundColor: '#fce7f3', color: '#9d174d', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 700 }}>
+                            ✨ {t.one_cikan_etiket}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* ÜCRET VE BUTON */}
+                    <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '20px', marginTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <span style={{ fontSize: '1.5rem', fontWeight: 900, color: '#0f172a' }}>{t.saatlik_ucret}₺</span>
+                        <span style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: 500 }}> / ders</span>
+                      </div>
+                      <button style={{ padding: '10px 24px', backgroundColor: '#f8fafc', color: '#0f172a', border: '1px solid #e2e8f0', borderRadius: '10px', fontWeight: 700, fontSize: '0.9rem', transition: 'background-color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}>Profili Gör</button>
                     </div>
                   </div>
-                  <p style={{ color: '#475569', lineHeight: 1.6, fontSize: '0.95rem', height: '4.8em', overflow: 'hidden', margin: 0 }}>
-                    {t.biyografi || 'Alanında uzman, ana dili Türkçe olan deneyimli eğitmen ile pratik yapmaya hemen başlayın.'}
-                  </p>
-                  
-                  <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '24px', marginTop: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <span style={{ fontSize: '1.5rem', fontWeight: 900, color: '#0f172a' }}>{t.saatlik_ucret}₺</span>
-                      <span style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: 500 }}> / ders</span>
-                    </div>
-                    <button style={{ padding: '10px 24px', backgroundColor: '#f8fafc', color: '#0f172a', border: '1px solid #e2e8f0', borderRadius: '10px', fontWeight: 700, fontSize: '0.9rem', transition: 'background-color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}>Profili Gör</button>
-                  </div>
-                </div>
-              ))
+                );
+              })
             ) : (
               <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '60px 0', color: '#64748b' }}>
                 <span style={{ fontSize: '40px', display: 'block', marginBottom: '16px' }}>😕</span>
@@ -397,7 +485,6 @@ export default function HomePage() {
                   </div>
                 ) : (
                   <>
-                    {/* KLASİK E-POSTA İLE GİRİŞ/KAYIT FORMU */}
                     {authType === 'register' && (
                       <input 
                         placeholder="Ad Soyad" 
@@ -434,14 +521,12 @@ export default function HomePage() {
                       {loading ? 'İşlem yapılıyor...' : (authType === 'login' ? 'Giriş Yap' : 'Öğrenci Olarak Kayıt Ol')}
                     </button>
 
-                    {/* AYIRICI ÇİZGİ */}
                     <div style={{ display: 'flex', alignItems: 'center', margin: '20px 0', color: '#94a3b8', fontSize: '0.85rem' }}>
                       <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }}></div>
                       <span style={{ padding: '0 12px', fontWeight: 600 }}>veya</span>
                       <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }}></div>
                     </div>
 
-                    {/* 🚀 GOOGLE İLE GİRİŞ BUTONU */}
                     <button 
                       onClick={handleGoogleAuth}
                       style={{ 
