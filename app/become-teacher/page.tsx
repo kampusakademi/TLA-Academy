@@ -349,7 +349,7 @@ export default function BecomeTeacher() {
 
                 {/* Sertifika Yükleme */}
                 <div style={{ width: '100%', boxSizing: 'border-box' }}>
-                  <label style={labelStyle}>📜 TÖMER / Öğretmenlik Sertifikası <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>(İsteğe Bağlı)</span></label>
+                  <label style={labelStyle}>📜 TÖMER / Öğretmenlik Sertifikası <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>)</span></label>
                   <div style={fileUploadContainerStyle}>
                     <input
                       type="file"
