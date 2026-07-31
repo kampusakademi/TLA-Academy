@@ -30,17 +30,19 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [screenTrack, setScreenTrack] = useState<any>(null);
   const [screenClient, setScreenClient] = useState<any>(null); 
+  
+  // 🚀 KURUMSAL USUL: Resmi yetki token'ı state'i
   const [token, setToken] = useState<string | null>(null);
+  const [tokenLoading, setTokenLoading] = useState(true);
 
   const [gercekRol, setGercekRol] = useState(userRole);
   
-  // Sohbet, İzin ve Yükleniyor State'leri
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [studentScreenAllowed, setStudentScreenAllowed] = useState(false); 
   const [teacherPermissionState, setTeacherPermissionState] = useState(false); 
-  const [isScreenStarting, setIsScreenStarting] = useState(false); // 🚀 YENİ: Ekran paylaşımı bekleme durumu
+  const [isScreenStarting, setIsScreenStarting] = useState(false); 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const SCREEN_SHARE_UID = 88888888; 
@@ -60,7 +62,7 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
   const benimRolum = gercekRol === "ogretmen" ? "Öğretmen" : "Öğrenci";
   const karsiTarafRolu = gercekRol === "ogretmen" ? "Öğrenci" : "Öğretmen";
 
-  // Supabase Broadcast (Canlı Sinyalleşme - Sohbet ve İzinler)
+  // Supabase Broadcast (Sohbet & Ekran Paylaşımı İzinleri)
   useEffect(() => {
     if (!channelName) return;
     
@@ -118,18 +120,41 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
   };
 
+  // 🚀 RESMİ VE GÜVENLİ TOKEN ALMA İŞLEMİ
   useEffect(() => {
+    let isMounted = true;
     async function getToken() {
       try {
-        const response = await fetch('/api/agora', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channelName }) });
+        setTokenLoading(true);
+        const response = await fetch('/api/agora', { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' }, 
+          body: JSON.stringify({ channelName }) 
+        });
         const data = await response.json();
-        if (data.token) setToken(data.token);
-      } catch (error) { console.error("API Hatası:", error); }
+        if (isMounted && data.token) {
+          setToken(data.token);
+        } else {
+          console.error("Token alınamadı:", data.error);
+        }
+      } catch (error) { 
+        console.error("Token API Hatası:", error); 
+      } finally {
+        if (isMounted) setTokenLoading(false);
+      }
     }
-    if (channelName) getToken();
+
+    if (channelName) {
+      getToken();
+    }
+    return () => { isMounted = false; };
   }, [channelName]);
 
-  useJoin({ appid: appId, channel: channelName, token: token }, !!appId && !!token);
+  // 🚀 USULÜNE UYGUN BAĞLANTI: Token gelmeden odaya girilmez, token gelince anında bağlanılır
+  useJoin(
+    { appid: appId, channel: channelName, token: token },
+    !!appId && !!channelName && !!token
+  );
   
   const { localMicrophoneTrack } = useLocalMicrophoneTrack();
   const { localCameraTrack } = useLocalCameraTrack();
@@ -139,12 +164,15 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
   const remoteUsers = useRemoteUsers();
   const { audioTracks } = useRemoteAudioTracks(remoteUsers); 
 
-  useEffect(() => { audioTracks.map(track => track.play()); }, [audioTracks]);
+  useEffect(() => { 
+    audioTracks.forEach(track => {
+      try { track.play(); } catch(e) { console.warn("Ses hatası:", e); }
+    }); 
+  }, [audioTracks]);
 
   const toggleMic = () => { if (localMicrophoneTrack) { localMicrophoneTrack.setMuted(!isMuted); setIsMuted(!isMuted); } };
   const toggleCamera = () => { if (localCameraTrack) { localCameraTrack.setMuted(!isVideoOff); setIsVideoOff(!isVideoOff); } };
 
-  // 🚀 GÜNCELLENMİŞ EKRAN PAYLAŞIM FONKSİYONU
   const toggleScreenShare = async () => {
     if (gercekRol === "ogrenci" && !studentScreenAllowed && !screenTrack) {
       alert("Ekran paylaşabilmek için lütfen öğretmeninizden izin isteyin.");
@@ -153,9 +181,7 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
 
     if (!screenTrack) {
       try {
-        setIsScreenStarting(true); // Yükleniyor durumunu başlat
-        
-        // 🚀 DÜZELTME: 1080p_1 yerine 720p_2 (Sıfır gecikme, 30 FPS)
+        setIsScreenStarting(true); 
         const track = await AgoraRTC.createScreenVideoTrack({ encoderConfig: "720p_2" }, "disable");
         setScreenTrack(track);
 
@@ -171,7 +197,7 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
       } catch (error) { 
         console.error("Ekran paylaşılamadı:", error); 
       } finally {
-        setIsScreenStarting(false); // İşlem bitince (başarılı veya hata) loading'i kapat
+        setIsScreenStarting(false); 
       }
     } else {
       screenTrack.close(); setScreenTrack(null);
@@ -212,7 +238,11 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
         
         {/* ANA EKRAN */}
         <div style={{ flex: isChatOpen ? 2.5 : 3, backgroundColor: '#020617', borderRadius: '16px', overflow: 'hidden', position: 'relative', border: '1px solid #334155', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', transition: 'all 0.3s' }}>
-          {isLocalSharing ? (
+          {tokenLoading ? (
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '1.1rem', fontWeight: 600 }}>
+              🔒 Güvenli ders bağlantısı kuruluyor...
+            </div>
+          ) : isLocalSharing ? (
             <>
               <LocalVideoTrack track={screenTrack} play={true} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
               <NameBadge name="💻 Sizin Ekranınız" isLocal={true} />
@@ -224,7 +254,7 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
             </>
           ) : firstRemoteCamera ? (
             <>
-              <RemoteUser user={firstRemoteCamera} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <RemoteUser user={firstRemoteCamera} playVideo={true} playAudio={true} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               <NameBadge name={karsiTarafRolu} isLocal={false} />
             </>
           ) : (
@@ -256,7 +286,7 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
 
               {remoteCameraUsers.map(user => (
                 <div key={user.uid} style={{ width: '100%', height: '200px', minHeight: '200px', backgroundColor: '#020617', borderRadius: '16px', overflow: 'hidden', position: 'relative', border: '1px solid #334155' }}>
-                  <RemoteUser user={user} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <RemoteUser user={user} playVideo={true} playAudio={true} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   <NameBadge name={karsiTarafRolu} isLocal={false} />
                 </div>
               ))}
@@ -308,7 +338,6 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
           
           <div style={{ width: '1px', height: '40px', backgroundColor: '#334155', margin: '0 8px' }}></div>
           
-          {/* 🚀 AKILLI VE ANİMASYONLU EKRAN PAYLAŞIM BUTONLARI */}
           {gercekRol === "ogretmen" ? (
             <>
               <button 

@@ -9,29 +9,30 @@ export async function POST(request: Request) {
     const appCertificate = process.env.AGORA_APP_CERTIFICATE;
 
     if (!appId || !appCertificate) {
-      return NextResponse.json({ error: 'Agora şifreleri eksik' }, { status: 500 });
+      console.error("Agora App ID veya Certificate eksik!");
+      return NextResponse.json({ error: 'Agora App ID veya Certificate eksik!' }, { status: 500 });
     }
 
-    // Şifrenin geçerlilik süresi (2 saat = 7200 saniye)
-    const expirationTimeInSeconds = 7200; 
+    const uid = 0; // 0 verilmesi, Agora'nın kullanıcıya otomatik benzersiz bir ID atamasını sağlar
+    const role = RtcRole.PUBLISHER; // Hem yayın yapma hem de karşı tarafı izleme yetkisi
+    const expirationTimeInSeconds = 3600 * 4; // Token 4 saat boyunca geçerli
     const currentTimestamp = Math.floor(Date.now() / 1000);
     const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
 
-    // Şifreyi üretiyoruz
+    // Yeni ve güncel pakete (agora-token) uygun resmi token üretimi
     const token = RtcTokenBuilder.buildTokenWithUid(
       appId,
       appCertificate,
       channelName,
-      0, // Otomatik kullanıcı ID'si
-      RtcRole.PUBLISHER,
-      privilegeExpiredTs,
+      uid,
+      role,
+      expirationTimeInSeconds,
       privilegeExpiredTs
     );
 
     return NextResponse.json({ token });
-    
   } catch (error) {
-    console.error("Token üretme hatası:", error);
-    return NextResponse.json({ error: 'Şifre üretilemedi' }, { status: 500 });
+    console.error('Token oluşturma hatası:', error);
+    return NextResponse.json({ error: 'Token oluşturulamadı' }, { status: 500 });
   }
 }

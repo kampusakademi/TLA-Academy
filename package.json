@@ -15,6 +15,7 @@
     "@google/generative-ai": "^0.24.1",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.2",
+    "agora-access-token": "^2.0.4",
     "agora-rtc-react": "^2.5.1",
     "agora-rtc-sdk-ng": "^4.24.6",
     "agora-token": "^2.0.5",
