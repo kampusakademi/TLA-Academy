@@ -14,8 +14,9 @@ export default function TeacherProfilePage() {
   const [loading, setLoading] = useState(true);
   const [bookingLoading, setBookingLoading] = useState(false);
 
-  // 🚀 YENİ: Toplam Tamamlanan Ders Sayısı State'i
+  // 🚀 Toplam Tamamlanan Ders Sayısı ve Öğrencinin Önceki Ders Durumu
   const [tamamlananDersSayisi, setTamamlananDersSayisi] = useState(0);
+  const [hasPreviousLesson, setHasPreviousLesson] = useState(false);
 
   const [showMsgModal, setShowMsgModal] = useState(false);
   const [msgText, setMsgText] = useState('');
@@ -58,6 +59,11 @@ export default function TeacherProfilePage() {
     try {
       setLoading(true);
       
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+      }
+
       const { data: teacherData, error: teacherError } = await supabase
         .from('egitmenler')
         .select('*')
@@ -70,15 +76,21 @@ export default function TeacherProfilePage() {
         setTeacher(teacherData);
         const targetUserId = teacherData.user_id || teacherData.id;
 
-        // 🚀 YENİ: Eğitmenin 'Tamamlanan' ders sayısını buluyoruz
+        // 🚀 Eğitmenin 'Tamamlanan' ders sayısını ve giriş yapan öğrencinin geçmiş kaydını buluyoruz
         const { data: tumDerslerData } = await supabase
           .from('dersler')
-          .select('durum')
+          .select('durum, ogrenci_id')
           .eq('user_id', targetUserId);
         
         if (tumDerslerData) {
           const bitenSayisi = tumDerslerData.filter(l => l.durum === 'Tamamlanan').length;
           setTamamlananDersSayisi(bitenSayisi);
+
+          // Öğrenci daha önce bu öğretmenden herhangi bir ders aldı mı?
+          if (user) {
+            const aldimi = tumDerslerData.some(l => l.ogrenci_id === user.id);
+            setHasPreviousLesson(aldimi);
+          }
         }
 
         const { data: lessonData } = await supabase
@@ -324,7 +336,6 @@ export default function TeacherProfilePage() {
   const dillerMetni = teacher?.konustugu_diller || teacher?.diller || '';
   const isTeacherOnline = isOnline(teacher?.son_gorulme);
 
-  // 🚀 GERÇEK VE AKTİF PUAN HESAPLAMA:
   // Sadece puanı 0'dan büyük ve geçerli (1-5 arası) olan yorumları hesaba katıyoruz
   const gecerliPuanlar = yorumlar.filter(y => Number(y.puan) > 0 && Number(y.puan) <= 5);
   
@@ -332,7 +343,6 @@ export default function TeacherProfilePage() {
     ? (gecerliPuanlar.reduce((acc, curr) => acc + Number(curr.puan), 0) / gecerliPuanlar.length).toFixed(1)
     : (teacher?.ortalama_puan ? Number(teacher.ortalama_puan).toFixed(1) : null);
 
-  // Sayısal puana göre kaç tane dolu yıldız (★) gösterileceğini hesaplar
   const doluYildizSayisi = dinamikOrtalama ? Math.round(Number(dinamikOrtalama)) : 0;
 
   return (
@@ -349,7 +359,7 @@ export default function TeacherProfilePage() {
         {/* SOL TARAF */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
-          {/* 🚀 ÜST PROFİL KARTI - SADELEŞTİRİLDİ */}
+          {/* ÜST PROFİL KARTI */}
           <div style={{ backgroundColor: '#ffffff', padding: '32px', borderRadius: '16px', border: '1px solid #dcdce5', display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
             <div style={{ position: 'relative', flexShrink: 0 }}>
               <img 
@@ -369,10 +379,8 @@ export default function TeacherProfilePage() {
                     {teacher?.tam_ad}
                     <span style={{ color: '#3b82f6', fontSize: '1.2rem' }} title="Onaylı Eğitmen">✔</span>
                   </h1>
-                  {/* Sadece Türkçe (Yabancılar İçin) / Ders Türü */}
                   <p style={{ margin: 0, fontSize: '1.1rem', color: '#3f3a5a', fontWeight: 500 }}>{teacher?.ders_turu || 'Türkçe (Yabancılar İçin)'}</p>
 
-                  {/* 🚀 YENİ: Pembe Etiket yerine dinamik Toplam Tamamlanan Ders Rozeti */}
                   <div style={{ marginTop: '10px' }}>
                     <span style={{ padding: '4px 10px', backgroundColor: '#f0fdf4', color: '#16a34a', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 700, border: '1px solid #bbf7d0', display: 'inline-block' }}>
                       🏆 {tamamlananDersSayisi} Ders Tamamlandı
@@ -380,7 +388,7 @@ export default function TeacherProfilePage() {
                   </div>
                 </div>
                 
-                {/* 🚀 AKTİF VE DİNAMİK YILDIZLI PUANLAMA ALANI */}
+                {/* AKTİF PUANLAMA ALANI */}
                 <div style={{ textAlign: 'right' }}>
                   {dinamikOrtalama ? (
                     <>
@@ -407,14 +415,12 @@ export default function TeacherProfilePage() {
                 </div>
               </div>
 
-              {/* SADECE KONUŞTUĞU DİLLER */}
               {dillerMetni && (
                 <div style={{ marginTop: '16px', fontSize: '0.95rem', color: '#4b5563' }}>
                   <strong>🗣 Konuştuğu diller:</strong> {dillerMetni}
                 </div>
               )}
 
-              {/* SADECE KONUM VE OKUL (EĞİTİM) */}
               <div style={{ marginTop: '20px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 {teacher?.konum && <span style={{ padding: '6px 14px', background: '#f3f4f6', color: '#374151', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 600 }}>📍 Konum: {teacher.konum}</span>}
                 {teacher?.egitim && <span style={{ padding: '6px 14px', background: '#fef3c7', color: '#92400e', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 600 }}>📚 {teacher.egitim}</span>}
@@ -434,16 +440,8 @@ export default function TeacherProfilePage() {
           {/* SIRALAMA İLE BİLGİ KARTLARI */}
           <div style={{ backgroundColor: '#ffffff', padding: '32px', borderRadius: '16px', border: '1px solid #dcdce5', display: 'flex', flexDirection: 'column', gap: '32px' }}>
             
-            {/* 1. ÖĞRETİM YAKLAŞIMI VE METODOLOJİ */}
+            {/* 1. UZMANLIK VE ODAK ALANLARI (Üste alındı) */}
             <div>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#121117', marginBottom: '16px' }}>Öğretim Yaklaşımı ve Metodoloji</h2>
-              <p style={{ lineHeight: 1.7, color: '#3f3a5a', fontSize: '1.05rem', whiteSpace: 'pre-line', margin: 0 }}>
-                {teacher?.ogretim_yaklasimi || teacher?.metodoloji || "Eğitmen henüz öğretim yaklaşımı bilgisi eklememiş."}
-              </p>
-            </div>
-
-            {/* 2. UZMANLIK VE ODAK ALANLARI */}
-            <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '32px' }}>
               <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#121117', marginBottom: '16px' }}>Uzmanlık ve Odak Alanları</h2>
               {(teacher?.amac || teacher?.odak) ? (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -457,6 +455,14 @@ export default function TeacherProfilePage() {
               ) : (
                 <p style={{ color: '#6b7280', margin: 0, fontSize: '0.95rem' }}>Eğitmen henüz uzmanlık alanı belirtmemiş.</p>
               )}
+            </div>
+
+            {/* 2. ÖĞRETİM YAKLAŞIMI VE METODOLOJİ (Alta alındı) */}
+            <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '32px' }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#121117', marginBottom: '16px' }}>Öğretim Yaklaşımı ve Metodoloji</h2>
+              <p style={{ lineHeight: 1.7, color: '#3f3a5a', fontSize: '1.05rem', whiteSpace: 'pre-line', margin: 0 }}>
+                {teacher?.ogretim_yaklasimi || teacher?.metodoloji || "Eğitmen henüz öğretim yaklaşımı bilgisi eklememiş."}
+              </p>
             </div>
 
             {/* 3. EĞİTMEN HAKKINDA (BİYOGRAFİ) */}
@@ -563,12 +569,36 @@ export default function TeacherProfilePage() {
               </div>
             </div>
 
-            <button onClick={handleBooking} disabled={bookingLoading || !selectedHour} 
+            {/* 🚀 AKILLI METİN VE CANLI YEŞİL BUTON GÜNCELLEMESİ */}
+            <button 
+              onClick={handleBooking} 
+              disabled={bookingLoading || !selectedHour} 
+              onMouseEnter={(e) => {
+                if (selectedHour) e.currentTarget.style.background = '#059669';
+              }}
+              onMouseLeave={(e) => {
+                if (selectedHour) e.currentTarget.style.background = '#10b981';
+              }}
               style={{ 
-                width: '100%', padding: '16px', background: !selectedHour ? '#e5e7eb' : '#121117', color: !selectedHour ? '#9ca3af' : '#ffffff', 
-                borderRadius: '8px', border: 'none', fontWeight: 700, cursor: !selectedHour ? 'not-allowed' : 'pointer', fontSize: '1.1rem', transition: 'all 0.2s', marginBottom: '12px' 
-              }}>
-              {bookingLoading ? "İşleniyor..." : (selectedHour ? `Deneme dersi ayırt` : "Önce Saat Seçin")}
+                width: '100%', 
+                padding: '16px', 
+                background: !selectedHour ? '#e5e7eb' : '#10b981', 
+                color: !selectedHour ? '#9ca3af' : '#ffffff', 
+                borderRadius: '8px', 
+                border: 'none', 
+                fontWeight: 700, 
+                cursor: !selectedHour ? 'not-allowed' : 'pointer', 
+                fontSize: '1.1rem', 
+                transition: 'all 0.2s', 
+                marginBottom: '12px',
+                boxShadow: selectedHour ? '0 4px 12px rgba(16, 185, 129, 0.25)' : 'none'
+              }}
+            >
+              {bookingLoading ? "İşleniyor..." : (
+                selectedHour 
+                  ? (hasPreviousLesson ? "Saati rezerve et" : "Deneme dersi ayırt") 
+                  : "Önce Saat Seçin"
+              )}
             </button>
 
             <button 

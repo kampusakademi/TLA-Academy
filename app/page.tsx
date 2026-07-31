@@ -7,7 +7,6 @@ import { supabase } from '@/lib/supabaseClient';
 export default function HomePage() {
   const router = useRouter();
   const [teachers, setTeachers] = useState<any[]>([]);
-  const [reviews, setReviews] = useState<any[]>([]); // 🚀 YENİ: Ortalama puan ve yorum sayısı hesabı için
   
   // Arama State'i
   const [searchTerm, setSearchTerm] = useState('');
@@ -23,7 +22,7 @@ export default function HomePage() {
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // 🚀 GÜNCELLENDİ: Eğitmenleri (esnek filtreyle) ve Yorumları çekme
+  // 🚀 GÜNCELLENDİ: Eğitmenleri, gerçek ders sayılarını ve yorumları tek seferde akıllıca hesapla
   useEffect(() => {
     async function fetchData() {
       const { data: teacherData, error: teacherError } = await supabase
@@ -32,46 +31,67 @@ export default function HomePage() {
 
       if (teacherError) {
         console.error("Eğitmenler çekilirken hata:", teacherError);
-      } else if (teacherData) {
-        // "Beklemede", "İptal" veya "Pasif" olmayan (Aktif ya da boş olan) tüm eğitmenleri getirir
+        return;
+      }
+
+      if (teacherData) {
+        // "Beklemede", "İptal" veya "Pasif" olmayan (Aktif ya da boş olan) tüm eğitmenleri filtrele
         const aktifEgitmenler = teacherData.filter(t => {
           const d = t.durum ? t.durum.toLowerCase() : 'aktif';
           return d !== 'beklemede' && d !== 'iptal' && d !== 'pasif';
         });
 
-        setTeachers(aktifEgitmenler);
+        // 🚀 HER EĞİTMEN İÇİN GERÇEK TAMAMLANAN DERS SAYISI VE YORUM ORTALAMASINI EKLE
+        const teachersWithStats = await Promise.all(
+          aktifEgitmenler.map(async (t) => {
+            const targetId = t.user_id || t.id;
+
+            // A) Tamamlanan Ders Sayısını Hesapla
+            const { data: lessonData } = await supabase
+              .from('dersler')
+              .select('durum')
+              .eq('user_id', targetId)
+              .eq('durum', 'Tamamlanan');
+            
+            const tamamlananDers = lessonData ? lessonData.length : 0;
+
+            // B) Gerçek Değerlendirme Ortalamasını Hesapla
+            const { data: dersYorumlari } = await supabase
+              .from('dersler')
+              .select('puan')
+              .eq('user_id', targetId)
+              .not('puan', 'is', null);
+
+            const { data: digerYorumlar } = await supabase
+              .from('yorumlar')
+              .select('puan')
+              .eq('egitmen_id', targetId);
+
+            const tumPuanlar = [
+              ...(dersYorumlari || []).map((y) => Number(y.puan)),
+              ...(digerYorumlar || []).map((y) => Number(y.puan)),
+            ].filter((p) => p > 0 && p <= 5);
+
+            const dinamikPuan = tumPuanlar.length > 0
+              ? (tumPuanlar.reduce((acc, val) => acc + val, 0) / tumPuanlar.length).toFixed(1)
+              : null;
+
+            return {
+              ...t,
+              gercek_tamamlanan_ders: tamamlananDers,
+              gercek_puan_ortalamasi: dinamikPuan,
+              gercek_yorum_sayisi: tumPuanlar.length,
+            };
+          })
+        );
+
+        setTeachers(teachersWithStats);
       }
-
-      // Ortalama puanları hesaplamak için geçmiş ders ve yorum verilerini getir
-      const { data: dersYorumlari } = await supabase
-        .from('dersler')
-        .select('user_id, egitmen_id, puan')
-        .not('puan', 'is', null);
-
-      const { data: yorumData } = await supabase
-        .from('yorumlar')
-        .select('egitmen_id, puan');
-
-      setReviews([...(dersYorumlari || []), ...(yorumData || [])]);
     }
     fetchData();
   }, []);
 
-  // 🚀 YENİ: Eğitmenin Ortalama Puanını ve Yorum Sayısını Hesapla
-  const calculateAverageRating = (teacher: any) => {
-    const targetId = teacher.user_id || teacher.id;
-    const teacherReviews = reviews.filter(
-      (r) => r.user_id === targetId || r.egitmen_id === targetId
-    );
-
-    if (teacherReviews.length === 0) return { avg: "5.0", count: 0 };
-
-    const total = teacherReviews.reduce((acc, curr) => acc + (Number(curr.puan) || 5), 0);
-    const avg = (total / teacherReviews.length).toFixed(1);
-    return { avg, count: teacherReviews.length };
-  };
-
-  // 🚀 YENİ: Son görülme 15 dakika içindeyse 'Çevrimiçi' say
+  // 🚀 Son görülme 15 dakika içindeyse 'Çevrimiçi' say
   const isOnline = (dateStr: string) => {
     if (!dateStr) return false;
     const lastSeen = new Date(dateStr).getTime();
@@ -311,7 +331,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 🚀 4. EĞİTMENLER GRID - SENKRONİZE EDİLMİŞ VE MODERN KART TASARIMI */}
+      {/* 🚀 4. EĞİTMENLER GRID - KONUM, EĞİTİM VE UZMANLIK ALANLARI EKLENDİ */}
       <section id="teachers-section" style={{ padding: '100px 8%', backgroundColor: '#f8fafc', flex: 1, borderTop: '1px solid #f1f5f9' }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '48px' }}>
@@ -334,18 +354,39 @@ export default function HomePage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '32px' }}>
             {filteredTeachers.length > 0 ? (
               filteredTeachers.map((t) => {
-                const { avg, count } = calculateAverageRating(t);
                 const online = isOnline(t.son_gorulme);
+                const doluYildiz = t.gercek_puan_ortalamasi ? Math.round(Number(t.gercek_puan_ortalamasi)) : 0;
 
                 return (
-                  <div key={t.id} onClick={() => router.push(`/teachers/${t.user_id || t.id}`)}
-                    style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '24px', padding: '32px', cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)'; e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                  <div 
+                    key={t.id} 
+                    onClick={() => router.push(`/teachers/${t.user_id || t.id}`)}
+                    style={{ 
+                      backgroundColor: '#ffffff', 
+                      border: '1px solid #e2e8f0', 
+                      borderRadius: '24px', 
+                      padding: '32px', 
+                      cursor: 'pointer', 
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      justifyContent: 'space-between' 
+                    }}
+                    onMouseEnter={(e) => { 
+                      e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)'; 
+                      e.currentTarget.style.transform = 'translateY(-4px)'; 
+                      e.currentTarget.style.borderColor = '#cbd5e1'; 
+                    }}
+                    onMouseLeave={(e) => { 
+                      e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05)'; 
+                      e.currentTarget.style.transform = 'translateY(0)'; 
+                      e.currentTarget.style.borderColor = '#e2e8f0'; 
+                    }}
                   >
                     <div>
                       {/* ÜST PROFİL VE RESİM ALANI */}
-                      <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '20px' }}>
+                      <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '16px' }}>
                         <div style={{ position: 'relative' }}>
                           <img 
                             src={t.avatar_url || `https://ui-avatars.com/api/?name=${t.tam_ad || 'Eğitmen'}&background=eef2ff&color=4f46e5&size=80&bold=true`} 
@@ -357,18 +398,63 @@ export default function HomePage() {
                         </div>
                         <div style={{ flex: 1 }}>
                           <h4 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800, color: '#0f172a' }}>{t.tam_ad}</h4>
-                          <p style={{ margin: '4px 0 6px 0', color: '#4f46e5', fontSize: '0.95rem', fontWeight: 600 }}>{t.ders_turu || 'Türkçe Eğitmeni'}</p>
+                          <p style={{ margin: '4px 0 8px 0', color: '#4f46e5', fontSize: '0.95rem', fontWeight: 600 }}>{t.ders_turu || 'Türkçe Eğitmeni'}</p>
                           
-                          {/* YILDIZ ORTALAMASI VE YORUM SAYISI */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.9rem', fontWeight: 700, color: '#f59e0b' }}>
-                            <span>⭐ {avg}</span>
-                            <span style={{ color: '#94a3b8', fontWeight: 500 }}>({count} değerlendirme)</span>
+                          {/* YILDIZ ORTALAMASI VE DEĞERLENDİRME SAYISI */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem' }}>
+                            {t.gercek_puan_ortalamasi ? (
+                              <>
+                                <span style={{ color: '#f59e0b', fontWeight: 800, letterSpacing: '1px' }}>
+                                  {"★".repeat(doluYildiz)}{"☆".repeat(5 - doluYildiz)}
+                                </span>
+                                <span style={{ fontWeight: 800, color: '#121117' }}>{t.gercek_puan_ortalamasi}</span>
+                                <span style={{ color: '#94a3b8', fontWeight: 500 }}>({t.gercek_yorum_sayisi})</span>
+                              </>
+                            ) : (
+                              <span style={{ fontWeight: 700, color: '#3b82f6', background: '#eff6ff', padding: '2px 8px', borderRadius: '6px', fontSize: '0.8rem' }}>
+                                ✨ Yeni Eğitmen
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
 
-                      {/* BİYOGRAFİ */}
-                      <p style={{ color: '#475569', lineHeight: 1.6, fontSize: '0.95rem', height: '4.8em', overflow: 'hidden', margin: '0 0 16px 0' }}>
+                      {/* TAMAMLANAN DERS ROZETİ */}
+                      <div style={{ marginBottom: '12px' }}>
+                        <span style={{ padding: '4px 10px', backgroundColor: '#f0fdf4', color: '#16a34a', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 700, border: '1px solid #bbf7d0', display: 'inline-block' }}>
+                          🏆 {t.gercek_tamamlanan_ders || 0} Ders Tamamlandı
+                        </span>
+                      </div>
+
+                      {/* 🚀 YENİ: KONUM VE OKUL/EĞİTİM BİLGİSİ */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
+                        {t.konum && (
+                          <span style={{ padding: '4px 8px', background: '#f3f4f6', color: '#374151', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600 }}>
+                            📍 {t.konum}
+                          </span>
+                        )}
+                        {t.egitim && (
+                          <span style={{ padding: '4px 8px', background: '#fef3c7', color: '#92400e', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600 }}>
+                            📚 {t.egitim}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* 🚀 YENİ: UZMANLIK VE ODAK ALANLARINDAN İLK 3 ADET */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '14px' }}>
+                        {(t.amac || t.odak || '')
+                          .split(',')
+                          .filter((item: string) => item.trim() !== '')
+                          .slice(0, 3)
+                          .map((item: string, i: number) => (
+                            <span key={i} style={{ padding: '4px 10px', background: '#e0e7ff', color: '#3730a3', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700 }}>
+                              🎯 {item.trim()}
+                            </span>
+                          ))}
+                      </div>
+
+                      {/* BİYOGRAFİ (2 Satır ile sınırlandırıldı) */}
+                      <p style={{ color: '#475569', lineHeight: 1.5, fontSize: '0.9rem', height: '3em', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', margin: '0 0 16px 0' }}>
                         {t.biyografi || 'Alanında uzman, ana dili Türkçe olan deneyimli eğitmen ile pratik yapmaya hemen başlayın.'}
                       </p>
 
@@ -382,13 +468,28 @@ export default function HomePage() {
                       )}
                     </div>
                     
-                    {/* ÜCRET VE BUTON */}
+                    {/* ÜCRET VE BUTONLAR */}
                     <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '20px', marginTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
                         <span style={{ fontSize: '1.5rem', fontWeight: 900, color: '#0f172a' }}>{t.saatlik_ucret}₺</span>
                         <span style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: 500 }}> / ders</span>
                       </div>
-                      <button style={{ padding: '10px 24px', backgroundColor: '#f8fafc', color: '#0f172a', border: '1px solid #e2e8f0', borderRadius: '10px', fontWeight: 700, fontSize: '0.9rem', transition: 'background-color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}>Profili Gör</button>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); router.push(`/teachers/${t.user_id || t.id}`); }}
+                          style={{ padding: '10px 16px', backgroundColor: '#f9a8d4', color: '#121117', border: '1px solid #121117', borderRadius: '10px', fontWeight: 800, fontSize: '0.85rem', cursor: 'pointer', boxShadow: '0 2px 0 #121117' }}
+                        >
+                          Deneme Dersi
+                        </button>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); router.push(`/teachers/${t.user_id || t.id}`); }}
+                          style={{ padding: '10px 16px', backgroundColor: '#f8fafc', color: '#0f172a', border: '1px solid #e2e8f0', borderRadius: '10px', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', transition: 'background-color 0.2s' }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'} 
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                        >
+                          Profil
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );

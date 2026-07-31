@@ -224,6 +224,43 @@ export default function StudentDashboard() {
     } catch (error) { console.error(error); } finally { setRatingLoading(false); }
   };
 
+  // 🚀 YENİ: DEĞERLENDİRMEYİ SİL VE ÖĞRETMENİN PROFİLİNDEN DE KALDIR
+  const handleDeleteRating = async (dersId: string, targetTeacherId?: string) => {
+    const onay = confirm("Bu değerlendirmeyi (puan ve yorumu) silmek istediğinize emin misiniz? Eğitmenin profilinden de kaldırılacaktır.");
+    if (!onay) return;
+
+    try {
+      // 1. Dersler tablosundan puan ve yorumu temizle
+      const { error: dersError } = await supabase
+        .from('dersler')
+        .update({ puan: null, yorum: null })
+        .eq('id', dersId)
+        .eq('ogrenci_id', user.id);
+
+      if (dersError) throw dersError;
+
+      // 2. Eğer yorumlar tablosuna da yazıldıysa oradan da kaldır (Eğitmen ID + Öğrenci Adı eşleşmesiyle)
+      if (targetTeacherId) {
+        await supabase
+          .from('yorumlar')
+          .delete()
+          .eq('egitmen_id', targetTeacherId)
+          .eq('ogrenci_adi', userName);
+      }
+
+      alert("Değerlendirmeniz başarıyla silindi.");
+      
+      // 3. Ekrandaki state'i anında güncelle (sayfa yenilemeye gerek kalmasın)
+      setPastLessons(prev => 
+        prev.map(d => d.id === dersId ? { ...d, puan: null, yorum: null } : d)
+      );
+
+    } catch (error: any) {
+      console.error("Silme hatası:", error);
+      alert("Değerlendirme silinirken bir hata oluştu: " + error.message);
+    }
+  };
+
   if (loading) {
     return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f8fafc', color: '#4f46e5', fontSize: '1.2rem', fontWeight: 600 }}>TLA yüklüyor...</div>;
   }
@@ -319,24 +356,40 @@ export default function StudentDashboard() {
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {upcomingLessons.map((ders, idx) => (
-                      <div key={idx} style={{ border: '1px solid #e2e8f0', borderRadius: '16px', padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
-                        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                          <img src={ders.egitmenler?.avatar_url || 'https://via.placeholder.com/80'} style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover' }} />
-                          <div>
-                            <h4 style={{ margin: '0 0 4px 0', fontSize: '1.1rem', fontWeight: 700 }}>{ders.egitmenler?.tam_ad}</h4>
-                            <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>{ders.egitmenler?.ders_turu || 'Ders'} • Birebir Görüşme</p>
+                    {upcomingLessons.map((ders, idx) => {
+                      // 🚀 EĞİTMENİN DOĞRU ID'SİNİ YAKALIYORUZ
+                      const egitmenId = ders.egitmenler?.user_id || ders.egitmenler?.id || ders.user_id;
+
+                      return (
+                        <div key={idx} style={{ border: '1px solid #e2e8f0', borderRadius: '16px', padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
+                          
+                          {/* 🚀 DEĞİŞİKLİK: Fotoğraf ve İsme tıklama özelliği + Hover efekti eklendi */}
+                          <div 
+                            onClick={() => egitmenId && router.push(`/teachers/${egitmenId}`)}
+                            style={{ display: 'flex', gap: '16px', alignItems: 'center', cursor: egitmenId ? 'pointer' : 'default', transition: 'opacity 0.2s' }}
+                            onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.8'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
+                            title="Eğitmen profiline git"
+                          >
+                            <img src={ders.egitmenler?.avatar_url || 'https://via.placeholder.com/80'} style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #e2e8f0' }} />
+                            <div>
+                              <h4 style={{ margin: '0 0 4px 0', fontSize: '1.1rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                {ders.egitmenler?.tam_ad}
+                                <span style={{ fontSize: '0.85rem', color: '#4f46e5' }}>↗</span>
+                              </h4>
+                              <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>{ders.egitmenler?.ders_turu || 'Ders'} • Birebir Görüşme</p>
+                            </div>
+                          </div>
+                          
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ color: '#4f46e5', fontWeight: 800, marginBottom: '6px' }}>
+                              {new Date(ders.tarih_saat).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                            <CanliDersButonu dersId={ders.id} tarihSaat={ders.tarih_saat} />
                           </div>
                         </div>
-                        
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ color: '#4f46e5', fontWeight: 800, marginBottom: '6px' }}>
-                            {new Date(ders.tarih_saat).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
-                          </div>
-                          <CanliDersButonu dersId={ders.id} tarihSaat={ders.tarih_saat} />
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -369,13 +422,36 @@ export default function StudentDashboard() {
                         
                         <p style={{ color: "#64748b", fontSize: "0.9rem", margin: 0 }}>👨‍🏫 {ders.egitmenler?.tam_ad} • 📅 {new Date(ders.tarih_saat).toLocaleDateString('tr-TR')}</p>
                         
-                        {/* Puan verildiyse göster */}
+                        {/* Puan verildiyse göster ve yanına silme butonunu koy */}
                         {ders.puan && (
-                          <div style={{ marginTop: "12px", backgroundColor: "#f0fdf4", padding: "8px 12px", borderRadius: "8px", display: "inline-block", border: "1px solid #bbf7d0" }}>
-                            <span style={{ color: "#eab308", fontSize: "1.1rem", letterSpacing: "2px" }}>
-                              {"★".repeat(ders.puan)}{"☆".repeat(5 - ders.puan)}
-                            </span>
-                            {ders.yorum && <p style={{ fontSize: "0.85rem", color: "#166534", marginTop: "4px", fontStyle: "italic", margin: "4px 0 0 0" }}>"{ders.yorum}"</p>}
+                          <div style={{ marginTop: "12px", backgroundColor: "#f0fdf4", padding: "10px 14px", borderRadius: "10px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px", border: "1px solid #bbf7d0", maxWidth: "450px" }}>
+                            <div>
+                              <span style={{ color: "#eab308", fontSize: "1.1rem", letterSpacing: "2px", display: "block" }}>
+                                {"★".repeat(ders.puan)}{"☆".repeat(5 - ders.puan)}
+                              </span>
+                              {ders.yorum && <p style={{ fontSize: "0.85rem", color: "#166534", marginTop: "4px", fontStyle: "italic", margin: "4px 0 0 0" }}>"{ders.yorum}"</p>}
+                            </div>
+
+                            {/* 🚀 YENİ EKLENEN DEĞERLENDİRME SİL BUTONU */}
+                            <button
+                              onClick={() => handleDeleteRating(ders.id, ders.egitmenler?.user_id || ders.egitmenler?.id || ders.user_id)}
+                              style={{
+                                background: "none",
+                                border: "none",
+                                color: "#ef4444",
+                                cursor: "pointer",
+                                fontSize: "0.8rem",
+                                fontWeight: "700",
+                                padding: "4px 8px",
+                                borderRadius: "6px",
+                                backgroundColor: "#fee2e2",
+                                transition: "all 0.2s",
+                                flexShrink: 0
+                              }}
+                              title="Bu değerlendirmeyi sil"
+                            >
+                              🗑️ Sil
+                            </button>
                           </div>
                         )}
                       </div>

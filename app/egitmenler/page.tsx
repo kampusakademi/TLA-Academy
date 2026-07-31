@@ -123,7 +123,39 @@ export default function TeachersListPage() {
         </button>
       </nav>
 
-      <div style={{ maxWidth: '1000px', margin: '40px auto 0', padding: '0 20px' }}>
+      {/* 🚀 YENİ EKLENEN ÜST GERİ DÖN BUTONU */}
+      <div style={{ maxWidth: '1000px', margin: '20px auto 0', padding: '0 20px' }}>
+        <button 
+          onClick={() => router.back()} 
+          style={{ 
+            background: 'none', 
+            border: 'none', 
+            cursor: 'pointer', 
+            fontWeight: 600, 
+            color: '#475569', 
+            fontSize: '15px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 12px',
+            borderRadius: '8px',
+            transition: 'all 0.2s',
+            marginLeft: '-12px'
+          }}
+          onMouseEnter={(e) => { 
+            e.currentTarget.style.color = '#111827'; 
+            e.currentTarget.style.backgroundColor = '#e2e8f0'; 
+          }}
+          onMouseLeave={(e) => { 
+            e.currentTarget.style.color = '#475569'; 
+            e.currentTarget.style.backgroundColor = 'transparent'; 
+          }}
+        >
+          ← Geri dön
+        </button>
+      </div>
+
+      <div style={{ maxWidth: '1000px', margin: '20px auto 0', padding: '0 20px' }}>
         
         <div style={{ marginBottom: '32px' }}>
           <h1 style={{ fontSize: '2rem', fontWeight: 800, color: '#121117', marginBottom: '16px' }}>Hedeflerine ve programına uygun Türkçe öğretmenleri</h1>
@@ -193,8 +225,35 @@ export default function TeachersListPage() {
                       </div>
                     )}
 
-                    {/* 🚀 DEĞİŞİKLİK: Pembe etiket kaldırıldı, yerine Tamamlanan Ders Rozeti eklendi */}
-                    <div style={{ marginTop: '2px' }}>
+                    {/* 🚀 YENİ: KONUM VE OKUL/EĞİTİM BİLGİSİ */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
+                      {t.konum && (
+                        <span style={{ padding: '4px 10px', background: '#f3f4f6', color: '#374151', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 600 }}>
+                          📍 Konum: {t.konum}
+                        </span>
+                      )}
+                      {t.egitim && (
+                        <span style={{ padding: '4px 10px', background: '#fef3c7', color: '#92400e', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 600 }}>
+                          📚 {t.egitim}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* 🚀 YENİ: UZMANLIK VE ODAK ALANLARINDAN BİRKAÇ TANESİ (İLK 4 ADET) */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
+                      {(t.amac || t.odak || '')
+                        .split(',')
+                        .filter((item: string) => item.trim() !== '')
+                        .slice(0, 4)
+                        .map((item: string, i: number) => (
+                          <span key={i} style={{ padding: '4px 10px', background: '#e0e7ff', color: '#3730a3', borderRadius: '14px', fontSize: '0.8rem', fontWeight: 700 }}>
+                            🎯 {item.trim()}
+                          </span>
+                        ))}
+                    </div>
+
+                    {/* TAMAMLANAN DERS ROZETİ */}
+                    <div style={{ marginTop: '6px' }}>
                       <span style={{ padding: '4px 10px', backgroundColor: '#f0fdf4', color: '#16a34a', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 700, border: '1px solid #bbf7d0', display: 'inline-block' }}>
                         🏆 {t.gercek_tamamlanan_ders || 0} Ders Tamamlandı
                       </span>
@@ -214,7 +273,6 @@ export default function TeachersListPage() {
 
                       <div style={{ display: 'flex', justifyContent: 'space-around', fontSize: '0.8rem', marginBottom: '24px', textAlign: 'center' }}>
                         
-                        {/* 🚀 DEĞİŞİKLİK: Aktif Yıldızlı Gerçek Puan Gösterimi */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                           {t.gercek_puan_ortalamasi ? (
                             <>
@@ -277,6 +335,39 @@ export default function TeachersListPage() {
             </div>
           )}
         </div>
+
+        {/* 🚀 YENİ EKLENEN ALT GERİ DÖN BUTONU */}
+        <div style={{ marginTop: '40px', display: 'flex', justifyContent: 'center' }}>
+          <button 
+            onClick={() => router.back()} 
+            style={{ 
+              background: '#ffffff', 
+              border: '1px solid #d1d5db', 
+              cursor: 'pointer', 
+              fontWeight: 600, 
+              color: '#374151', 
+              fontSize: '15px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '12px 24px',
+              borderRadius: '10px',
+              transition: 'all 0.2s',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.03)'
+            }}
+            onMouseEnter={(e) => { 
+              e.currentTarget.style.borderColor = '#9ca3af'; 
+              e.currentTarget.style.backgroundColor = '#f8fafc'; 
+            }}
+            onMouseLeave={(e) => { 
+              e.currentTarget.style.borderColor = '#d1d5db'; 
+              e.currentTarget.style.backgroundColor = '#ffffff'; 
+            }}
+          >
+            ← Önceki sayfaya geri dön
+          </button>
+        </div>
+
       </div>
     </div>
   );
