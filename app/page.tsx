@@ -25,6 +25,9 @@ export default function HomePage() {
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Dil kontrolü
+  const isEn = t.nav.explore === "Find Teachers";
+
   useEffect(() => {
     async function fetchData() {
       const { data: teacherData, error: teacherError } = await supabase
@@ -186,7 +189,13 @@ export default function HomePage() {
   };
 
   const handleSearch = () => {
-    router.push('/egitmenler');
+    router.push('/egitmenler'); 
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !loading) {
+      handleAuth();
+    }
   };
 
   const filteredTeachers = teachers.filter((tItem) => {
@@ -198,12 +207,6 @@ export default function HomePage() {
       (tItem.biyografi && tItem.biyografi.toLowerCase().includes(lowerTerm))
     );
   });
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !loading) {
-      handleAuth();
-    }
-  };
 
   return (
     <div style={{ fontFamily: '"Inter", system-ui, sans-serif', color: '#0f172a', backgroundColor: '#ffffff', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -240,84 +243,264 @@ export default function HomePage() {
         </div>
       </nav>
 
-      {/* 2. HERO SECTION */}
+      {/* 2. HERO SECTION - RESİM VE DÜZEN AYNEN KORUNDU */}
       <header style={{ 
-        padding: '140px 8%', 
-        background: 'linear-gradient(to bottom, rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.95)), url("https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80")',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        textAlign: 'center', 
-        position: 'relative' 
+        padding: '60px 8%', 
+        backgroundColor: '#4f46e5', 
+        color: '#ffffff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '40px',
+        minHeight: '480px', 
+        position: 'relative'
       }}>
-        <div style={{ maxWidth: '850px', margin: '0 auto', position: 'relative', zIndex: 10 }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px', backgroundColor: 'rgba(255, 255, 255, 0.1)', color: '#ffffff', borderRadius: '30px', fontSize: '0.85rem', fontWeight: 700, marginBottom: '24px', border: '1px solid rgba(255, 255, 255, 0.2)', backdropFilter: 'blur(4px)' }}>
-            <span style={{ width: '8px', height: '8px', backgroundColor: '#4ade80', borderRadius: '50%', display: 'inline-block' }}></span>
-            {t.home.heroBadge}
-          </span>
-          
-          <h2 style={{ fontSize: '4.5rem', fontWeight: 900, lineHeight: 1.1, color: '#ffffff', marginBottom: '24px', letterSpacing: '-2px' }}>
-            {t.home.heroTitle1} <br/><span style={{ color: '#0efa49' }}>{t.home.heroTitle2}</span>
+        
+        {/* SOL METİN ALANI */}
+        <div style={{ flex: '1 1 450px', maxWidth: '580px', zIndex: 10 }}>
+          <h2 style={{ fontSize: '3.5rem', fontWeight: 900, lineHeight: 1.1, color: '#ffffff', marginBottom: '20px', letterSpacing: '-1.5px' }}>
+            {t.home.heroTitle1} <br/><span style={{ color: '#4ade80' }}>{t.home.heroTitle2}</span>
           </h2>
           
-          <p style={{ fontSize: '1.25rem', color: '#cbd5e1', marginBottom: '48px', lineHeight: 1.6, maxWidth: '700px', margin: '0 auto 48px' }}>
+          <p style={{ fontSize: '1.15rem', color: '#e0e7ff', marginBottom: '32px', lineHeight: 1.5, fontWeight: 500 }}>
             {t.home.heroDesc}
           </p>
           
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <div>
             <button 
-              onClick={() => router.push('/egitmenler')}
+              onClick={() => router.push('/egitmen-bul')}
               style={{ 
-                padding: '20px 48px', 
-                backgroundColor: '#4f46e5', 
+                padding: '16px 36px', 
+                backgroundColor: '#121117', 
                 color: '#ffffff', 
                 border: 'none', 
-                borderRadius: '16px', 
+                borderRadius: '12px', 
                 fontWeight: 800, 
-                fontSize: '1.2rem', 
+                fontSize: '1.1rem', 
                 cursor: 'pointer', 
                 transition: 'all 0.3s ease',
-                boxShadow: '0 10px 25px -5px rgba(79, 70, 229, 0.5)'
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '12px',
+                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.4)'
               }} 
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px)'; }} 
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
             >
-              {t.home.heroBtn}
+              {t.home.heroBtn.replace('✨', '')} <span style={{ fontSize: '1.2rem' }}>→</span>
             </button>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '32px', marginTop: '48px', color: '#94a3b8', fontSize: '0.95rem', fontWeight: 500 }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>✔️ {t.home.feature1}</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>✔️ {t.home.feature2}</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>✔️ {t.home.feature3}</span>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', marginTop: '40px', color: '#ffffff', fontSize: '0.95rem', fontWeight: 600, opacity: 0.9 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '18px', height: '18px', backgroundColor: '#ffffff', color: '#4f46e5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px' }}>✓</div> 
+              {t.home.feature1}
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '18px', height: '18px', backgroundColor: '#ffffff', color: '#4f46e5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px' }}>✓</div> 
+              {t.home.feature2}
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '18px', height: '18px', backgroundColor: '#ffffff', color: '#4f46e5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px' }}>✓</div> 
+              {t.home.feature3}
+            </span>
+          </div>
+        </div>
+
+        {/* SAĞ GÖRSEL ALANI - SENİN DÜZENLEDİĞİN GÖRSEL SABİT */}
+        <div style={{ flex: '1 1 350px', display: 'flex', justifyContent: 'center', position: 'relative', zIndex: 10 }}>
+          <div style={{ 
+            position: 'relative', 
+            width: '150%', 
+            maxWidth: '500px', 
+            height: '400px', 
+            backgroundColor: '#ffffff', 
+            borderRadius: '10px', 
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            overflow: 'hidden',
+            border: '0px solid #ffffff' 
+          }}>
+            <img 
+              src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
+              alt="Online Language Learning"
+              style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }}
+            />
           </div>
         </div>
       </header>
 
-      {/* 3. NASIL ÇALIŞIR BÖLÜMÜ */}
-      <section style={{ padding: '80px 8%', backgroundColor: '#ffffff' }}>
-        <div style={{ textAlign: 'center', marginBottom: '56px' }}>
-          <h3 style={{ fontSize: '2.5rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-1px' }}>{t.home.howItWorksTitle}</h3>
-          <p style={{ color: '#64748b', fontSize: '1.1rem', marginTop: '12px' }}>{t.home.howItWorksSub}</p>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '40px', maxWidth: '1200px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', padding: '32px', backgroundColor: '#f8fafc', borderRadius: '24px', border: '1px solid #f1f5f9' }}>
-            <div style={{ width: '64px', height: '64px', backgroundColor: '#ffffff', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', margin: '0 auto 24px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>🔍</div>
-            <h4 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '12px', color: '#0f172a' }}>{t.home.step1Title}</h4>
-            <p style={{ color: '#64748b', lineHeight: 1.6 }}>{t.home.step1Desc}</p>
-          </div>
-          <div style={{ textAlign: 'center', padding: '32px', backgroundColor: '#f8fafc', borderRadius: '24px', border: '1px solid #f1f5f9' }}>
-            <div style={{ width: '64px', height: '64px', backgroundColor: '#ffffff', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', margin: '0 auto 24px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>📅</div>
-            <h4 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '12px', color: '#0f172a' }}>{t.home.step2Title}</h4>
-            <p style={{ color: '#64748b', lineHeight: 1.6 }}>{t.home.step2Desc}</p>
-          </div>
-          <div style={{ textAlign: 'center', padding: '32px', backgroundColor: '#f8fafc', borderRadius: '24px', border: '1px solid #f1f5f9' }}>
-            <div style={{ width: '64px', height: '64px', backgroundColor: '#ffffff', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', margin: '0 auto 24px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>💻</div>
-            <h4 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '12px', color: '#0f172a' }}>{t.home.step3Title}</h4>
-            <p style={{ color: '#64748b', lineHeight: 1.6 }}>{t.home.step3Desc}</p>
+      {/* 3. NASIL ÇALIŞIR BÖLÜMÜ - RESİMLER VE DÜZEN AYNEN KORUNDU */}
+      <section style={{ padding: '100px 8% 60px 8%', backgroundColor: '#ffffff' }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+          
+          <h3 style={{ fontSize: '3rem', fontWeight: 900, color: '#0f172a', letterSpacing: '-1.5px', marginBottom: '40px' }}>
+            {t.home.howItWorksTitle}
+          </h3>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+            
+            {/* KART 1: Eğitmen Bul (Senin seçtiğin resim) */}
+            <div style={{ display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', overflow: 'hidden' }}>
+              <div style={{ padding: '40px 32px 32px 32px', flex: 1 }}>
+                <div style={{ width: '40px', height: '40px', backgroundColor: '#a7f3d0', color: '#065f46', fontSize: '1.25rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '24px', borderRadius: '6px' }}>
+                  1
+                </div>
+                <h4 style={{ fontSize: '2rem', fontWeight: 900, marginBottom: '16px', color: '#0f172a', letterSpacing: '-0.5px' }}>
+                  {t.home.step1Title.replace('1. ', '')}.
+                </h4>
+                <p style={{ color: '#475569', lineHeight: 1.6, fontSize: '1.05rem', margin: 0 }}>
+                  {t.home.step1Desc}
+                </p>
+              </div>
+              <div style={{ padding: '0 32px 32px 32px' }}>
+                 <div style={{ width: '60%', height: '220px', borderRadius: '12px', overflow: 'hidden', border: '2px solid #e2e8f0', boxShadow: '0 2px 20px rgba(0,0,0,0.05)' }}>
+                    <img 
+                      src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" 
+                      alt="Find a Tutor" 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }} 
+                    />
+                 </div>
+              </div>
+            </div>
+
+            {/* KART 2: Ders Ayırt (Senin seçtiğin resim) */}
+            <div style={{ display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', overflow: 'hidden' }}>
+              <div style={{ padding: '40px 32px 32px 32px', flex: 1 }}>
+                <div style={{ width: '40px', height: '40px', backgroundColor: '#fde68a', color: '#92400e', fontSize: '1.25rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '24px', borderRadius: '6px' }}>
+                  2
+                </div>
+                <h4 style={{ fontSize: '2rem', fontWeight: 900, marginBottom: '16px', color: '#0f172a', letterSpacing: '-0.5px' }}>
+                  {t.home.step2Title.replace('2. ', '')}.
+                </h4>
+                <p style={{ color: '#475569', lineHeight: 1.6, fontSize: '1.05rem', margin: 0 }}>
+                  {t.home.step2Desc}
+                </p>
+              </div>
+              <div style={{ padding: '0 32px 32px 32px' }}>
+                 <div style={{ width: '60%', height: '220px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+                    <img 
+                      src="https://images.unsplash.com/photo-1529070538774-1843cb3265df?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" 
+                      alt="Book a Lesson" 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }} 
+                    />
+                 </div>
+              </div>
+            </div>
+
+            {/* KART 3: Öğrenmeye Başla (Senin seçtiğin resim) */}
+            <div style={{ display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', overflow: 'hidden' }}>
+              <div style={{ padding: '40px 32px 32px 32px', flex: 1 }}>
+                <div style={{ width: '40px', height: '40px', backgroundColor: '#bfdbfe', color: '#1e40af', fontSize: '1.25rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '24px', borderRadius: '6px' }}>
+                  3
+                </div>
+                <h4 style={{ fontSize: '2rem', fontWeight: 900, marginBottom: '16px', color: '#0f172a', letterSpacing: '-0.5px' }}>
+                  {t.home.step3Title.replace('3. ', '')}.
+                </h4>
+                <p style={{ color: '#475569', lineHeight: 1.6, fontSize: '1.05rem', margin: 0 }}>
+                  {t.home.step3Desc}
+                </p>
+              </div>
+              <div style={{ padding: '0 32px 32px 32px' }}>
+                 <div style={{ width: '60%', height: '220px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+                    <img 
+                      src="https://images.unsplash.com/photo-1516321497487-e288fb19713f?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" 
+                      alt="Start Learning Online" 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }} 
+                    />
+                 </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </section>
 
-      {/* 4. EĞİTMENLER GRID */}
+      {/* KURUMSAL ŞERİT */}
+      <div style={{ backgroundColor: '#4f46e5', padding: '120px 8%', textAlign: 'center', margin: '40px 0', boxShadow: '0 4px 20px rgba(79, 70, 229, 0.2)' }}>
+        <h3 style={{ color: '#ffffff', fontSize: '3rem', fontWeight: 800, margin: 0, letterSpacing: '-0.5px', lineHeight: 1.4 }}>
+          {isEn ? "We work hard to ensure you learn Turkish in the best way possible." : "En iyi şekilde Türkçe öğrenebilmeniz için çalışıyoruz."}
+        </h3>
+      </div>
+
+      {/* 4. "ÖĞRETMEN OL" AFİŞİ - RESİM VE DÜZEN AYNEN KORUNDU */}
+      <section style={{ padding: '40px 8% 80px 8%', backgroundColor: '#ffffff' }}>
+        <div style={{ 
+          maxWidth: '1400px', 
+          margin: '0 auto', 
+          display: 'flex', 
+          flexWrap: 'wrap', 
+          borderRadius: '24px', 
+          overflow: 'hidden', 
+          border: '1px solid #e2e8f0', 
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' 
+        }}>
+          
+          {/* SOL: EĞİTMEN FOTOĞRAFI (Senin seçtiğin resim) */}
+          <div style={{ flex: '1 1 400px', minHeight: '400px', position: 'relative' }}>
+            <img 
+              src="https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
+              alt="Become a Teacher" 
+              style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', position: 'absolute', top: 0, left: 0 }} 
+            />
+          </div>
+
+          {/* SAĞ: İÇERİK (Mint Yeşili Arka Plan) */}
+          <div style={{ flex: '1 1 400px', backgroundColor: '#3bdfa6', padding: '60px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <h2 style={{ fontSize: '3.5rem', fontWeight: 900, color: '#0f172a', marginBottom: '20px', letterSpacing: '-1.5px' }}>
+              {isEn ? "Become a tutor" : "Öğretmen ol"}
+            </h2>
+            <p style={{ fontSize: '1.15rem', color: '#0f172a', marginBottom: '32px', lineHeight: 1.6, fontWeight: 500, opacity: 0.9 }}>
+              {isEn 
+                ? "Earn money sharing your expert knowledge with students. Sign up and start tutoring online." 
+                : "Uzmanlık alanını öğrencilerle paylaşarak para kazan. Platformumuza kaydol ve internet üzerinden dersler vermeye başla."}
+            </p>
+            
+            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 40px 0', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <li style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>
+                <div style={{ width: '6px', height: '6px', backgroundColor: '#0f172a', borderRadius: '50%' }}></div> 
+                {isEn ? "Find new students" : "Yeni öğrenciler bul"}
+              </li>
+              <li style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>
+                <div style={{ width: '6px', height: '6px', backgroundColor: '#0f172a', borderRadius: '50%' }}></div> 
+                {isEn ? "Grow your business" : "İşini büyüt"}
+              </li>
+              <li style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>
+                <div style={{ width: '6px', height: '6px', backgroundColor: '#0f172a', borderRadius: '50%' }}></div> 
+                {isEn ? "Get paid securely" : "Güvenli bir şekilde ödeme al"}
+              </li>
+            </ul>
+
+            <button 
+              onClick={() => router.push('/become-teacher')}
+              style={{ 
+                padding: '20px 40px', 
+                backgroundColor: '#121117', 
+                color: '#ffffff', 
+                border: 'none', 
+                borderRadius: '12px', 
+                fontSize: '1.1rem', 
+                fontWeight: 800, 
+                cursor: 'pointer', 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                gap: '12px', 
+                alignSelf: 'flex-start', 
+                transition: 'transform 0.2s', 
+                boxShadow: '0 10px 15px -3px rgba(15, 23, 42, 0.3)' 
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-3px)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+            >
+              {t.nav.becomeTeacher} →
+            </button>
+          </div>
+
+        </div>
+      </section>
+
+      {/* 🚀 5. EĞİTMENLER GRID - SADECE BU BÖLÜMÜN KART TASARIMI GÜNCELLENDİ (PROFESYONEL SAAS STİLİ) */}
       <section id="teachers-section" style={{ padding: '100px 8%', backgroundColor: '#f8fafc', flex: 1, borderTop: '1px solid #f1f5f9' }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '48px' }}>
@@ -329,7 +512,9 @@ export default function HomePage() {
             </div>
             <button 
               onClick={() => router.push('/egitmenler')}
-              style={{ padding: '12px 24px', backgroundColor: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '12px', fontWeight: 700, color: '#0f172a', cursor: 'pointer', transition: 'all 0.2s' }}
+              style={{ padding: '12px 24px', backgroundColor: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '12px', fontWeight: 700, color: '#4f46e5', cursor: 'pointer', transition: 'all 0.2s' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e0e7ff'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
             >
               {t.home.viewAll}
             </button>
@@ -339,7 +524,6 @@ export default function HomePage() {
             {filteredTeachers.length > 0 ? (
               filteredTeachers.map((tItem) => {
                 const online = isOnline(tItem.son_gorulme);
-                const doluYildiz = tItem.gercek_puan_ortalamasi ? Math.round(Number(tItem.gercek_puan_ortalamasi)) : 0;
 
                 return (
                   <div 
@@ -349,112 +533,128 @@ export default function HomePage() {
                       backgroundColor: '#ffffff', 
                       border: '1px solid #e2e8f0', 
                       borderRadius: '24px', 
-                      padding: '32px', 
+                      padding: '24px', // padding biraz daraltıldı daha toplu durması için
                       cursor: 'pointer', 
                       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 
                       boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', 
                       display: 'flex', 
                       flexDirection: 'column', 
-                      justifyContent: 'space-between' 
+                      justifyContent: 'space-between',
+                      position: 'relative', // etiketler için
+                      gap: '16px'
+                    }}
+                    onMouseEnter={(e) => { 
+                      e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)'; 
+                      e.currentTarget.style.transform = 'translateY(-4px)'; 
+                      e.currentTarget.style.borderColor = '#c7d2fe'; 
+                    }}
+                    onMouseLeave={(e) => { 
+                      e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05)'; 
+                      e.currentTarget.style.transform = 'translateY(0)'; 
+                      e.currentTarget.style.borderColor = '#e2e8f0'; 
                     }}
                   >
                     <div>
-                      <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '16px' }}>
-                        <div style={{ position: 'relative' }}>
+                      {/* Üst Bölüm: Profil ve İsim */}
+                      <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginBottom: '16px' }}>
+                        <div style={{ position: 'relative', flexShrink: 0 }}>
                           <img 
-                            src={tItem.avatar_url || `https://ui-avatars.com/api/?name=${tItem.tam_ad || 'Eğitmen'}&background=eef2ff&color=4f46e5&size=80&bold=true`} 
-                            style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #f8fafc', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} 
+                            src={tItem.avatar_url || `https://ui-avatars.com/api/?name=${tItem.tam_ad || 'Eğitmen'}&background=eef2ff&color=4f46e5&size=64&bold=true`} 
+                            style={{ width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #f8fafc', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} 
                           />
                           {online && (
-                            <div style={{ position: 'absolute', bottom: 0, right: 0, width: '16px', height: '16px', backgroundColor: '#22c55e', border: '3px solid #ffffff', borderRadius: '50%' }}></div>
+                            <div style={{ position: 'absolute', bottom: '2px', right: '2px', width: '14px', height: '14px', backgroundColor: '#22c55e', border: '2.5px solid #ffffff', borderRadius: '50%' }}></div>
                           )}
                         </div>
                         <div style={{ flex: 1 }}>
-                          <h4 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800, color: '#0f172a' }}>{tItem.tam_ad}</h4>
-                          <p style={{ margin: '4px 0 8px 0', color: '#4f46e5', fontSize: '0.95rem', fontWeight: 600 }}>{tItem.ders_turu || 'Türkçe Eğitmeni'}</p>
+                          <h4 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', lineHeight: 1.2 }}>{tItem.tam_ad}</h4>
+                          <p style={{ margin: '2px 0 6px 0', color: '#4f46e5', fontSize: '0.9rem', fontWeight: 600 }}>{tItem.ders_turu || 'Türkçe Eğitmeni'}</p>
                           
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem' }}>
+                          {/* Puan ve Ders Sayısı - Profesyonel Dizilim */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem' }}>
                             {tItem.gercek_puan_ortalamasi ? (
-                              <>
-                                <span style={{ color: '#f59e0b', fontWeight: 800, letterSpacing: '1px' }}>
-                                  {"★".repeat(doluYildiz)}{"☆".repeat(5 - doluYildiz)}
-                                </span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <span style={{ color: '#f59e0b', fontSize: '1rem' }}>★</span>
                                 <span style={{ fontWeight: 800, color: '#121117' }}>{tItem.gercek_puan_ortalamasi}</span>
                                 <span style={{ color: '#94a3b8', fontWeight: 500 }}>({tItem.gercek_yorum_sayisi})</span>
-                              </>
+                              </div>
                             ) : (
-                              <span style={{ fontWeight: 700, color: '#3b82f6', background: '#eff6ff', padding: '2px 8px', borderRadius: '6px', fontSize: '0.8rem' }}>
+                              <span style={{ fontWeight: 700, color: '#3b82f6', background: '#eff6ff', padding: '1px 6px', borderRadius: '4px', fontSize: '0.75rem' }}>
                                 {t.teacherCard.newTeacher}
                               </span>
                             )}
+                            <div style={{ width: '1px', height: '12px', backgroundColor: '#e2e8f0' }}></div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#16a34a', fontWeight: 700 }}>
+                                <span>🏆</span> 
+                                <span>{tItem.gercek_tamamlanan_ders || 0} Ders</span>
+                            </div>
                           </div>
                         </div>
                       </div>
 
-                      <div style={{ marginBottom: '12px' }}>
-                        <span style={{ padding: '4px 10px', backgroundColor: '#f0fdf4', color: '#16a34a', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 700, border: '1px solid #bbf7d0', display: 'inline-block' }}>
-                          🏆 {tItem.gercek_tamamlanan_ders || 0} {t.teacherCard.lessonsCompleted}
-                        </span>
-                      </div>
-
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
+                      {/* Orta Bölüm: Etiketler (SaaS Stili Minimal Etiketler) */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '16px', borderTop: '1px solid #f1f5f9', paddingTop: '16px' }}>
                         {tItem.konum && (
-                          <span style={{ padding: '4px 8px', background: '#f3f4f6', color: '#374151', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600 }}>
+                          <span style={{ padding: '4px 8px', background: '#f1f5f9', color: '#475569', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
                             📍 {tItem.konum}
                           </span>
                         )}
                         {tItem.egitim && (
-                          <span style={{ padding: '4px 8px', background: '#fef3c7', color: '#92400e', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600 }}>
+                          <span style={{ padding: '4px 8px', background: '#f1f5f9', color: '#475569', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
                             📚 {tItem.egitim}
                           </span>
                         )}
-                      </div>
-
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '14px' }}>
                         {(tItem.amac || tItem.odak || '')
                           .split(',')
                           .filter((item: string) => item.trim() !== '')
-                          .slice(0, 3)
+                          .slice(0, 2)
                           .map((item: string, i: number) => (
-                            <span key={i} style={{ padding: '4px 10px', background: '#e0e7ff', color: '#3730a3', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700 }}>
+                            <span key={i} style={{ padding: '4px 8px', background: '#e0e7ff', color: '#3730a3', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
                               🎯 {item.trim()}
                             </span>
                           ))}
                       </div>
 
-                      <p style={{ color: '#475569', lineHeight: 1.5, fontSize: '0.9rem', height: '3em', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', margin: '0 0 16px 0' }}>
+                      {/* Biyografi - Clamp korundu */}
+                      <p style={{ color: '#475569', lineHeight: 1.5, fontSize: '0.9rem', height: '3em', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', margin: '0' }}>
                         {tItem.biyografi || 'Alanında uzman, ana dili Türkçe olan deneyimli eğitmen ile pratik yapmaya hemen başlayın.'}
                       </p>
-
-                      {tItem.one_cikan_etiket && (
-                        <div style={{ marginBottom: '16px' }}>
-                          <span style={{ padding: '4px 10px', backgroundColor: '#fce7f3', color: '#9d174d', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 700 }}>
-                            ✨ {tItem.one_cikan_etiket}
-                          </span>
-                        </div>
-                      )}
                     </div>
                     
-                    <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '20px', marginTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <span style={{ fontSize: '1.5rem', fontWeight: 900, color: '#0f172a' }}>{tItem.saatlik_ucret}₺</span>
-                        <span style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: 500 }}> {t.teacherCard.perLesson}</span>
+                    {/* Alt Bölüm: Fiyat ve Butonlar (Net ayrılmış alan) */}
+                    <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '16px', marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ flexShrink: 0 }}>
+                        <span style={{ fontSize: '1.4rem', fontWeight: 900, color: '#0f172a' }}>{tItem.saatlik_ucret}₺</span>
+                        <span style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: 500 }}> / ders</span>
                       </div>
-                      <div style={{ display: 'flex', gap: '8px' }}>
+                      <div style={{ display: 'flex', gap: '6px' }}>
                         <button 
                           onClick={(e) => { e.stopPropagation(); router.push(`/teachers/${tItem.user_id || tItem.id}`); }}
-                          style={{ padding: '10px 16px', backgroundColor: '#f9a8d4', color: '#121117', border: '1px solid #121117', borderRadius: '10px', fontWeight: 800, fontSize: '0.85rem', cursor: 'pointer', boxShadow: '0 2px 0 #121117' }}
-                        >
-                          {t.teacherCard.bookTrial}
-                        </button>
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); router.push(`/teachers/${tItem.user_id || tItem.id}`); }}
-                          style={{ padding: '10px 16px', backgroundColor: '#f8fafc', color: '#0f172a', border: '1px solid #e2e8f0', borderRadius: '10px', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}
+                          style={{ padding: '10px 14px', backgroundColor: '#f8fafc', color: '#0f172a', border: '1px solid #e2e8f0', borderRadius: '8px', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s' }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#edf2f7'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
                         >
                           {t.teacherCard.profile}
                         </button>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); router.push(`/teachers/${tItem.user_id || tItem.id}`); }}
+                          style={{ padding: '10px 14px', backgroundColor: '#4f46e5', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(79, 70, 229, 0.2)', transition: 'all 0.2s' }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#4338ca'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#4f46e5'}
+                        >
+                          {t.teacherCard.bookTrial}
+                        </button>
                       </div>
                     </div>
+
+                    {/* Öne Çıkan Etiketi - Konumu sadeleştirildi */}
+                    {tItem.one_cikan_etiket && (
+                      <div style={{ position: 'absolute', top: '12px', right: '12px' }}>
+                        <span style={{ padding: '3px 8px', backgroundColor: '#fce7f3', color: '#9d174d', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.5px' }}>
+                          ✨ {tItem.one_cikan_etiket.toUpperCase()}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 );
               })
@@ -468,7 +668,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 5. KURUMSAL FOOTER */}
+      {/* 6. KURUMSAL FOOTER */}
       <footer style={{ backgroundColor: '#0f172a', color: '#94a3b8', padding: '80px 8% 40px 8%' }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: '40px', justifyContent: 'space-between', borderBottom: '1px solid #1e293b', paddingBottom: '40px', marginBottom: '40px' }}>
           <div style={{ maxWidth: '300px' }}>
@@ -499,7 +699,7 @@ export default function HomePage() {
         </div>
       </footer>
 
-      {/* 🚀 6. AUTH MODAL (TAMAMEN SEÇİLEN DİLE GÖRE OTOMATİK DEĞİŞİR) */}
+      {/* 7. AUTH MODAL */}
       {showAuthModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
           <div style={{ backgroundColor: '#ffffff', borderRadius: '24px', width: '100%', maxWidth: '440px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
@@ -509,7 +709,7 @@ export default function HomePage() {
               </h2>
               <p style={{ margin: '12px 0 0 0', color: '#64748b', fontSize: '0.95rem' }}>
                 {authType === 'login' ? t.authModal.noAccount : t.authModal.hasAccount}
-                <span onClick={() => setAuthType(authType === 'login' ? 'register' : 'login')} style={{ color: '#4f46e5', fontWeight: 600, cursor: 'pointer' }}>
+                <span onClick={() => setAuthType(authType === 'login' ? 'register' : 'login')} style={{ color: '#4f46e5', fontWeight: 700, cursor: 'pointer' }}>
                   {authType === 'login' ? t.authModal.signUpBtnText : t.authModal.logInBtnText}
                 </span>
               </p>
