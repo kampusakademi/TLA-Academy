@@ -8,6 +8,9 @@ export default function TeacherDashboard() {
   const [tab, setTab] = useState('dashboard');
   const [userId, setUserId] = useState('');
   
+  // Profil Kutucuğu (Dropdown) State'i
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  
   // Eyalet tanımlamaları (Canlı veriler)
   const [teacherProfile, setTeacherProfile] = useState<any>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -40,7 +43,6 @@ export default function TeacherDashboard() {
     }
   }, [userId]);
 
-  // 🚀 ÖĞRETMENİ "ONLİNE" YAPMA SİNYALİ
   useEffect(() => {
     if (!userId) return;
 
@@ -48,8 +50,8 @@ export default function TeacherDashboard() {
       await supabase.from('egitmenler').update({ son_gorulme: new Date().toISOString() }).eq('user_id', userId);
     }
 
-    setOnlineStatus(); // Panele ilk girdiğinde anında online yap
-    const interval = setInterval(setOnlineStatus, 5 * 60 * 1000); // 5 dakikada bir "hala buradayım" sinyali gönder
+    setOnlineStatus(); 
+    const interval = setInterval(setOnlineStatus, 5 * 60 * 1000); 
 
     return () => clearInterval(interval);
   }, [userId]);
@@ -159,22 +161,17 @@ export default function TeacherDashboard() {
     }
   }
 
+  // 🚀 ÖNEMLİ DEĞİŞİKLİK: Delete yerine Update yapıyoruz
   async function handleCancelLesson(dersId: string) {
-    if (!confirm("Bu dersi iptal etmek istediğinize emin misiniz? Öğrencinin takviminden de tamamen kaldırılacaktır.")) return;
+    if (!confirm("Bu dersi iptal etmek istediğinize emin misiniz?")) return;
     try {
       const { error } = await supabase
         .from('dersler')
-        .delete()
+        .update({ durum: 'İptal Edilen' })
         .eq('id', dersId);
 
       if (error) throw error;
       
-      alert("Ders başarıyla silindi ve iptal edildi! 🎉");
-      
-      setAllLessonsList(prev => prev.filter(l => l.id !== dersId));
-      setUpcomingLessonsList(prev => prev.filter(l => l.id !== dersId));
-      setScheduleLessons(prev => prev.filter(l => l.id !== dersId));
-
       loadDashboardStats();
       loadUpcomingLessons();
     } catch (err: any) {
@@ -182,15 +179,16 @@ export default function TeacherDashboard() {
     }
   }
 
+  // MODERN MENÜ VE İKONLAR
   const menu = [
-    { key: 'dashboard', label: '📊 Genel Bakış' },
-    { key: 'profile', label: '👤 Profilim' },
-    { key: 'lessons', label: '📚 Derslerim' },
-    { key: 'schedule', label: '📅 Takvim' },
-    { key: 'students', label: '👨‍🎓 Öğrencilerim' },
-    { key: 'messages', label: '💬 Mesajlar' },
-    { key: 'earnings', label: '💰 Kazançlar' },
-    { key: 'settings', label: '⚙️ Ayarlar' }
+    { key: 'dashboard', label: 'Genel Bakış', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg> },
+    { key: 'profile', label: 'Profilim', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
+    { key: 'lessons', label: 'Derslerim', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg> },
+    { key: 'schedule', label: 'Takvim', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg> },
+    { key: 'students', label: 'Öğrencilerim', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
+    { key: 'messages', label: 'Mesajlar', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z"/></svg> },
+    { key: 'earnings', label: 'Kazançlar', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> },
+    { key: 'settings', label: 'Ayarlar', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg> }
   ];
 
   return (
@@ -199,24 +197,25 @@ export default function TeacherDashboard() {
         width: '280px',
         background: '#0f172a',
         color: '#94a3b8',
-        padding: '30px 24px',
+        padding: '32px 24px',
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'space-between',
         height: '100vh',
         position: 'sticky',
         top: 0,
         borderRight: '1px solid #1e293b'
       }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 35 }}>
-            <div style={{ width: 12, height: 24, borderRadius: 4, background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}></div>
-            <h2 style={{ fontSize: 18, fontWeight: 800, color: '#f8fafc', letterSpacing: '-0.5px', lineHeight: 1.2 }}>
-              Turkish Learning<br /><span style={{ color: '#3b82f6', fontSize: 14 }}>Academy</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 40, paddingLeft: 8 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg, #4f46e5, #3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+            </div>
+            <h2 style={{ fontSize: 18, fontWeight: 800, color: '#f8fafc', letterSpacing: '-0.5px', lineHeight: 1.2, margin: 0 }}>
+              Turkish Learning<br /><span style={{ color: '#818cf8', fontSize: 13, fontWeight: 600 }}>Academy</span>
             </h2>
           </div>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {menu.map(m => {
               const isActive = tab === m.key;
               return (
@@ -225,56 +224,88 @@ export default function TeacherDashboard() {
                   onClick={() => setTab(m.key)}
                   style={{
                     padding: '12px 16px',
-                    borderRadius: 10,
+                    borderRadius: 12,
                     cursor: 'pointer',
                     fontSize: 14,
                     fontWeight: isActive ? 600 : 500,
-                    color: isActive ? '#fff' : '#94a3b8',
+                    color: isActive ? '#ffffff' : '#94a3b8',
                     background: isActive ? '#1e293b' : 'transparent',
                     transition: 'all 0.2s ease',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 10
+                    gap: 12
                   }}
+                  onMouseEnter={(e) => { if(!isActive) e.currentTarget.style.color = '#e2e8f0'; }}
+                  onMouseLeave={(e) => { if(!isActive) e.currentTarget.style.color = '#94a3b8'; }}
                 >
+                  <div style={{ color: isActive ? '#818cf8' : '#64748b', display: 'flex', alignItems: 'center' }}>
+                    {m.icon}
+                  </div>
                   {m.label}
                 </div>
               );
             })}
           </div>
         </div>
-
-        <div>
-          <button
-            onClick={async () => {
-              await supabase.auth.signOut();
-              window.location.href = "/";
-            }}
-            style={{
-              width: "100%",
-              padding: '12px',
-              borderRadius: 10,
-              border: "1px solid #334155",
-              background: "transparent",
-              color: '#f87171',
-              fontWeight: 600,
-              fontSize: 14,
-              cursor: "pointer",
-              transition: 'all 0.2s'
-            }}
-          >
-            🚪 Oturumu Kapat
-          </button>
-        </div>
       </aside>
 
-      <main style={content}>
+      <main style={{ ...content, display: 'flex', flexDirection: 'column' }}>
+        
+        {/* 🚀 ÜST BİLGİ VE PROFİL MENÜSÜ */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px', position: 'relative', zIndex: 100 }}>
+          <div 
+            onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+            style={{ 
+              display: 'flex', alignItems: 'center', gap: 12, background: 'white', 
+              padding: '6px 16px 6px 6px', borderRadius: 30, border: '1px solid #e2e8f0', 
+              cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', transition: 'all 0.2s' 
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.borderColor = '#cbd5e1'}
+            onMouseLeave={(e) => e.currentTarget.style.borderColor = '#e2e8f0'}
+          >
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#eef2ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, overflow: 'hidden' }}>
+              {teacherProfile?.avatar_url ? (
+                <img src={teacherProfile.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Profil" />
+              ) : (
+                teacherProfile?.tam_ad?.charAt(0).toUpperCase() || 'E'
+              )}
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
+              {teacherProfile?.tam_ad?.split(' ')[0] || 'Hesabım'}
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" style={{ transform: isProfileMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+
+          {/* Çıkış Yap Dropdown Menüsü */}
+          {isProfileMenuOpen && (
+            <>
+              <div onClick={() => setIsProfileMenuOpen(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 90 }} />
+              <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 8, background: 'white', border: '1px solid #e2e8f0', borderRadius: 12, padding: 8, minWidth: 160, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', zIndex: 100 }}>
+                <div 
+                  onClick={async () => {
+                    await supabase.auth.signOut();
+                    window.location.href = "/";
+                  }}
+                  style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 8, color: '#ef4444', fontWeight: 600, fontSize: 14, cursor: 'pointer', borderRadius: 8, transition: 'background 0.2s' }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+                  Çıkış Yap
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
         {loadingProfile && tab !== 'messages' ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80vh', color: '#64748b', fontSize: 15, fontWeight: 500 }}>
-            ✨ Bilgileriniz güvenle yükleniyor...
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', color: '#64748b', gap: 16 }}>
+            <div style={{ width: 40, height: 40, border: '3px solid #e2e8f0', borderTopColor: '#4f46e5', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+            <div style={{ fontSize: 15, fontWeight: 500 }}>Bilgileriniz güvenle yükleniyor...</div>
+            <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
           </div>
         ) : (
-          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          <div style={{ maxWidth: '1100px', margin: '0 auto', width: '100%' }}>
             {tab === 'dashboard' && (
               <Dashboard 
                 profile={teacherProfile} 
@@ -315,108 +346,103 @@ const layout = {
   display: 'grid',
   gridTemplateColumns: '280px 1fr',
   minHeight: '100vh',
-  fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  fontFamily: '"Inter", system-ui, sans-serif',
   background: '#f8fafc',
   color: '#0f172a'
 };
-const content = { padding: '40px 50px', overflowY: 'auto' as const };
+const content = { padding: '30px 40px', overflowY: 'auto' as const };
 
 /* ---------------- 1. DASHBOARD COMPONENT ---------------- */
 function Dashboard({ profile, stats, upcomingLessons, userId, onComplete, onCancel }: any) {
   return (
     <div>
       <div style={{
-        background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
-        padding: '30px 35px',
-        borderRadius: '20px',
-        boxShadow: '0 10px 25px -5px rgb(15 23 42 / 0.15)',
-        marginBottom: 35,
+        background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)',
+        padding: '40px',
+        borderRadius: '24px',
+        boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
+        marginBottom: 40,
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         position: 'relative',
         overflow: 'hidden'
       }}>
-        <div style={{ position: 'absolute', right: '-10%', top: '-20%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(59,130,246,0.15) 0%, rgba(0,0,0,0) 70%)', pointerEvents: 'none' }}></div>
+        <div style={{ position: 'absolute', right: '-10%', top: '-20%', width: '400px', height: '400px', background: 'radial-gradient(circle, rgba(99,102,241,0.2) 0%, rgba(0,0,0,0) 70%)', pointerEvents: 'none' }}></div>
         
-        <div>
-          <span style={{ fontSize: '13px', fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '1.5px', display: 'block', marginBottom: '6px' }}>
+        <div style={{ position: 'relative', zIndex: 2 }}>
+          <span style={{ fontSize: '12px', fontWeight: 700, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '1.5px', display: 'block', marginBottom: '8px' }}>
             Eğitmen Yönetim Paneli
           </span>
-          <h1 style={{ fontSize: '26px', fontWeight: 800, color: '#f8fafc', letterSpacing: '-0.5px', margin: 0 }}>
-            Tekrar hoş geldiniz, <span style={{ color: '#60a5fa' }}>{profile?.tam_ad || "Değerli Eğitmenimiz"}</span> 👋
+          <h1 style={{ fontSize: '32px', fontWeight: 900, color: '#ffffff', letterSpacing: '-1px', margin: 0 }}>
+            Hoş geldin, <span style={{ color: '#c7d2fe' }}>{profile?.tam_ad?.split(' ')[0] || "Eğitmen"}</span> 👋
           </h1>
-          <p style={{ color: '#94a3b8', fontSize: 14, margin: '8px 0 0 0', fontWeight: 400 }}>
-            Bugün projeniz için harika bir gün. Öğrencileriniz ve güncel ders takviminiz aşağıda listelenmiştir.
+          <p style={{ color: '#a5b4fc', fontSize: 15, margin: '12px 0 0 0', fontWeight: 400, maxWidth: '500px', lineHeight: 1.6 }}>
+            Öğrencilerinizle olan ders takviminiz ve güncel istatistikleriniz hazır. Harika bir öğretim günü dileriz.
           </p>
-          
-          <button 
-            onClick={() => {
-              navigator.clipboard.writeText(userId);
-              alert("Eğitmen ID başarıyla kopyalandı:\n" + userId);
-            }}
-            style={{ marginTop: '16px', background: '#2563eb', color: 'white', border: 'none', padding: '8px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
-          >
-            📋 Supabase için Eğitmen ID'mi Kopyala
-          </button>
         </div>
-        <div style={{ fontSize: '40px', background: 'rgba(255,255,255,0.05)', width: '70px', height: '70px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.1)' }}>
-          🎓
+        <div style={{ position: 'relative', zIndex: 2, background: 'rgba(255,255,255,0.05)', padding: '20px', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
         </div>
       </div>
 
       <div style={grid}>
-        <Box title="Toplam Öğrenci" value={stats.totalStudents} icon="👨‍🎓" />
-        <Box title="Toplam Ders" value={stats.totalLessons} icon="📚" />
-        <Box title="Saatlik Ücretiniz" value={`${profile?.saatlik_ucret || 0} TL`} icon="💰" />
-        <Box title="Ortalama Puan" value={`${profile?.ortalama_puan || 5.0} ⭐`} icon="📈" />
+        <Box title="Toplam Öğrenci" value={stats.totalStudents} icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>} />
+        <Box title="Toplam Ders" value={stats.totalLessons} icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>} />
+        <Box title="Saatlik Ücretiniz" value={`${profile?.saatlik_ucret || 0} TL`} icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>} />
+        <Box title="Ortalama Puan" value={`${profile?.ortalama_puan || 5.0}`} icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>} />
       </div>
 
       <div style={{ ...grid, marginTop: 24 }}>
-        <Box title="Tamamlanan Dersler" value={stats.completedLessons} color="#f0fdf4" textColor="#16a34a" />
-        <Box title="Yaklaşan Dersler" value={stats.upcomingLessons} color="#eff6ff" textColor="#2563eb" />
+        <Box title="Tamamlanan" value={stats.completedLessons} color="#f0fdf4" textColor="#16a34a" />
+        <Box title="Yaklaşan" value={stats.upcomingLessons} color="#eef2ff" textColor="#4f46e5" />
         <Box title="İptal Edilen" value={stats.canceledLessons} color="#fef2f2" textColor="#dc2626" />
-        <Box title="Aktif Öğrenci" value={stats.activeStudents} color="#fdfaf2" textColor="#d97706" />
+        <Box title="Aktif Takip" value={stats.activeStudents} color="#fefce8" textColor="#ca8a04" />
       </div>
 
-      <div style={{ marginTop: 32, display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 24 }}>
+      <div style={{ marginTop: 40, display: 'grid', gridTemplateColumns: '1.8fr 1fr', gap: 32 }}>
         <div style={cardStyle}>
-          <h3 style={cardTitleStyle}>⏰ Yaklaşan Ders Planı</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <h3 style={cardTitleStyle}>Yaklaşan Ders Planı</h3>
+          </div>
+          
           {upcomingLessons.length === 0 ? (
-            <div style={{ textTransform: 'none', textAlign: 'center', padding: '40px 0', color: '#94a3b8', fontSize: 14 }}>
+            <div style={{ textAlign: 'center', padding: '60px 0', color: '#94a3b8', fontSize: 14, border: '1px dashed #cbd5e1', borderRadius: 12 }}>
               Planlanmış yakın bir dersiniz bulunmuyor.
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {upcomingLessons.map((lesson: any, i: number) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', borderRadius: 8, background: '#f8fafc', border: '1px solid #f1f5f9' }}>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 15, color: '#1e293b' }}>{lesson.ogrenci_adi || "Öğrenci"}</div>
-                    <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{lesson.ders_turu}</div>
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderRadius: 16, background: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#eef2ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
+                      {lesson.ogrenci_adi?.charAt(0).toUpperCase() || 'Ö'}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 15, color: '#0f172a' }}>{lesson.ogrenci_adi || "Öğrenci"}</div>
+                      <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{lesson.ders_turu}</div>
+                    </div>
                   </div>
-                  <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-                    <div style={{ fontWeight: 600, color: '#2563eb', fontSize: 14 }}>
+                  <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12 }}>
+                    <div style={{ fontWeight: 700, color: '#4f46e5', fontSize: 14 }}>
                       {new Date(lesson.tarih_saat).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
                     </div>
                     
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                       <button 
                         onClick={() => onCancel(lesson.id)}
-                        style={{ background: '#fef2f2', color: '#ef4444', border: '1px solid #fca5a5', padding: '6px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', height: 'fit-content' }}
+                        style={{ background: '#ffffff', color: '#ef4444', border: '1px solid #fecaca', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
                       >
-                        ✕ İptal
+                        İptal
                       </button>
                       <button 
                         onClick={() => onComplete(lesson.id)}
-                        style={{ background: '#10b981', color: 'white', border: 'none', padding: '7px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', height: 'fit-content' }}
+                        style={{ background: '#10b981', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
                       >
-                        ✓ Tamamlandı
+                        Tamamlandı
                       </button>
-                      
-                      <CanliDersButonu 
-                        dersId={lesson.id} 
-                        tarihSaat={lesson.tarih_saat} 
-                      />
+                      <CanliDersButonu dersId={lesson.id} tarihSaat={lesson.tarih_saat} />
                     </div>
                   </div>
                 </div>
@@ -426,12 +452,21 @@ function Dashboard({ profile, stats, upcomingLessons, userId, onComplete, onCanc
         </div>
 
         <div style={cardStyle}>
-          <h3 style={cardTitleStyle}>⚡ Hızlı Özet</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, fontSize: 14, color: '#334155' }}>
-            <div style={summaryRow}><span style={{ color: '#64748b' }}>🔥 Toplam Süreç:</span> <strong>{stats.totalLessons} Ders</strong></div>
-            <div style={summaryRow}><span style={{ color: '#64748b' }}>✅ Bitirilen:</span> <strong>{stats.completedLessons} Saat</strong></div>
-            <div style={summaryRow}><span style={{ color: '#64748b' }}>❌ İptaller:</span> <strong>{stats.canceledLessons} Adet</strong></div>
-            <div style={summaryRow}><span style={{ color: '#64748b' }}>⭐ Durum:</span> <span style={{ padding: '2px 8px', background: '#dcfce7', color: '#15803d', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>Mükemmel</span></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
+             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            <h3 style={cardTitleStyle}>Hızlı Özet</h3>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20, fontSize: 14, color: '#475569' }}>
+            <div style={summaryRow}><span>Toplam Süreç:</span> <strong style={{color: '#0f172a'}}>{stats.totalLessons} Ders</strong></div>
+            <div style={summaryRow}><span>Bitirilen:</span> <strong style={{color: '#0f172a'}}>{stats.completedLessons} Saat</strong></div>
+            <div style={summaryRow}><span>İptaller:</span> <strong style={{color: '#dc2626'}}>{stats.canceledLessons} Adet</strong></div>
+            <div style={summaryRow}>
+              <span>Profil Durumu:</span> 
+              <span style={{ padding: '4px 10px', background: '#dcfce7', color: '#16a34a', borderRadius: 12, fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                Aktif
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -439,144 +474,159 @@ function Dashboard({ profile, stats, upcomingLessons, userId, onComplete, onCanc
   );
 }
 
-const summaryRow = { display: 'flex', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' };
+const summaryRow = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '16px', borderBottom: '1px solid #f1f5f9' };
 
 /* ---------------- 2. GÜNCELLENMİŞ PROFILE COMPONENT ---------------- */
 function Profile({ profile, stats }: any) {
   return (
     <div>
       <div style={{
-        background: 'linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%)',
-        height: '140px',
-        borderRadius: '20px 20px 0 0',
+        background: 'linear-gradient(135deg, #1e1b4b 0%, #3730a3 100%)',
+        height: '160px',
+        borderRadius: '24px 24px 0 0',
         position: 'relative'
       }}></div>
 
       <div style={{
         background: 'white',
-        borderRadius: '0 0 20px 20px',
-        padding: '0 35px 35px 35px',
+        borderRadius: '0 0 24px 24px',
+        padding: '0 40px 40px 40px',
         border: '1px solid #e2e8f0',
         borderTop: 'none',
-        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)',
-        marginBottom: '30px',
+        boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.05)',
+        marginBottom: '40px',
         position: 'relative'
       }}>
         <div style={{
-          width: '100px',
-          height: '100px',
+          width: '120px',
+          height: '120px',
           borderRadius: '50%',
-          background: '#2563eb',
+          background: '#eef2ff',
           backgroundImage: profile?.avatar_url ? `url(${profile.avatar_url})` : 'none',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          color: 'white',
-          fontSize: profile?.avatar_url ? '0px' : '36px',
+          color: '#4f46e5',
+          fontSize: profile?.avatar_url ? '0px' : '40px',
           fontWeight: 800,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          border: '4px solid white',
+          border: '6px solid white',
           position: 'absolute',
-          top: '-50px',
-          boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
-          overflow: 'hidden'
+          top: '-60px',
+          boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
         }}>
           {!profile?.avatar_url && (profile?.tam_ad?.charAt(0).toUpperCase() || 'E')}
         </div>
 
-        <div style={{ paddingTop: '65px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ paddingTop: '80px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 20 }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <h1 style={{ fontSize: '24px', fontWeight: 800, margin: 0, color: '#0f172a', letterSpacing: '-0.5px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: 8 }}>
+              <h1 style={{ fontSize: '28px', fontWeight: 900, margin: 0, color: '#0f172a', letterSpacing: '-0.5px' }}>
                 {profile?.tam_ad || "Belirtilmemiş"}
               </h1>
               {profile?.super_ogretmen && (
-                <span style={{ background: '#fef3c7', color: '#d97706', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 700 }}>
-                  🏆 SÜPER ÖĞRETMEN
+                <span style={{ background: '#fefce8', color: '#ca8a04', padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 700, border: '1px solid #fef08a' }}>
+                  SÜPER ÖĞRETMEN
                 </span>
               )}
-              <span style={{ background: '#dcfce7', color: '#15803d', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 700 }}>
-                ✓ DOĞRULANMIŞ
-              </span>
-              
-              {/* 🚀 DEĞİŞİKLİK: Pembe Etiket yerine Toplam Tamamlanan Ders Rozeti */}
-              <span style={{ background: '#f0fdf4', color: '#16a34a', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 700, border: '1px solid #bbf7d0' }}>
-                🏆 {stats?.completedLessons || 0} Ders Tamamlandı
+              <span style={{ background: '#f0fdf4', color: '#16a34a', padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 700, border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                Doğrulanmış
               </span>
             </div>
-            <p style={{ margin: '6px 0 0 0', color: '#475569', fontSize: '15px', fontWeight: 500 }}>
+            
+            <p style={{ margin: '0 0 16px 0', color: '#4f46e5', fontSize: '16px', fontWeight: 600 }}>
               {profile?.ders_turu || "Uzmanlık Belirtilmemiş"}
             </p>
             
-            <div style={{ display: 'flex', gap: '15px', marginTop: '12px', fontSize: '13px', color: '#64748b', flexWrap: 'wrap' }}>
-              <span>📍 {profile?.konum || "Konum Belirtilmemiş"}</span>
-              <span>🎓 {profile?.egitim || "Eğitim Belirtilmemiş"}</span>
-              <span>🗣️ {profile?.diller || "Diller Belirtilmemiş"}</span>
-              {profile?.seviye && <span>📈 Seviye: {profile.seviye}</span>}
+            <div style={{ display: 'flex', gap: '20px', fontSize: '14px', color: '#64748b', flexWrap: 'wrap' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                {profile?.konum || "Konum Yok"}
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                {profile?.egitim || "Eğitim Yok"}
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.54 15H17a2 2 0 0 0-2 2v4.54"/><path d="M7 3.34V5a3 3 0 0 0 3 3v0a2 2 0 0 1 2 2v0c0 1.1.9 2 2 2v0a2 2 0 0 0 2-2v0c0-1.1.9-2 2-2h3.17"/><path d="M11 21.95V18a2 2 0 0 0-2-2v0a2 2 0 0 1-2-2v-1a2 2 0 0 0-2-2H2.05"/><circle cx="12" cy="12" r="10"/></svg>
+                {profile?.diller || "Dil Yok"}
+              </span>
             </div>
           </div>
 
-          <div style={{ textAlign: 'right', background: '#f8fafc', padding: '12px 20px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
-            <div style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Saatlik Ücret</div>
-            <div style={{ fontSize: '24px', fontWeight: 800, color: '#2563eb', margin: '2px 0' }}>{profile?.saatlik_ucret || 0} TL</div>
-            <div style={{ fontSize: '13px', color: '#d97706', fontWeight: 600 }}>⭐ {profile?.ortalama_puan || "5.0"} (Puan)</div>
+          <div style={{ textAlign: 'right', background: '#f8fafc', padding: '16px 24px', borderRadius: '16px', border: '1px solid #e2e8f0', minWidth: '180px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Saatlik Ücret</div>
+            <div style={{ fontSize: '28px', fontWeight: 900, color: '#0f172a', margin: '4px 0' }}>{profile?.saatlik_ucret || 0} TL</div>
+            <div style={{ fontSize: '13px', color: '#f59e0b', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+               {profile?.ortalama_puan || "5.0"} Ort.
+            </div>
           </div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr', gap: '24px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '32px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
           
           <div style={cardStyle}>
-            <h3 style={cardTitleStyle}>📝 Hakkımda / Biyografi</h3>
-            <p style={{ color: '#334155', lineHeight: 1.7, fontSize: '15px', margin: 0, whiteSpace: 'pre-line' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+               <h3 style={cardTitleStyle}>Hakkımda</h3>
+            </div>
+            <p style={{ color: '#475569', lineHeight: 1.8, fontSize: '15px', margin: 0, whiteSpace: 'pre-line' }}>
               {profile?.biyografi || "Henüz bir tanıtım metni doldurulmamış. Ayarlar sekmesinden kendinizi tanıtan profesyonel bir biyografi ekleyebilirsiniz."}
             </p>
           </div>
 
           <div style={cardStyle}>
-            <h3 style={cardTitleStyle}>🎯 Öğretim Yaklaşımı & Metodoloji</h3>
-            <p style={{ color: '#334155', lineHeight: 1.7, fontSize: '15px', margin: 0, whiteSpace: 'pre-line' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+               <h3 style={cardTitleStyle}>Öğretim Yaklaşımı & Metodoloji</h3>
+            </div>
+            <p style={{ color: '#475569', lineHeight: 1.8, fontSize: '15px', margin: 0, whiteSpace: 'pre-line' }}>
               {profile?.metodoloji || "Öğretim metodolojisi belirtilmemiş."}
             </p>
           </div>
 
           {(profile?.amac || profile?.odak) && (
             <div style={cardStyle}>
-              <h3 style={cardTitleStyle}>🎯 Uzmanlık & Odak Alanları</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '14px', color: '#334155' }}>
+               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                 <h3 style={cardTitleStyle}>Uzmanlık & Odak Alanları</h3>
+               </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '15px', color: '#475569' }}>
                 {profile?.amac && (
-                  <div><strong style={{ color: '#0f172a' }}>Hedeflenen Amaç:</strong> {profile.amac}</div>
+                  <div><strong style={{ color: '#0f172a', display: 'block', marginBottom: 4 }}>Hedeflenen Amaçlar:</strong> {profile.amac}</div>
                 )}
                 {profile?.odak && (
-                  <div><strong style={{ color: '#0f172a' }}>Ders Odak Noktası:</strong> {profile.odak}</div>
+                  <div><strong style={{ color: '#0f172a', display: 'block', marginBottom: 4 }}>Ders Odak Noktası:</strong> {profile.odak}</div>
                 )}
               </div>
             </div>
           )}
-
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
           <div style={cardStyle}>
-            <h3 style={{ ...cardTitleStyle, marginBottom: '16px' }}>📊 Eğitim İstatistikleri</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', fontSize: '14px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
-                <span style={{ color: '#64748b' }}>👥 Toplam Öğrenci:</span>
+            <h3 style={{ ...cardTitleStyle, marginBottom: '24px' }}>Eğitim İstatistikleri</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>
+                <span style={{ color: '#64748b' }}>Toplam Öğrenci:</span>
                 <strong style={{ color: '#0f172a' }}>{stats.totalStudents} Kişi</strong>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
-                <span style={{ color: '#64748b' }}>📚 Verilen Toplam Ders:</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>
+                <span style={{ color: '#64748b' }}>Verilen Toplam Ders:</span>
                 <strong style={{ color: '#0f172a' }}>{stats.totalLessons} Saat</strong>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
-                <span style={{ color: '#64748b' }}>💬 Cevaplama Hızı:</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>
+                <span style={{ color: '#64748b' }}>Cevaplama Hızı:</span>
                 <strong style={{ color: '#16a34a' }}>%100 (Anında)</strong>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '2px' }}>
-                <span style={{ color: '#64748b' }}>🔒 Hesap Durumu:</span>
-                <span style={{ padding: '2px 8px', background: '#eff6ff', color: '#1d4ed8', borderRadius: '8px', fontSize: '12px', fontWeight: 600 }}>Aktif</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '4px' }}>
+                <span style={{ color: '#64748b' }}>Hesap Durumu:</span>
+                <span style={{ padding: '4px 10px', background: '#eef2ff', color: '#4f46e5', borderRadius: '8px', fontSize: '12px', fontWeight: 700 }}>Aktif</span>
               </div>
             </div>
           </div>
@@ -598,27 +648,27 @@ function Lessons({ lessons, stats, onComplete, onCancel }: any) {
 
   return (
     <div>
-      <h1 style={{ fontSize: 28, fontWeight: 800, marginTop: 0, marginRight: 0, marginBottom: 24, marginLeft: 0, letterSpacing: '-0.75px' }}>📚 Derslerim</h1>
+      <h1 style={{ fontSize: 32, fontWeight: 900, marginTop: 0, marginBottom: 32, letterSpacing: '-1px', color: '#0f172a' }}>Ders Kayıtları</h1>
       
       <div style={grid}>
-        <Box title="Toplam Planlama" value={`${stats.totalLessons} Ders`} icon="📅" />
-        <Box title="Kazanmaya Hazır (Yaklaşan)" value={`${stats.upcomingLessons} Saat`} color="#eff6ff" textColor="#2563eb" />
+        <Box title="Toplam Planlama" value={`${stats.totalLessons} Ders`} icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>} />
+        <Box title="Kazanmaya Hazır (Yaklaşan)" value={`${stats.upcomingLessons} Saat`} color="#eef2ff" textColor="#4f46e5" />
         <Box title="Arşivlenen (Tamamlanan)" value={`${stats.completedLessons} Saat`} color="#f0fdf4" textColor="#16a34a" />
       </div>
 
-      <div style={{ display: 'flex', gap: '10px', marginTop: '30px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
+      <div style={{ display: 'flex', gap: '12px', marginTop: '40px', borderBottom: '2px solid #e2e8f0', paddingBottom: '16px' }}>
         {(['all', 'upcoming', 'completed'] as const).map(tabKey => {
-          const labels = { all: '🗂️ Tüm Dersler', upcoming: '⏰ Yaklaşan Dersler', completed: '✅ Geçmiş Dersler' };
+          const labels = { all: 'Tüm Dersler', upcoming: 'Yaklaşan Dersler', completed: 'Geçmiş Dersler' };
           const isSelected = activeSubTab === tabKey;
           return (
             <button
               key={tabKey}
               onClick={() => setActiveSubTab(tabKey)}
               style={{
-                padding: '10px 18px',
-                borderRadius: '8px',
+                padding: '10px 20px',
+                borderRadius: '12px',
                 border: 'none',
-                background: isSelected ? '#1e293b' : 'transparent',
+                background: isSelected ? '#0f172a' : '#f1f5f9',
                 color: isSelected ? 'white' : '#64748b',
                 fontWeight: 600,
                 fontSize: '14px',
@@ -632,72 +682,75 @@ function Lessons({ lessons, stats, onComplete, onCancel }: any) {
         })}
       </div>
 
-      <div style={{ ...cardStyle, marginTop: '20px', padding: 0, overflow: 'hidden' }}>
+      <div style={{ ...cardStyle, marginTop: '24px', padding: 0, overflow: 'hidden' }}>
         {filteredLessons.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '50px 0', color: '#94a3b8', fontSize: '14px' }}>
+          <div style={{ textAlign: 'center', padding: '60px 0', color: '#94a3b8', fontSize: '15px' }}>
             Seçilen filtreye uygun herhangi bir ders kaydı bulunamadı.
           </div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
             <thead>
               <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                <th style={{ padding: '16px 24px', color: '#475569', fontWeight: 600 }}>Öğrenci Adı</th>
-                <th style={{ padding: '16px 24px', color: '#475569', fontWeight: 600 }}>Ders Türü</th>
-                <th style={{ padding: '16px 24px', color: '#475569', fontWeight: 600 }}>Tarih & Saat</th>
-                <th style={{ padding: '16px 24px', color: '#475569', fontWeight: 600 }}>Ücret</th>
-                <th style={{ padding: '16px 24px', color: '#475569', fontWeight: 600 }}>Durum</th>
+                <th style={{ padding: '20px 24px', color: '#64748b', fontWeight: 600 }}>Öğrenci Adı</th>
+                <th style={{ padding: '20px 24px', color: '#64748b', fontWeight: 600 }}>Ders Türü</th>
+                <th style={{ padding: '20px 24px', color: '#64748b', fontWeight: 600 }}>Tarih & Saat</th>
+                <th style={{ padding: '20px 24px', color: '#64748b', fontWeight: 600 }}>Ücret</th>
+                <th style={{ padding: '20px 24px', color: '#64748b', fontWeight: 600 }}>Durum / İşlem</th>
               </tr>
             </thead>
             <tbody>
               {filteredLessons.map((lesson: any, idx: number) => {
                 const isCompleted = lesson.durum === 'Tamamlanan';
-                const statusBg = isCompleted ? '#dcfce7' : (lesson.durum === 'İptal Edilen' ? '#fef2f2' : '#dbeafe');
-                const statusColor = isCompleted ? '#15803d' : (lesson.durum === 'İptal Edilen' ? '#dc2626' : '#1e40af');
+                const statusBg = isCompleted ? '#dcfce7' : (lesson.durum === 'İptal Edilen' ? '#fef2f2' : '#eef2ff');
+                const statusColor = isCompleted ? '#16a34a' : (lesson.durum === 'İptal Edilen' ? '#dc2626' : '#4f46e5');
 
                 return (
                   <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.2s' }}>
-                    <td style={{ padding: '16px 24px', fontWeight: 600, color: '#0f172a' }}>
-                      <span style={{ marginRight: '8px' }}>👤</span> {lesson.ogrenci_adi}
+                    <td style={{ padding: '20px 24px', fontWeight: 600, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                      </div>
+                      {lesson.ogrenci_adi}
                     </td>
-                    <td style={{ padding: '16px 24px', color: '#475569' }}>
+                    <td style={{ padding: '20px 24px', color: '#475569' }}>
                       {lesson.ders_turu}
                     </td>
-                    <td style={{ padding: '16px 24px', color: '#1e3a8a', fontWeight: 500 }}>
+                    <td style={{ padding: '20px 24px', color: '#0f172a', fontWeight: 500 }}>
                       {new Date(lesson.tarih_saat).toLocaleString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </td>
-                    <td style={{ padding: '16px 24px', fontWeight: 700, color: '#0f172a' }}>
+                    <td style={{ padding: '20px 24px', fontWeight: 700, color: '#0f172a' }}>
                       {lesson.ucret || 0} TL
                     </td>
-                    <td style={{ padding: '16px 24px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <td style={{ padding: '20px 24px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <span style={{
                           background: statusBg,
                           color: statusColor,
-                          padding: '4px 10px',
+                          padding: '6px 12px',
                           borderRadius: '12px',
                           fontSize: '12px',
-                          fontWeight: 600,
+                          fontWeight: 700,
                           display: 'inline-block'
                         }}>
                           {lesson.durum}
                         </span>
                         {lesson.durum === 'Yaklaşan' && (
-                          <>
+                          <div style={{ display: 'flex', gap: 8 }}>
                             <button 
                               onClick={() => onComplete(lesson.id)}
                               title="Dersi Tamamla"
-                              style={{ background: '#10b981', color: 'white', border: 'none', width: '24px', height: '24px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              style={{ background: '#10b981', color: 'white', border: 'none', width: '32px', height: '32px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                             >
-                              ✓
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
                             </button>
                             <button 
                               onClick={() => onCancel(lesson.id)}
                               title="Dersi İptal Et"
-                              style={{ background: '#ef4444', color: 'white', border: 'none', width: '24px', height: '24px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              style={{ background: '#ef4444', color: 'white', border: 'none', width: '32px', height: '32px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                             >
-                              ✕
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                             </button>
-                          </>
+                          </div>
                         )}
                       </div>
                     </td>
@@ -769,31 +822,33 @@ function Schedule({ profile, userId, onProfileUpdate }: any) {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0, letterSpacing: '-0.75px' }}>📅 Çalışma Saatlerim</h1>
-          <p style={{ color: '#64748b', fontSize: 14, marginTop: 8 }}>
+          <h1 style={{ fontSize: 32, fontWeight: 900, margin: 0, letterSpacing: '-1px', color: '#0f172a' }}>Çalışma Saatlerim</h1>
+          <p style={{ color: '#64748b', fontSize: 15, marginTop: 8 }}>
             Ders vermek <strong>istediğiniz</strong> saatleri yeşil, <strong>müsait olmadığınız</strong> saatleri kırmızı yapmak için kutulara tıklayın.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={resetAll} style={{ background: '#f8fafc', color: '#64748b', border: '1px solid #e2e8f0', padding: '10px 16px', borderRadius: '10px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}>
-            🔄 Hepsini Temizle
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button onClick={resetAll} style={{ background: '#ffffff', color: '#475569', border: '1px solid #cbd5e1', padding: '12px 20px', borderRadius: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.59-9.21l5.67-5.67"/></svg>
+            Hepsini Temizle
           </button>
-          <button onClick={handleSave} disabled={saving} style={{ background: saving ? '#94a3b8' : '#2563eb', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '10px', fontWeight: 700, cursor: saving ? 'default' : 'pointer', transition: 'all 0.2s' }}>
-            {saving ? 'Kaydediliyor...' : '💾 Değişiklikleri Kaydet'}
+          <button onClick={handleSave} disabled={saving} style={{ background: saving ? '#94a3b8' : '#4f46e5', color: 'white', border: 'none', padding: '12px 24px', borderRadius: '12px', fontWeight: 700, cursor: saving ? 'default' : 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            {saving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
           </button>
         </div>
       </div>
 
-      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '20px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)' }}>
-        <div style={{ overflowX: 'auto', maxHeight: '600px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '12px' }}>
+      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '24px', padding: '24px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)' }}>
+        <div style={{ overflowX: 'auto', maxHeight: '600px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '16px' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', minWidth: '700px' }}>
             <thead style={{ position: 'sticky', top: 0, zIndex: 10, boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
               <tr>
-                <th style={{ padding: '15px', background: '#f8fafc', borderBottom: '2px solid #cbd5e1', borderRight: '1px solid #e2e8f0', width: '80px', color: '#475569', fontSize: 14 }}>Saat</th>
+                <th style={{ padding: '20px 15px', background: '#f8fafc', borderBottom: '2px solid #cbd5e1', borderRight: '1px solid #e2e8f0', width: '80px', color: '#64748b', fontSize: 14, fontWeight: 600 }}>Saat</th>
                 {DAYS.map(day => (
-                  <th key={day} style={{ padding: '15px', background: '#f8fafc', borderBottom: '2px solid #cbd5e1', fontWeight: 700, color: '#1e293b', fontSize: 15 }}>
+                  <th key={day} style={{ padding: '20px 15px', background: '#f8fafc', borderBottom: '2px solid #cbd5e1', fontWeight: 700, color: '#0f172a', fontSize: 15 }}>
                     {day}
                   </th>
                 ))}
@@ -802,7 +857,7 @@ function Schedule({ profile, userId, onProfileUpdate }: any) {
             <tbody>
               {HOURS.map(hour => (
                 <tr key={hour}>
-                  <td style={{ padding: '10px', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: 600, color: '#64748b', fontSize: 13, position: 'sticky', left: 0, zIndex: 5 }}>
+                  <td style={{ padding: '12px', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: 600, color: '#475569', fontSize: 13, position: 'sticky', left: 0, zIndex: 5 }}>
                     {hour}
                   </td>
                   {DAYS.map(day => {
@@ -819,15 +874,19 @@ function Schedule({ profile, userId, onProfileUpdate }: any) {
                           background: isBlocked ? '#fef2f2' : '#f0fdf4',
                           cursor: 'pointer',
                           transition: 'all 0.1s ease',
-                          height: '40px'
+                          height: '48px'
                         }}
                         onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'}
                         onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
                       >
                         {isBlocked ? (
-                          <span style={{ color: '#ef4444', fontSize: '18px', fontWeight: 'bold' }}>✕</span>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                          </div>
                         ) : (
-                          <span style={{ color: '#22c55e', fontSize: '18px', fontWeight: 'bold' }}>✓</span>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#22c55e' }}>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                          </div>
                         )}
                       </td>
                     );
@@ -846,60 +905,60 @@ function Schedule({ profile, userId, onProfileUpdate }: any) {
 function Students({ students, stats }: any) {
   return (
     <div>
-      <h1 style={{ fontSize: 28, fontWeight: 800, marginTop: 0, marginRight: 0, marginBottom: 24, marginLeft: 0, letterSpacing: '-0.75px' }}>👨‍🎓 Öğrencilerim</h1>
+      <h1 style={{ fontSize: 32, fontWeight: 900, marginTop: 0, marginBottom: 32, letterSpacing: '-1px', color: '#0f172a' }}>Öğrencilerim</h1>
       
       <div style={grid}>
-        <Box title="Toplam Benzersiz Öğrenci" value={stats.totalStudents} icon="👥" />
-        <Box title="Aktif Takip Edilen" value={stats.activeStudents} icon="✨" />
+        <Box title="Toplam Öğrenci" value={stats.totalStudents} icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>} />
+        <Box title="Aktif Takip Edilen" value={stats.activeStudents} icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>} />
       </div>
 
-      <div style={{ ...cardStyle, marginTop: 28 }}>
-        <h3 style={{ ...cardTitleStyle, marginBottom: 20 }}>📋 Öğrenci Profil Listesi</h3>
+      <div style={{ ...cardStyle, marginTop: 32 }}>
+        <h3 style={{ ...cardTitleStyle, marginBottom: 24, fontSize: 18 }}>Öğrenci Profil Listesi</h3>
         
         {students.length === 0 ? (
-          <div style={{ textTransform: 'none', textAlign: 'center', padding: '40px 0', color: '#94a3b8', fontSize: 14 }}>
+          <div style={{ textAlign: 'center', padding: '60px 0', color: '#94a3b8', fontSize: 15, border: '1px dashed #cbd5e1', borderRadius: 16 }}>
             Sistemde henüz adınıza kayıtlı bir öğrenci bulunmuyor.
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
             {students.map((student: any, idx: number) => (
               <div 
                 key={idx} 
                 style={{ 
                   border: '1px solid #e2e8f0', 
-                  borderRadius: '12px', 
-                  padding: '20px', 
-                  background: '#f8fafc',
-                  boxShadow: '0 2px 4px rgb(0 0 0 / 0.02)',
+                  borderRadius: '16px', 
+                  padding: '24px', 
+                  background: '#ffffff',
+                  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
-                  gap: '12px'
+                  gap: '16px'
                 }}
               >
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#3b82f6', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#eef2ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '18px' }}>
                       {student.adi?.charAt(0).toUpperCase() || 'Ö'}
                     </div>
                     <div>
-                      <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#0f172a' }}>{student.adi}</h4>
-                      <span style={{ fontSize: '12px', color: '#0369a1', background: '#e0f2fe', padding: '2px 8px', borderRadius: '6px', fontWeight: 600, display: 'inline-block', marginTop: '4px' }}>
+                      <h4 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>{student.adi}</h4>
+                      <span style={{ fontSize: '12px', color: '#4f46e5', background: '#eef2ff', padding: '4px 10px', borderRadius: '8px', fontWeight: 600, display: 'inline-block', marginTop: '6px' }}>
                         {student.ders_turu || 'Genel Ders'}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px' }}>
+                <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '14px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#64748b' }}>📚 Toplam Alınan Ders:</span>
+                    <span style={{ color: '#64748b' }}>Toplam Alınan Ders:</span>
                     <strong style={{ color: '#0f172a' }}>{student.toplam_ders} Saat</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#64748b' }}>📅 Son Ders Tarihi:</span>
-                    <strong style={{ color: '#1e40af' }}>
-                      {new Date(student.son_ders_tarihi).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
+                    <span style={{ color: '#64748b' }}>Son Ders Tarihi:</span>
+                    <strong style={{ color: '#4f46e5' }}>
+                      {new Date(student.son_ders_tarihi).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}
                     </strong>
                   </div>
                 </div>
@@ -1019,34 +1078,55 @@ function Messages({ userId }: any) {
   }
 
   return (
-    <div style={{ display: 'flex', height: '72vh', gap: 20, background: 'white', padding: 20, borderRadius: 16, border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)' }}>
-      <div style={{ width: 280, borderRight: '1px solid #f1f5f9', paddingRight: 16, overflowY: 'auto' }}>
-        <div style={{ padding: '0 0 12px 4px', fontWeight: 700, fontSize: 16, color: '#0f172a' }}>👨‍🎓 Mesajlaştığım Öğrenciler</div>
-        {students.map((s, i) => (
-          <div key={i} onClick={() => setSelectedStudent(s)} style={{ padding: '12px 14px', borderRadius: 10, cursor: 'pointer', marginBottom: 6, transition: 'all 0.2s', background: selectedStudent?.id === s.id ? '#eff6ff' : 'transparent' }}>
-            <div style={{ fontWeight: 600, color: selectedStudent?.id === s.id ? '#2563eb' : '#334155', fontSize: 14 }}>{s.tam_ad}</div>
-            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3 }}>ID: {s.id.slice(0, 8)}...</div>
-          </div>
-        ))}
-      </div>
+    <div>
+      <h1 style={{ fontSize: 32, fontWeight: 900, marginTop: 0, marginBottom: 32, letterSpacing: '-1px', color: '#0f172a' }}>Mesajlar</h1>
       
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ paddingBottom: 12, borderBottom: '1px solid #f1f5f9', fontWeight: 600, color: '#1e293b' }}>
-          {selectedStudent ? `💬 Aktif Sohbet: ${selectedStudent.tam_ad}` : 'Lütfen soldan bir sohbet seçin'}
+      <div style={{ display: 'flex', height: '70vh', gap: 24, background: 'white', padding: 24, borderRadius: 24, border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.05)' }}>
+        <div style={{ width: 320, borderRight: '1px solid #f1f5f9', paddingRight: 24, overflowY: 'auto' }}>
+          <div style={{ padding: '0 0 16px 4px', fontWeight: 800, fontSize: 18, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Sohbetler
+          </div>
+          {students.map((s, i) => (
+            <div key={i} onClick={() => setSelectedStudent(s)} style={{ padding: '16px', borderRadius: 16, cursor: 'pointer', marginBottom: 8, transition: 'all 0.2s', background: selectedStudent?.id === s.id ? '#eef2ff' : 'transparent', border: selectedStudent?.id === s.id ? '1px solid #c7d2fe' : '1px solid transparent' }}>
+              <div style={{ fontWeight: 700, color: selectedStudent?.id === s.id ? '#4f46e5' : '#334155', fontSize: 15 }}>{s.tam_ad}</div>
+              <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>Öğrenci ID: {s.id.slice(0, 6)}...</div>
+            </div>
+          ))}
         </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 0' }}>
-          {messages.map((m, i) => {
-            const isMe = m.gonderen_id === userId;
-            return (
-              <div key={i} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start', marginBottom: 12 }}>
-                <div style={{ maxWidth: '65%', padding: '10px 16px', borderRadius: 14, fontSize: 14, lineHeight: 1.5, background: isMe ? '#2563eb' : '#f1f5f9', color: isMe ? 'white' : '#1e293b' }}>{m.icerik}</div>
-              </div>
-            );
-          })}
-        </div>
-        <div style={{ display: 'flex', gap: 10, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
-          <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()} placeholder="Mesajınızı yazın..." style={{ flex: 1, padding: 12, border: '1px solid #e2e8f0', borderRadius: 10, outline: 'none', fontSize: 14 }} />
-          <button onClick={send} style={{ background: '#2563eb', color: 'white', border: 'none', padding: '0 20px', borderRadius: 10, fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>Gönder</button>
+        
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ paddingBottom: 16, borderBottom: '1px solid #f1f5f9', fontWeight: 700, fontSize: 16, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 10 }}>
+            {selectedStudent ? (
+              <>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+                  {selectedStudent.tam_ad.charAt(0).toUpperCase()}
+                </div>
+                {selectedStudent.tam_ad}
+              </>
+            ) : 'Lütfen soldan bir sohbet seçin'}
+          </div>
+          
+          <div style={{ flex: 1, overflowY: 'auto', padding: '24px 0' }}>
+            {messages.map((m, i) => {
+              const isMe = m.gonderen_id === userId;
+              return (
+                <div key={i} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start', marginBottom: 16 }}>
+                  <div style={{ maxWidth: '65%', padding: '12px 16px', borderRadius: 16, fontSize: 14, lineHeight: 1.6, background: isMe ? '#4f46e5' : '#f1f5f9', color: isMe ? 'white' : '#0f172a', borderBottomRightRadius: isMe ? 4 : 16, borderBottomLeftRadius: isMe ? 16 : 4 }}>
+                    {m.icerik}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          
+          <div style={{ display: 'flex', gap: 12, paddingTop: 16, borderTop: '1px solid #f1f5f9' }}>
+            <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()} placeholder="Mesajınızı buraya yazın..." style={{ flex: 1, padding: '14px 20px', border: '1px solid #cbd5e1', borderRadius: 16, outline: 'none', fontSize: 15, background: '#f8fafc', transition: 'border 0.2s' }} />
+            <button onClick={send} style={{ background: '#4f46e5', color: 'white', border: 'none', padding: '0 24px', borderRadius: 16, fontWeight: 700, fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              Gönder
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1058,11 +1138,11 @@ function Earnings({ profile, stats }: any) {
   const tahminiKazanc = (stats.completedLessons || 0) * (profile?.saatlik_ucret || 0);
   return (
     <div>
-      <h1 style={{ fontSize: 28, fontWeight: 800, marginTop: 0, marginRight: 0, marginBottom: 24, marginLeft: 0 }}>💰 Kazançlar</h1>
+      <h1 style={{ fontSize: 32, fontWeight: 900, marginTop: 0, marginBottom: 32, letterSpacing: '-1px', color: '#0f172a' }}>Kazanç Raporu</h1>
       <div style={grid}>
-        <Box title="Toplam Kazanılan Tutar" value={`${tahminiKazanc} TL`} icon="💎" />
-        <Box title="Tamamlanan Toplam Ders" value={`${stats.completedLessons} Saat`} />
-        <Box title="Mevcut Saatlik Ücret" value={`${profile?.saatlik_ucret || 0} TL`} />
+        <Box title="Toplam Kazanılan Tutar" value={`${tahminiKazanc} TL`} icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>} color="#f0fdf4" textColor="#16a34a" />
+        <Box title="Tamamlanan Toplam Ders" value={`${stats.completedLessons} Saat`} icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>} />
+        <Box title="Mevcut Saatlik Ücret" value={`${profile?.saatlik_ucret || 0} TL`} icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>} />
       </div>
     </div>
   );
@@ -1072,15 +1152,16 @@ function Earnings({ profile, stats }: any) {
 function Settings({ profile, stats, userId, onProfileUpdate }: any) {
   const localInputStyle = { 
     width: "100%", 
-    padding: '12px', 
-    border: "1px solid #e2e8f0", 
-    borderRadius: '10px', 
+    padding: '14px 16px', 
+    border: "1px solid #cbd5e1", 
+    borderRadius: '12px', 
     outline: "none", 
-    fontSize: '14px', 
+    fontSize: '15px', 
     color: '#0f172a', 
+    background: '#f8fafc',
     boxSizing: 'border-box' as const,
     transition: 'all 0.2s',
-    marginTop: '4px'
+    marginTop: '6px'
   };
 
   const [name, setName] = useState(profile?.tam_ad || "");
@@ -1093,7 +1174,6 @@ function Settings({ profile, stats, userId, onProfileUpdate }: any) {
   const [metodoloji, setMetodoloji] = useState(profile?.metodoloji || "");
   const [videoUrl, setVideoUrl] = useState(profile?.video_url || "");
   
-  // 🚀 Geliştirilmiş Amaç ve Odak Alanları Eyaletleri
   const [amac, setAmac] = useState(profile?.amac || "");
   const [odak, setOdak] = useState(profile?.odak || "");
   const [seviye, setSeviye] = useState(profile?.seviye || "");
@@ -1195,16 +1275,19 @@ function Settings({ profile, stats, userId, onProfileUpdate }: any) {
 
   return (
     <div>
-      <h1 style={{ fontSize: 28, fontWeight: 800, marginTop: 0, marginRight: 0, marginBottom: 24, marginLeft: 0, letterSpacing: '-0.75px' }}>⚙️ Ayarlar</h1>
-      <div style={cardStyle}>
-        <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', marginTop: 0, marginRight: 0, marginBottom: 20, marginLeft: 0 }}>👤 Profil Ayarları</h3>
+      <h1 style={{ fontSize: 32, fontWeight: 900, marginTop: 0, marginBottom: 32, letterSpacing: '-1px', color: '#0f172a' }}>Ayarlar</h1>
+      <div style={{ background: 'white', padding: '32px', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.05)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', margin: 0 }}>Profil Bilgileri</h3>
+        </div>
         
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           
-          <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px dashed #cbd5e1', display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '16px', border: '1px dashed #cbd5e1', display: 'flex', alignItems: 'center', gap: '24px' }}>
             <div style={{
-              width: '70px',
-              height: '70px',
+              width: '80px',
+              height: '80px',
               borderRadius: '50%',
               background: '#e2e8f0',
               backgroundImage: avatarUrl ? `url(${avatarUrl})` : 'none',
@@ -1213,30 +1296,29 @@ function Settings({ profile, stats, userId, onProfileUpdate }: any) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '24px',
-              color: '#64748b',
-              border: '2px solid white',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+              color: '#94a3b8',
+              border: '4px solid white',
+              boxShadow: '0 4px 10px rgba(0,0,0,0.05)'
             }}>
-              {!avatarUrl && '📷'}
+              {!avatarUrl && <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>}
             </div>
             <div>
-              <label style={{ ...labelStyle, marginBottom: '4px' }}>Profil Fotoğrafı</label>
-              <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#64748b' }}>JPEG veya PNG formatında profesyonel bir fotoğraf yükleyin.</p>
+              <label style={{ ...labelStyle, marginBottom: '6px' }}>Profil Fotoğrafı</label>
+              <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#64748b' }}>JPEG veya PNG formatında profesyonel bir fotoğraf yükleyin.</p>
               <input 
                 type="file" 
                 accept="image/*" 
                 onChange={handleAvatarUpload} 
                 disabled={uploading} 
-                style={{ fontSize: '13px', color: '#475569' }}
+                style={{ fontSize: '14px', color: '#475569', cursor: 'pointer' }}
               />
-              {uploading && <span style={{ fontSize: '12px', color: '#2563eb', marginLeft: '10px', fontWeight: 600 }}>Yükleniyor...</span>}
+              {uploading && <span style={{ fontSize: '13px', color: '#4f46e5', marginLeft: '12px', fontWeight: 700 }}>Yükleniyor...</span>}
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
               <div>
                 <label style={labelStyle}>Ad Soyad</label>
                 <input value={name} onChange={(e) => setName(e.target.value)} style={localInputStyle} />
@@ -1247,94 +1329,94 @@ function Settings({ profile, stats, userId, onProfileUpdate }: any) {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '24px' }}>
               <div>
-                <label style={labelStyle}>📍 Konum (Şehir, Ülke)</label>
+                <label style={labelStyle}>Konum (Şehir, Ülke)</label>
                 <input value={konum} onChange={(e) => setKonum(e.target.value)} placeholder="Örn: Ankara, Türkiye" style={localInputStyle} />
               </div>
               <div>
-                <label style={labelStyle}>🎓 Eğitim / Akademik Ünvan</label>
+                <label style={labelStyle}>Eğitim / Akademik Ünvan</label>
                 <input value={egitim} onChange={(e) => setEgitim(e.target.value)} placeholder="Örn: Gazi Üniversitesi" style={localInputStyle} />
               </div>
               <div>
-                <label style={labelStyle}>🗣️ Konuştuğu Diller</label>
+                <label style={labelStyle}>Konuştuğu Diller</label>
                 <input value={diller} onChange={(e) => setDiller(e.target.value)} placeholder="Örn: Türkçe (Ana Dil), İngilizce (B2)" style={localInputStyle} />
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
               <div>
                 <label style={labelStyle}>Saatlik Ücret (TL)</label>
                 <input value={price} type="number" onChange={(e) => setPrice(Number(e.target.value))} style={localInputStyle} />
               </div>
-              {/* 🚀 DEĞİŞİKLİK: Pembe Kutu kaldırıldı, yerine Toplam Ders Bilgi Kutusu konuldu */}
-              <div style={{ background: '#f8fafc', padding: '10px 16px', borderRadius: '10px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <label style={{ ...labelStyle, marginBottom: '2px', color: '#64748b' }}>🏆 Toplam Verdiğiniz Ders</label>
-                <div style={{ fontSize: '20px', fontWeight: 800, color: '#16a34a' }}>
+              <div style={{ background: '#f8fafc', padding: '16px 20px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <label style={{ ...labelStyle, marginBottom: '4px', color: '#64748b' }}>Toplam Verdiğiniz Ders</label>
+                <div style={{ fontSize: '24px', fontWeight: 900, color: '#16a34a' }}>
                   {stats?.completedLessons || 0} Ders
                 </div>
-                <span style={{ fontSize: '11px', color: '#94a3b8' }}>Supabase'deki "Tamamlanan" derslerinizden otomatik hesaplanır.</span>
+                <span style={{ fontSize: '12px', color: '#94a3b8', marginTop: 4 }}>Sistemdeki "Tamamlanan" derslerinizden otomatik hesaplanır.</span>
               </div>
             </div>
 
-            {/* Sınırsız Alan Tanımlama Çözümü */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', background: '#f8fafc', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
               <div>
-                <label style={labelStyle}>🎯 Hedeflenen Amaç & Uzmanlıklar</label>
+                <label style={labelStyle}>Hedeflenen Amaç & Uzmanlıklar</label>
                 <input 
                   value={amac} 
                   onChange={(e) => setAmac(e.target.value)} 
-                  placeholder="Örn: Günlük Konuşma, İş Türkçesi, Diksiyon, Dilbilgisi" 
-                  style={localInputStyle} 
+                  placeholder="Örn: Günlük Konuşma, İş Türkçesi" 
+                  style={{...localInputStyle, background: 'white'}} 
                 />
-                <span style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', display: 'block' }}>
-                  Aralarına virgül koyarak dilediğiniz kadar uzmanlık ekleyebilirsiniz.
+                <span style={{ fontSize: '12px', color: '#64748b', marginTop: '6px', display: 'block' }}>
+                  Aralarına virgül koyarak yazınız.
                 </span>
               </div>
               <div>
-                <label style={labelStyle}>⭐ Ders Odak Noktaları</label>
+                <label style={labelStyle}>Ders Odak Noktaları</label>
                 <input 
                   value={odak} 
                   onChange={(e) => setOdak(e.target.value)} 
-                  placeholder="Örn: Yeni Başlayanlar, Çocuklar, İleri Seviye (C1)" 
-                  style={localInputStyle} 
+                  placeholder="Örn: Yeni Başlayanlar, Çocuklar" 
+                  style={{...localInputStyle, background: 'white'}} 
                 />
-                <span style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', display: 'block' }}>
-                  Aralarına virgül koyarak dilediğiniz kadar odak alanı belirtebilirsiniz.
+                <span style={{ fontSize: '12px', color: '#64748b', marginTop: '6px', display: 'block' }}>
+                  Aralarına virgül koyarak yazınız.
                 </span>
               </div>
             </div>
 
             <div>
-              <label style={labelStyle}>🎬 Tanıtım Videosu (YouTube Linki)</label>
+              <label style={labelStyle}>Tanıtım Videosu (YouTube Linki)</label>
               <input 
                 value={videoUrl} 
                 onChange={(e) => setVideoUrl(e.target.value)} 
                 placeholder="Örn: https://www.youtube.com/watch?v=dQw4w9WgXcQ" 
                 style={localInputStyle} 
               />
-              <span style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', display: 'block' }}>
-                Öğrencilerin sesinizi ve hitabetinizi duyabilmesi için profesyonel bir YouTube tanıtım video linki ekleyin.
-              </span>
             </div>
 
             <div>
-              <label style={labelStyle}>📝 Hakkımda (Biyografi)</label>
-              <textarea value={bio} onChange={(e) => setBio(e.target.value)} style={{ ...localInputStyle, height: 100, resize: 'vertical' }} />
+              <label style={labelStyle}>Hakkımda (Biyografi)</label>
+              <textarea value={bio} onChange={(e) => setBio(e.target.value)} style={{ ...localInputStyle, height: 120, resize: 'vertical' }} />
             </div>
 
             <div>
-              <label style={labelStyle}>🎯 Öğretim Yaklaşımı & Metodoloji</label>
-              <textarea value={metodoloji} onChange={(e) => setMetodoloji(e.target.value)} placeholder="Derslerinizi hangi yaklaşımlarla ve materyallerle işliyorsunuz?" style={{ ...localInputStyle, height: 100, resize: 'vertical' }} />
+              <label style={labelStyle}>Öğretim Yaklaşımı & Metodoloji</label>
+              <textarea value={metodoloji} onChange={(e) => setMetodoloji(e.target.value)} placeholder="Derslerinizi hangi yaklaşımlarla işliyorsunuz?" style={{ ...localInputStyle, height: 120, resize: 'vertical' }} />
             </div>
           </div>
         </div>
 
         <button onClick={handleSave} disabled={saving} style={{
-          marginTop: 28, width: "100%", padding: 14, borderRadius: 10, border: "none",
-          background: saving ? "#94a3b8" : "#2563eb", color: "white", fontWeight: 600, fontSize: 15, cursor: saving ? "default" : "pointer", transition: 'all 0.2s'
+          marginTop: 40, width: "100%", padding: 16, borderRadius: 12, border: "none",
+          background: saving ? "#94a3b8" : "#4f46e5", color: "white", fontWeight: 700, fontSize: 16, cursor: saving ? "default" : "pointer", transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
         }}>
-          {saving ? "Güncelleniyor..." : "Değişiklikleri Kaydet"}
+          {saving ? "Kaydediliyor..." : (
+            <>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Değişiklikleri Kaydet
+            </>
+          )}
         </button>
       </div>
     </div>
@@ -1347,23 +1429,23 @@ function Box({ title, value, icon, color, textColor }: any) {
     <div style={{
       background: color || 'white',
       padding: '24px',
-      borderRadius: '16px',
+      borderRadius: '20px',
       border: color ? 'none' : '1px solid #e2e8f0',
-      boxShadow: color ? 'none' : '0 1px 3px 0 rgb(0 0 0 / 0.05)',
+      boxShadow: color ? 'none' : '0 4px 6px -1px rgb(0 0 0 / 0.05)',
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center'
     }}>
       <div>
-        <div style={{ fontSize: '13px', fontWeight: 600, color: textColor || '#64748b', marginBottom: '6px' }}>{title}</div>
-        <div style={{ fontSize: '24px', fontWeight: 800, color: textColor || '#0f172a', letterSpacing: '-0.5px' }}>{value}</div>
+        <div style={{ fontSize: '14px', fontWeight: 600, color: textColor || '#64748b', marginBottom: '8px' }}>{title}</div>
+        <div style={{ fontSize: '28px', fontWeight: 900, color: textColor || '#0f172a', letterSpacing: '-0.5px' }}>{value}</div>
       </div>
-      {icon && <div style={{ fontSize: '24px', opacity: 0.8 }}>{icon}</div>}
+      {icon && <div style={{ opacity: 0.9 }}>{icon}</div>}
     </div>
   );
 }
 
-const grid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' };
-const cardStyle = { background: 'white', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' };
-const cardTitleStyle = { fontSize: '16px', fontWeight: 700, color: '#0f172a', marginTop: 0, marginRight: 0, marginBottom: 16, marginLeft: 0 };
-const labelStyle = { fontSize: '13px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '8px' };
+const grid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '24px' };
+const cardStyle = { background: 'white', padding: '32px', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.05)' };
+const cardTitleStyle = { fontSize: '18px', fontWeight: 800, color: '#0f172a', margin: 0 };
+const labelStyle = { fontSize: '14px', fontWeight: 700, color: '#0f172a', display: 'block' };

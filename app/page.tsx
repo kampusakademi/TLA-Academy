@@ -105,6 +105,127 @@ function CurrencyToggle() {
 }
 
 // ==============================================================================
+// ÖĞRENCİ YORUMLARI (TESTIMONIAL) SLIDER BİLEŞENİ
+// ==============================================================================
+const testimonials = [
+  {
+    id: 1,
+    quote: "Platform ile kendime güvenim geldi ve şunu fark ettim; bunu gerçekten başarabilirim.",
+    quoteEn: "With this platform, I gained confidence and realized: I can actually do this.",
+    image: "https://images.unsplash.com/photo-1548142813-c348350df52b?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80"
+  },
+  {
+    id: 2,
+    quote: "Eğitmenler gerçekten çok profesyonel. Sadece 3 ayda Türkçe konuşma pratiğimi inanılmaz geliştirdim.",
+    quoteEn: "The tutors are incredibly professional. I improved my Turkish speaking skills in just 3 months.",
+    image: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80"
+  },
+  {
+    id: 3,
+    quote: "Kendi hızımda, esnek saatlerle çalışabilmek harika. Kesinlikle herkese tavsiye ediyorum.",
+    quoteEn: "Being able to study at my own pace with flexible hours is amazing. Highly recommended.",
+    image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80"
+  }
+];
+
+function TestimonialSlider({ isEn }: { isEn: boolean }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  const nextSlide = () => {
+    setCurrentIndex((prev) => (prev === testimonials.length - 1 ? 0 : prev + 1));
+  };
+
+  const prevSlide = () => {
+    setCurrentIndex((prev) => (prev === 0 ? testimonials.length - 1 : prev - 1));
+  };
+
+  const current = testimonials[currentIndex];
+
+  return (
+    <section style={{ padding: '100px 8%', backgroundColor: '#ffffff', textAlign: 'center' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        
+        {/* Üst Başlıklar */}
+        <h2 style={{ fontSize: '3rem', fontWeight: 900, color: '#0f172a', letterSpacing: '-1.5px', marginBottom: '16px' }}>
+          {isEn ? "Growth begins with the right tutor" : "Gelişim, doğru öğretmen seçimiyle başlar"}
+        </h2>
+        <p style={{ color: '#475569', fontSize: '1.1rem', fontWeight: 500, marginBottom: '60px' }}>
+          {isEn 
+            ? "Thousands of students. Expert tutors. Personalized (and proven) growth." 
+            : "Binlerce öğrenci. Alanında uzman eğitmenler. Kişiye özel (ve ispatlanmış) gelişim."}
+        </p>
+
+        {/* İçerik ve Oklar */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '20px', flexWrap: 'wrap' }}>
+          
+          {/* Sol Ok */}
+          <button onClick={prevSlide} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0f172a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+
+          <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', gap: '60px', flexWrap: 'wrap' }}>
+            
+            {/* Fotoğraf ve Üst Üste Binme Efekti (Staggered Effect) */}
+            <div style={{ position: 'relative', width: '320px', height: '420px', flexShrink: 0 }}>
+              {/* En arka kutu */}
+              <div style={{ position: 'absolute', left: '-40px', top: '40px', width: '100%', height: '100%', backgroundColor: '#f1f5f9', borderRadius: '24px' }}></div>
+              {/* Orta kutu */}
+              <div style={{ position: 'absolute', left: '-20px', top: '20px', width: '100%', height: '100%', backgroundColor: '#e2e8f0', borderRadius: '24px' }}></div>
+              {/* Aktif Resim */}
+              <img 
+                key={current.image}
+                src={current.image} 
+                alt="Student" 
+                style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'cover', borderRadius: '24px', zIndex: 10, boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', animation: 'fadeIn 0.5s ease' }} 
+              />
+            </div>
+
+            {/* Alıntı ve Yazı */}
+            <div style={{ maxWidth: '400px', textAlign: 'left', animation: 'fadeIn 0.5s ease' }} key={current.id}>
+              <h3 style={{ fontSize: '2rem', fontWeight: 800, color: '#0f172a', lineHeight: 1.4, letterSpacing: '-0.5px', marginBottom: '24px' }}>
+                "{isEn ? current.quoteEn : current.quote}"
+              </h3>
+              
+              <p style={{ color: '#64748b', fontSize: '1rem', fontWeight: 600, margin: 0 }}>
+                {isEn ? "Platform Student" : "Platform öğrencisi"}
+              </p>
+              
+              {/* Noktalar (Pagination) */}
+              <div style={{ display: 'flex', gap: '8px', marginTop: '32px' }}>
+                {testimonials.map((_, i) => (
+                  <button 
+                    key={i} 
+                    onClick={() => setCurrentIndex(i)}
+                    style={{ 
+                      width: i === currentIndex ? '24px' : '8px', 
+                      height: '8px', 
+                      borderRadius: '4px', 
+                      backgroundColor: i === currentIndex ? '#f43f5e' : '#cbd5e1', 
+                      border: 'none', 
+                      padding: 0, 
+                      cursor: 'pointer',
+                      transition: 'all 0.3s' 
+                    }} 
+                  />
+                ))}
+              </div>
+            </div>
+
+          </div>
+
+          {/* Sağ Ok */}
+          <button onClick={nextSlide} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0f172a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
+
+        </div>
+      </div>
+      <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }`}</style>
+    </section>
+  );
+}
+
+// ==============================================================================
 // ANA SAYFA BİLEŞENİ
 // ==============================================================================
 export default function HomePage() {
@@ -326,7 +447,6 @@ export default function HomePage() {
 
         <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
           
-          {/* YENİ: DİL VE PARA BİRİMİ YANYANA */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <LanguageToggle />
             <CurrencyToggle />
@@ -417,23 +537,27 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* SAĞ GÖRSEL ALANI */}
-        <div style={{ flex: '1 1 350px', display: 'flex', justifyContent: 'center', position: 'relative', zIndex: 10 }}>
+        {/* SAĞ GÖRSEL ALANI - 🚀 BURAYA 3'LÜ KATMAN EFEKTİ GELDİ */}
+        <div style={{ flex: '1 1 350px', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', zIndex: 10 }}>
           <div style={{ 
             position: 'relative', 
-            width: '150%', 
-            maxWidth: '500px', 
-            height: '300px', 
-            backgroundColor: '#ffffff', 
-            borderRadius: '10px', 
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-            overflow: 'hidden',
-            border: '0px solid #ffffff' 
+            width: '100%', 
+            maxWidth: '480px', 
+            height: '320px', 
+            marginLeft: '30px', // Sol taraftaki katmanların taşması için yer
+            marginBottom: '30px' // Alt taraftaki katmanlar için yer
           }}>
+            {/* En arka kutu (Yarı saydam beyaz, cam efekti) */}
+            <div style={{ position: 'absolute', left: '-30px', top: '30px', width: '100%', height: '100%', backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: '24px', backdropFilter: 'blur(4px)' }}></div>
+            
+            {/* Orta kutu (Biraz daha belirgin yarı saydam beyaz) */}
+            <div style={{ position: 'absolute', left: '-15px', top: '15px', width: '100%', height: '100%', backgroundColor: 'rgba(255, 255, 255, 0.2)', borderRadius: '24px', backdropFilter: 'blur(4px)' }}></div>
+            
+            {/* Aktif Resim */}
             <img 
               src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
               alt="Online Language Learning"
-              style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }}
+              style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'cover', borderRadius: '24px', zIndex: 10, boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)' }}
             />
           </div>
         </div>
@@ -532,6 +656,9 @@ export default function HomePage() {
         </h3>
       </div>
 
+      {/* YENİ EKLENEN ÖĞRENCİ YORUMLARI KAYDIRICISI (TESTIMONIAL SLIDER) */}
+      <TestimonialSlider isEn={isEn} />
+
       {/* 4. "ÖĞRETMEN OL" AFİŞİ */}
       <section style={{ padding: '40px 8% 80px 8%', backgroundColor: '#ffffff' }}>
         <div style={{ 
@@ -562,7 +689,7 @@ export default function HomePage() {
             <p style={{ fontSize: '1.15rem', color: '#0f172a', marginBottom: '32px', lineHeight: 1.6, fontWeight: 500, opacity: 0.9 }}>
               {isEn 
                 ? "Earn money sharing your expert knowledge with students. Sign up and start tutoring online." 
-                : "Uzmanlık alanını öğrencilerle paylaşarak para kazan. Platformumuza kaydol ve internet üzerinden dersler vermeye başla."}
+                : "Uzmanlığınızı öğrencilerle paylaşın, bilgi birikiminizi kazanca dönüştürün. Platformumuza katılarak online ders vermeye başlayın."}
             </p>
             
             <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 40px 0', display: 'flex', flexDirection: 'column', gap: '16px' }}>
