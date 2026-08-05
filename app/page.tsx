@@ -5,11 +5,115 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import LanguageToggle from '@/app/components/LanguageToggle';
 import { useTranslation } from '@/lib/useTranslation';
+// 1. ADIMDA OLUŞTURDUĞUMUZ ALTYAPIYI İÇERİ AKTARIYORUZ:
+import { useCurrency, currencies, CurrencyCode } from '@/lib/CurrencyContext';
 
+// ==============================================================================
+// PARA BİRİMİ SEÇİM MENÜSÜ (DROPDOWN) COMPONENT'İ
+// ==============================================================================
+function CurrencyToggle() {
+    const { selectedCurrency, setSelectedCurrency } = useCurrency();
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+        <div style={{ position: 'relative', display: 'inline-block' }}>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 14px',
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    color: '#1e1b4b',
+                    fontWeight: 700,
+                    fontSize: '0.9rem',
+                    transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.borderColor = '#c7d2fe'}
+                onMouseLeave={(e) => e.currentTarget.style.borderColor = '#e2e8f0'}
+            >
+                <span style={{ fontSize: '1.1rem', color: '#4f46e5' }}>
+                    {currencies[selectedCurrency].symbol}
+                </span>
+                {currencies[selectedCurrency].name}
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ transition: 'transform 0.2s', transform: isOpen ? 'rotate(180deg)' : 'rotate(0)' }}><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+
+            {isOpen && (
+                <>
+                    {/* Arka plan kapatma katmanı */}
+                    <div onClick={() => setIsOpen(false)} style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 998 }} />
+                    
+                    <div style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 8px)',
+                        right: 0,
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '12px',
+                        boxShadow: '0 10px 25px rgba(0,0,0,0.08)',
+                        zIndex: 999,
+                        minWidth: '120px',
+                        padding: '6px',
+                        overflow: 'hidden'
+                    }}>
+                        {Object.keys(currencies).map((code) => {
+                            const currency = currencies[code as CurrencyCode];
+                            const isSelected = selectedCurrency === code;
+                            return (
+                                <button
+                                    key={code}
+                                    onClick={() => {
+                                        setSelectedCurrency(code as CurrencyCode);
+                                        setIsOpen(false);
+                                    }}
+                                    style={{
+                                        display: 'flex',
+                                        width: '100%',
+                                        alignItems: 'center',
+                                        gap: '10px',
+                                        padding: '10px 12px',
+                                        border: 'none',
+                                        backgroundColor: isSelected ? '#e0e7ff' : 'transparent',
+                                        color: isSelected ? '#4f46e5' : '#475569',
+                                        borderRadius: '8px',
+                                        cursor: 'pointer',
+                                        fontWeight: isSelected ? 800 : 600,
+                                        fontSize: '0.85rem',
+                                        textAlign: 'left',
+                                        transition: 'background 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => !isSelected && (e.currentTarget.style.backgroundColor = '#f1f5f9')}
+                                    onMouseLeave={(e) => !isSelected && (e.currentTarget.style.backgroundColor = 'transparent')}
+                                >
+                                    <span style={{ fontSize: '1.2rem', width: '20px', textAlign: 'center', color: isSelected ? '#4f46e5' : '#94a3b8' }}>
+                                        {currency.symbol}
+                                    </span>
+                                    {currency.name}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </>
+            )}
+        </div>
+    );
+}
+
+// ==============================================================================
+// ANA SAYFA BİLEŞENİ
+// ==============================================================================
 export default function HomePage() {
   const router = useRouter();
   const { t } = useTranslation();
   const [teachers, setTeachers] = useState<any[]>([]);
+  
+  // DİNAMİK PARA BİRİMİ FONKSİYONUNU ÇEKİYORUZ
+  const { formatPrice } = useCurrency();
   
   // Arama State'i
   const [searchTerm, setSearchTerm] = useState('');
@@ -221,7 +325,12 @@ export default function HomePage() {
         </div>
 
         <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
-          <LanguageToggle />
+          
+          {/* YENİ: DİL VE PARA BİRİMİ YANYANA */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <LanguageToggle />
+            <CurrencyToggle />
+          </div>
 
           <span onClick={handleSearch} style={{ cursor: 'pointer', fontWeight: 600, color: '#475569', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#4f46e5'} onMouseLeave={(e) => e.currentTarget.style.color = '#475569'}>
             {t.nav.explore}
@@ -243,7 +352,7 @@ export default function HomePage() {
         </div>
       </nav>
 
-      {/* 2. HERO SECTION - RESİM VE DÜZEN AYNEN KORUNDU */}
+      {/* 2. HERO SECTION */}
       <header style={{ 
         padding: '60px 8%', 
         backgroundColor: '#4f46e5', 
@@ -269,7 +378,7 @@ export default function HomePage() {
           
           <div>
             <button 
-              onClick={() => router.push('/egitmen-bul')}
+              onClick={() => router.push('/akilli-eslesme')}
               style={{ 
                 padding: '16px 36px', 
                 backgroundColor: '#121117', 
@@ -308,13 +417,13 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* SAĞ GÖRSEL ALANI - SENİN DÜZENLEDİĞİN GÖRSEL SABİT */}
+        {/* SAĞ GÖRSEL ALANI */}
         <div style={{ flex: '1 1 350px', display: 'flex', justifyContent: 'center', position: 'relative', zIndex: 10 }}>
           <div style={{ 
             position: 'relative', 
             width: '150%', 
             maxWidth: '500px', 
-            height: '400px', 
+            height: '300px', 
             backgroundColor: '#ffffff', 
             borderRadius: '10px', 
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
@@ -330,7 +439,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* 3. NASIL ÇALIŞIR BÖLÜMÜ - RESİMLER VE DÜZEN AYNEN KORUNDU */}
+      {/* 3. NASIL ÇALIŞIR BÖLÜMÜ */}
       <section style={{ padding: '100px 8% 60px 8%', backgroundColor: '#ffffff' }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
           
@@ -340,7 +449,7 @@ export default function HomePage() {
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
             
-            {/* KART 1: Eğitmen Bul (Senin seçtiğin resim) */}
+            {/* KART 1: Eğitmen Bul */}
             <div style={{ display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', overflow: 'hidden' }}>
               <div style={{ padding: '40px 32px 32px 32px', flex: 1 }}>
                 <div style={{ width: '40px', height: '40px', backgroundColor: '#a7f3d0', color: '#065f46', fontSize: '1.25rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '24px', borderRadius: '6px' }}>
@@ -357,14 +466,14 @@ export default function HomePage() {
                  <div style={{ width: '60%', height: '220px', borderRadius: '12px', overflow: 'hidden', border: '2px solid #e2e8f0', boxShadow: '0 2px 20px rgba(0,0,0,0.05)' }}>
                     <img 
                       src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" 
-                      alt="Find a Tutor" 
+                      alt="Find a friendly tutor" 
                       style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }} 
                     />
                  </div>
               </div>
             </div>
 
-            {/* KART 2: Ders Ayırt (Senin seçtiğin resim) */}
+            {/* KART 2: Ders Ayırt */}
             <div style={{ display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', overflow: 'hidden' }}>
               <div style={{ padding: '40px 32px 32px 32px', flex: 1 }}>
                 <div style={{ width: '40px', height: '40px', backgroundColor: '#fde68a', color: '#92400e', fontSize: '1.25rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '24px', borderRadius: '6px' }}>
@@ -381,14 +490,14 @@ export default function HomePage() {
                  <div style={{ width: '60%', height: '220px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
                     <img 
                       src="https://images.unsplash.com/photo-1529070538774-1843cb3265df?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" 
-                      alt="Book a Lesson" 
+                      alt="Book your language lesson" 
                       style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }} 
                     />
                  </div>
               </div>
             </div>
 
-            {/* KART 3: Öğrenmeye Başla (Senin seçtiğin resim) */}
+            {/* KART 3: Öğrenmeye Başla */}
             <div style={{ display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', overflow: 'hidden' }}>
               <div style={{ padding: '40px 32px 32px 32px', flex: 1 }}>
                 <div style={{ width: '40px', height: '40px', backgroundColor: '#bfdbfe', color: '#1e40af', fontSize: '1.25rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '24px', borderRadius: '6px' }}>
@@ -416,14 +525,14 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* KURUMSAL ŞERİT */}
+      {/* GENİŞLETİLMİŞ VE FERAH KURUMSAL ŞERİT */}
       <div style={{ backgroundColor: '#4f46e5', padding: '120px 8%', textAlign: 'center', margin: '40px 0', boxShadow: '0 4px 20px rgba(79, 70, 229, 0.2)' }}>
         <h3 style={{ color: '#ffffff', fontSize: '3rem', fontWeight: 800, margin: 0, letterSpacing: '-0.5px', lineHeight: 1.4 }}>
           {isEn ? "We work hard to ensure you learn Turkish in the best way possible." : "En iyi şekilde Türkçe öğrenebilmeniz için çalışıyoruz."}
         </h3>
       </div>
 
-      {/* 4. "ÖĞRETMEN OL" AFİŞİ - RESİM VE DÜZEN AYNEN KORUNDU */}
+      {/* 4. "ÖĞRETMEN OL" AFİŞİ */}
       <section style={{ padding: '40px 8% 80px 8%', backgroundColor: '#ffffff' }}>
         <div style={{ 
           maxWidth: '1400px', 
@@ -436,7 +545,7 @@ export default function HomePage() {
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' 
         }}>
           
-          {/* SOL: EĞİTMEN FOTOĞRAFI (Senin seçtiğin resim) */}
+          {/* SOL: EĞİTMEN FOTOĞRAFI */}
           <div style={{ flex: '1 1 400px', minHeight: '400px', position: 'relative' }}>
             <img 
               src="https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
@@ -500,7 +609,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 🚀 5. EĞİTMENLER GRID - SADECE BU BÖLÜMÜN KART TASARIMI GÜNCELLENDİ (PROFESYONEL SAAS STİLİ) */}
+      {/* 5. EĞİTMENLER GRID (SAAS TASARIM & OTOMATİK FİYAT ÇEVİRİ) */}
       <section id="teachers-section" style={{ padding: '100px 8%', backgroundColor: '#f8fafc', flex: 1, borderTop: '1px solid #f1f5f9' }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '48px' }}>
@@ -532,15 +641,15 @@ export default function HomePage() {
                     style={{ 
                       backgroundColor: '#ffffff', 
                       border: '1px solid #e2e8f0', 
-                      borderRadius: '24px', 
-                      padding: '24px', // padding biraz daraltıldı daha toplu durması için
+                      borderRadius: '20px', 
+                      padding: '24px', 
                       cursor: 'pointer', 
                       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 
                       boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', 
                       display: 'flex', 
                       flexDirection: 'column', 
                       justifyContent: 'space-between',
-                      position: 'relative', // etiketler için
+                      position: 'relative', 
                       gap: '16px'
                     }}
                     onMouseEnter={(e) => { 
@@ -554,54 +663,59 @@ export default function HomePage() {
                       e.currentTarget.style.borderColor = '#e2e8f0'; 
                     }}
                   >
-                    <div>
-                      {/* Üst Bölüm: Profil ve İsim */}
-                      <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginBottom: '16px' }}>
-                        <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      
+                      {/* Üst Kısım: Fotoğraf ve Temel Bilgiler */}
+                      <div style={{ display: 'flex', gap: '16px' }}>
+                        <div style={{ position: 'relative' }}>
                           <img 
-                            src={tItem.avatar_url || `https://ui-avatars.com/api/?name=${tItem.tam_ad || 'Eğitmen'}&background=eef2ff&color=4f46e5&size=64&bold=true`} 
-                            style={{ width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #f8fafc', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} 
+                            src={tItem.avatar_url || `https://ui-avatars.com/api/?name=${tItem.tam_ad || 'Eğitmen'}&background=eef2ff&color=4f46e5&size=80&bold=true`} 
+                            style={{ width: '80px', height: '80px', borderRadius: '16px', objectFit: 'cover', border: '1px solid #f1f5f9' }} 
                           />
                           {online && (
-                            <div style={{ position: 'absolute', bottom: '2px', right: '2px', width: '14px', height: '14px', backgroundColor: '#22c55e', border: '2.5px solid #ffffff', borderRadius: '50%' }}></div>
+                            <div style={{ position: 'absolute', bottom: '-4px', right: '-4px', width: '18px', height: '18px', backgroundColor: '#22c55e', border: '3px solid #ffffff', borderRadius: '50%' }}></div>
                           )}
                         </div>
                         <div style={{ flex: 1 }}>
-                          <h4 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', lineHeight: 1.2 }}>{tItem.tam_ad}</h4>
-                          <p style={{ margin: '2px 0 6px 0', color: '#4f46e5', fontSize: '0.9rem', fontWeight: 600 }}>{tItem.ders_turu || 'Türkçe Eğitmeni'}</p>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <h4 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>{tItem.tam_ad}</h4>
+                          </div>
+                          <p style={{ margin: '4px 0 8px 0', color: '#64748b', fontSize: '0.95rem', fontWeight: 500 }}>{tItem.ders_turu || 'Türkçe Eğitmeni'}</p>
                           
-                          {/* Puan ve Ders Sayısı - Profesyonel Dizilim */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem' }}>
+                          {/* Puan ve Ders Sayısı */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.9rem' }}>
                             {tItem.gercek_puan_ortalamasi ? (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <span style={{ color: '#f59e0b', fontSize: '1rem' }}>★</span>
-                                <span style={{ fontWeight: 800, color: '#121117' }}>{tItem.gercek_puan_ortalamasi}</span>
+                                <span style={{ color: '#f59e0b', fontSize: '1.1rem' }}>★</span>
+                                <span style={{ fontWeight: 800, color: '#0f172a' }}>{tItem.gercek_puan_ortalamasi}</span>
                                 <span style={{ color: '#94a3b8', fontWeight: 500 }}>({tItem.gercek_yorum_sayisi})</span>
                               </div>
                             ) : (
-                              <span style={{ fontWeight: 700, color: '#3b82f6', background: '#eff6ff', padding: '1px 6px', borderRadius: '4px', fontSize: '0.75rem' }}>
-                                {t.teacherCard.newTeacher}
+                              <span style={{ fontWeight: 700, color: '#4f46e5', backgroundColor: '#eef2ff', padding: '2px 8px', borderRadius: '6px', fontSize: '0.75rem' }}>
+                                {t.teacherCard?.newTeacher || 'Yeni Eğitmen'}
                               </span>
                             )}
-                            <div style={{ width: '1px', height: '12px', backgroundColor: '#e2e8f0' }}></div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#16a34a', fontWeight: 700 }}>
-                                <span>🏆</span> 
-                                <span>{tItem.gercek_tamamlanan_ders || 0} Ders</span>
+                            {tItem.gercek_puan_ortalamasi && <div style={{ width: '4px', height: '4px', backgroundColor: '#cbd5e1', borderRadius: '50%' }}></div>}
+                            <div style={{ color: '#475569', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{color: '#94a3b8'}}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                               {tItem.gercek_tamamlanan_ders || 0} Ders
                             </div>
                           </div>
                         </div>
                       </div>
 
-                      {/* Orta Bölüm: Etiketler (SaaS Stili Minimal Etiketler) */}
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '16px', borderTop: '1px solid #f1f5f9', paddingTop: '16px' }}>
+                      {/* Orta Kısım: Tagler (Etiketler) */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                         {tItem.konum && (
-                          <span style={{ padding: '4px 8px', background: '#f1f5f9', color: '#475569', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            📍 {tItem.konum}
+                          <span style={{ padding: '6px 12px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                            {tItem.konum}
                           </span>
                         )}
                         {tItem.egitim && (
-                          <span style={{ padding: '4px 8px', background: '#f1f5f9', color: '#475569', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            📚 {tItem.egitim}
+                          <span style={{ padding: '6px 12px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                            {tItem.egitim}
                           </span>
                         )}
                         {(tItem.amac || tItem.odak || '')
@@ -609,49 +723,51 @@ export default function HomePage() {
                           .filter((item: string) => item.trim() !== '')
                           .slice(0, 2)
                           .map((item: string, i: number) => (
-                            <span key={i} style={{ padding: '4px 8px', background: '#e0e7ff', color: '#3730a3', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              🎯 {item.trim()}
+                            <span key={i} style={{ padding: '6px 12px', backgroundColor: '#eef2ff', border: '1px solid #c7d2fe', color: '#4f46e5', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              {item.trim()}
                             </span>
                           ))}
                       </div>
 
-                      {/* Biyografi - Clamp korundu */}
-                      <p style={{ color: '#475569', lineHeight: 1.5, fontSize: '0.9rem', height: '3em', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', margin: '0' }}>
+                      {/* Biyografi */}
+                      <p style={{ color: '#475569', lineHeight: 1.6, fontSize: '0.95rem', height: '3em', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', margin: 0 }}>
                         {tItem.biyografi || 'Alanında uzman, ana dili Türkçe olan deneyimli eğitmen ile pratik yapmaya hemen başlayın.'}
                       </p>
                     </div>
                     
-                    {/* Alt Bölüm: Fiyat ve Butonlar (Net ayrılmış alan) */}
-                    <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '16px', marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ flexShrink: 0 }}>
-                        <span style={{ fontSize: '1.4rem', fontWeight: 900, color: '#0f172a' }}>{tItem.saatlik_ucret}₺</span>
-                        <span style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: 500 }}> / ders</span>
+                    {/* Alt Kısım: Fiyat ve Butonlar (DİNAMİK FİYAT BURADA) */}
+                    <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '20px', marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <span style={{ fontSize: '1.5rem', fontWeight: 900, color: '#0f172a' }}>
+                            {formatPrice(tItem.saatlik_ucret)}
+                        </span>
+                        <span style={{ color: '#94a3b8', fontSize: '0.9rem', fontWeight: 500 }}> / {t.teacherCard?.perLesson || 'ders'}</span>
                       </div>
-                      <div style={{ display: 'flex', gap: '6px' }}>
+                      <div style={{ display: 'flex', gap: '8px' }}>
                         <button 
                           onClick={(e) => { e.stopPropagation(); router.push(`/teachers/${tItem.user_id || tItem.id}`); }}
-                          style={{ padding: '10px 14px', backgroundColor: '#f8fafc', color: '#0f172a', border: '1px solid #e2e8f0', borderRadius: '8px', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s' }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#edf2f7'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                          style={{ padding: '10px 16px', backgroundColor: '#ffffff', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '10px', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', transition: 'all 0.2s' }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
                         >
-                          {t.teacherCard.profile}
+                          {t.teacherCard?.profile || 'Profil'}
                         </button>
                         <button 
                           onClick={(e) => { e.stopPropagation(); router.push(`/teachers/${tItem.user_id || tItem.id}`); }}
-                          style={{ padding: '10px 14px', backgroundColor: '#4f46e5', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(79, 70, 229, 0.2)', transition: 'all 0.2s' }}
+                          style={{ padding: '10px 20px', backgroundColor: '#4f46e5', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 800, fontSize: '0.9rem', cursor: 'pointer', boxShadow: '0 4px 10px rgba(79, 70, 229, 0.25)', transition: 'all 0.2s' }}
                           onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#4338ca'}
                           onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#4f46e5'}
                         >
-                          {t.teacherCard.bookTrial}
+                          {t.teacherCard?.bookTrial || 'Deneme Dersi'}
                         </button>
                       </div>
                     </div>
 
-                    {/* Öne Çıkan Etiketi - Konumu sadeleştirildi */}
+                    {/* Öne Çıkan Etiketi */}
                     {tItem.one_cikan_etiket && (
-                      <div style={{ position: 'absolute', top: '12px', right: '12px' }}>
-                        <span style={{ padding: '3px 8px', backgroundColor: '#fce7f3', color: '#9d174d', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.5px' }}>
-                          ✨ {tItem.one_cikan_etiket.toUpperCase()}
+                      <div style={{ position: 'absolute', top: '-12px', right: '24px' }}>
+                        <span style={{ padding: '4px 12px', backgroundColor: '#0f172a', color: '#ffffff', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.5px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+                          ✨ {tItem.one_cikan_etiket}
                         </span>
                       </div>
                     )}

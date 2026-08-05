@@ -1,54 +1,179 @@
-// app/components/LanguageToggle.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Language } from '@/lib/dictionary';
 
 export default function LanguageToggle() {
   const [lang, setLang] = useState<Language>('en');
+  const [open, setOpen] = useState(false);
+
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const savedLang = (localStorage.getItem('app_lang') as Language) || 'en';
-    setLang(savedLang);
+    const saved = localStorage.getItem('app_lang') as Language;
+
+    if (saved) {
+      setLang(saved);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(event.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   const changeLanguage = (newLang: Language) => {
-    if (newLang === lang) return;
-    
-    // 1. Hafızaya kaydet
-    localStorage.setItem('app_lang', newLang);
     setLang(newLang);
-    
-    // 2. Tüm siteye anlık sinyal gönder (Sayfa yenilenmeden diğer bileşenler güncellensin)
+    localStorage.setItem('app_lang', newLang);
+
     window.dispatchEvent(new Event('languagechange_event'));
+
+    setOpen(false);
   };
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f1f5f9', borderRadius: '20px', padding: '3px', border: '1px solid #e2e8f0' }}>
+    <div ref={menuRef} style={{ position: 'relative' }}>
+
       <button
-        onClick={() => changeLanguage('en')}
+        onClick={() => setOpen(!open)}
         style={{
-          padding: '6px 12px', borderRadius: '16px', border: 'none', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer',
-          backgroundColor: lang === 'en' ? '#ffffff' : 'transparent',
-          color: lang === 'en' ? '#0f172a' : '#64748b',
-          boxShadow: lang === 'en' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-          transition: 'all 0.2s'
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '8px 14px',
+          borderRadius: '20px',
+          border: '1px solid #e2e8f0',
+          background: '#fff',
+          cursor: 'pointer',
+          fontWeight: 700,
+          fontSize: '0.85rem',
         }}
       >
-        🇬🇧 EN
+
+        {lang === 'en' ? (
+          <>
+            <img
+              src="https://flagcdn.com/w20/gb.png"
+              alt="English"
+              width={20}
+              height={15}
+            />
+            EN
+          </>
+        ) : (
+          <>
+            <img
+              src="https://flagcdn.com/w20/tr.png"
+              alt="Türkçe"
+              width={20}
+              height={15}
+            />
+            TR
+          </>
+        )}
+
+        {/* Sabit merkezde dönen ince ok */}
+        <span
+          style={{
+            width: '5px',
+            height: '5px',
+            borderRight: '1.1px solid #0a0000',
+            borderBottom: '1.1px solid #080101',
+            transform: open
+              ? 'rotate(225deg)'
+              : 'rotate(45deg)',
+            transition: 'transform 0.2s ease',
+            display: 'inline-block',
+            marginLeft: '4px',
+            marginTop: '0px',
+          }}
+        />
+
       </button>
-      <button
-        onClick={() => changeLanguage('tr')}
-        style={{
-          padding: '6px 12px', borderRadius: '16px', border: 'none', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer',
-          backgroundColor: lang === 'tr' ? '#ffffff' : 'transparent',
-          color: lang === 'tr' ? '#0f172a' : '#64748b',
-          boxShadow: lang === 'tr' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-          transition: 'all 0.2s'
-        }}
-      >
-        🇹🇷 TR
-      </button>
+
+
+      {open && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '45px',
+            right: 0,
+            background: '#fff',
+            border: '1px solid #e2e8f0',
+            borderRadius: '10px',
+            padding: '5px',
+            minWidth: '130px',
+            boxShadow: '0 5px 15px rgba(0,0,0,0.15)',
+            zIndex: 999,
+          }}
+        >
+
+          {lang !== 'en' && (
+            <button
+              onClick={() => changeLanguage('en')}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 10px',
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                borderRadius: '8px',
+              }}
+            >
+              <img
+                src="https://flagcdn.com/w20/gb.png"
+                alt="English"
+                width={20}
+                height={15}
+              />
+              English
+            </button>
+          )}
+
+
+          {lang !== 'tr' && (
+            <button
+              onClick={() => changeLanguage('tr')}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 10px',
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                borderRadius: '8px',
+              }}
+            >
+              <img
+                src="https://flagcdn.com/w20/tr.png"
+                alt="Türkçe"
+                width={20}
+                height={15}
+              />
+              Türkçe
+            </button>
+          )}
+
+        </div>
+      )}
+
     </div>
   );
 }
