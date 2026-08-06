@@ -143,10 +143,9 @@ export default function TeachersListPage() {
         </div>
       </nav>
 
-      {/* Ekran genişletildi: 1100px -> 1400px (Yan yana video ve liste sığması için) */}
       <div style={{ maxWidth: '1400px', margin: '30px auto 0', padding: '0 20px' }}>
         
-        {/* ÜST GERİ DÖN BUTONU */}
+        {/* ÜST GERİ DÖN BUTONU (Çift ok sorunu çözüldü) */}
         <div style={{ marginBottom: '20px' }}>
           <button 
             onClick={() => router.back()} 
@@ -154,7 +153,6 @@ export default function TeachersListPage() {
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
             {t.nav.back}
           </button>
         </div>
@@ -189,7 +187,7 @@ export default function TeachersListPage() {
           </div>
         </div>
 
-        {/* 🚀 İKİYE BÖLÜNMÜŞ DÜZEN (Sol: Liste, Sağ: Video) */}
+        {/* İKİYE BÖLÜNMÜŞ DÜZEN */}
         <div style={{ display: 'flex', gap: '32px', alignItems: 'flex-start' }}>
           
           {/* SOL TARAF: MODERN EĞİTMEN LİSTESİ */}
@@ -207,7 +205,7 @@ export default function TeachersListPage() {
                   <div 
                     key={tItem.id} 
                     onClick={() => router.push(`/teachers/${tItem.user_id || tItem.id}`)}
-                    onMouseEnter={() => isDesktop && setHoveredTeacher(tItem)} // 🚀 HOVER OLAYI BURADA YAKALANIYOR
+                    onMouseEnter={() => isDesktop && setHoveredTeacher(tItem)} 
                     style={{ 
                       backgroundColor: '#ffffff', 
                       border: hoveredTeacher?.id === tItem.id ? '2px solid #a5b4fc' : '1px solid #e2e8f0', 
@@ -286,7 +284,7 @@ export default function TeachersListPage() {
                         </div>
                       </div>
 
-                      {/* SaaS Stili Modern Etiketler (Konum, Eğitim, Hedef) */}
+                      {/* SaaS Stili Modern Etiketler */}
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
                         {tItem.konum && (
                           <span style={{ padding: '6px 12px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -382,7 +380,7 @@ export default function TeachersListPage() {
             )}
           </div>
 
-          {/* 🚀 SAĞ TARAF: SABİT VİDEO ÖNİZLEME ALANI (Sadece Masaüstünde) */}
+          {/* 🚀 SAĞ TARAF: AŞAĞI KAYDIRILDIĞINDA EKRANDA SABİT KALAN (STICKY) VİDEO ALANI */}
           {isDesktop && (
             <div style={{ width: '420px', flexShrink: 0, position: 'sticky', top: '100px' }}>
               <div style={{ 
@@ -395,7 +393,7 @@ export default function TeachersListPage() {
                 flexDirection: 'column',
                 gap: '16px'
               }}>
-                {/* Kamera ikonu kaldırıldı, temiz başlık bırakıldı */}
+                {/* İkon Kaldırıldı, Temiz Başlık Bırakıldı */}
                 <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
                   Eğitmen Önizlemesi
                 </h3>
@@ -462,4 +460,3 @@ export default function TeachersListPage() {
     </div>
   );
 }
-
