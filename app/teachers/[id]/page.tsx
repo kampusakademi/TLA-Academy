@@ -17,6 +17,10 @@ export default function TeacherProfilePage() {
   const [tamamlananDersSayisi, setTamamlananDersSayisi] = useState(0);
   const [hasPreviousLesson, setHasPreviousLesson] = useState(false);
 
+  // 🚀 FAVORİ (KAYDETME) STATE'LERİ
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [favLoading, setFavLoading] = useState(false);
+
   const [showMsgModal, setShowMsgModal] = useState(false);
   const [msgText, setMsgText] = useState('');
   const [sendingMsg, setSendingMsg] = useState(false);
@@ -75,6 +79,18 @@ export default function TeacherProfilePage() {
         setTeacher(teacherData);
         const targetUserId = teacherData.user_id || teacherData.id;
 
+        // 🚀 KULLANICI GİRİŞ YAPMIŞSA FAVORİ DURUMUNU KONTROL ET
+        if (user) {
+          const { data: favData } = await supabase
+            .from('favoriler')
+            .select('id')
+            .eq('ogrenci_id', user.id)
+            .eq('egitmen_id', targetUserId)
+            .maybeSingle();
+          
+          if (favData) setIsFavorited(true);
+        }
+
         const { data: tumDerslerData } = await supabase
           .from('dersler')
           .select('durum, ogrenci_id')
@@ -130,6 +146,64 @@ export default function TeacherProfilePage() {
     }
   }
 
+  // 🚀 FAVORİYE EKLE / ÇIKAR VE BİLDİRİM (MESAJ) GÖNDERME FONKSİYONU
+  async function handleFavoriteToggle() {
+    if (!currentUserId) {
+      alert("⚠️ Eğitmenleri favorilerinize eklemek için giriş yapmalısınız.");
+      return;
+    }
+
+    setFavLoading(true);
+    const targetUserId = teacher.user_id || teacher.id;
+
+    try {
+      if (isFavorited) {
+        // Favorilerden Çıkar
+        await supabase
+          .from('favoriler')
+          .delete()
+          .eq('ogrenci_id', currentUserId)
+          .eq('egitmen_id', targetUserId);
+        
+        setIsFavorited(false);
+      } else {
+        // Favorilere Ekle
+        await supabase
+          .from('favoriler')
+          .insert([{ ogrenci_id: currentUserId, egitmen_id: targetUserId }]);
+        
+        setIsFavorited(true);
+
+        // 🚀 ÖĞRETMENE OTOMATİK MESAJ/BİLDİRİM GÖNDER
+        // Öğrencinin adını bulalım
+        const { data: ogrenciData } = await supabase
+          .from('ogrenciler')
+          .select('tam_ad')
+          .eq('user_id', currentUserId)
+          .maybeSingle();
+
+        const ogrenciAdi = ogrenciData?.tam_ad || "Bir öğrenci";
+
+        // Öğretmenin mesaj kutusuna düşecek olan dikkat çekici sistem notu
+        const otomatikMesaj = `📌 Sistem Bildirimi: Merhaba! ${ogrenciAdi} adlı öğrenci profilinizi inceledi ve sizi Favorilerine ekledi. \n\nOna kısa bir "Merhaba, hedeflerinize nasıl yardımcı olabilirim?" mesajı göndererek ilk adımı atabilirsiniz.`;
+
+        await supabase
+          .from('mesajlar')
+          .insert([{
+            gonderen_id: currentUserId, // Öğrenciden gelmiş gibi görünür ki öğretmen direkt cevap yazabilsin
+            alici_id: targetUserId,
+            icerik: otomatikMesaj,
+            okundu: false
+          }]);
+      }
+    } catch (error: any) {
+      alert("Bir hata oluştu: " + error.message);
+    } finally {
+      setFavLoading(false);
+    }
+  }
+
+  // ... (Geri kalan mesaj, randevu, socket kodları aynı)
   useEffect(() => {
     if (showMsgModal && teacher) {
       checkAndLoadChat();
@@ -332,9 +406,12 @@ export default function TeacherProfilePage() {
   const embedVideoUrl = getYouTubeEmbedUrl(teacher?.video_url);
   const isTeacherOnline = isOnline(teacher?.son_gorulme);
 
-  const dillerArray = Array.isArray(teacher?.diller) 
-                      ? teacher.diller 
-                      : (teacher?.diller ? teacher.diller.split(',') : []);
+  let dillerArray: string[] = [];
+  if (teacher?.diller) {
+    const rawData = typeof teacher.diller === 'string' ? teacher.diller : JSON.stringify(teacher.diller);
+    const cleanedData = rawData.replace(/[\[\]"]/g, ''); 
+    dillerArray = cleanedData.split(',').map((d: string) => d.trim()).filter((d: string) => d !== "");
+  }
 
   const gecerliPuanlar = yorumlar.filter(y => Number(y.puan) > 0 && Number(y.puan) <= 5);
   const dinamikOrtalama = gecerliPuanlar.length > 0
@@ -342,7 +419,6 @@ export default function TeacherProfilePage() {
     : (teacher?.ortalama_puan ? Number(teacher.ortalama_puan).toFixed(1) : null);
   const doluYildizSayisi = dinamikOrtalama ? Math.round(Number(dinamikOrtalama)) : 0;
 
-  // Öğrenci Yorumları İçin Dinamik Premium Gradient Renkler
   const avatarGradients = [
     'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)',
     'linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%)',
@@ -367,15 +443,11 @@ export default function TeacherProfilePage() {
         {/* SOL TARAF */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
           
-          {/* Kapak Görselli (Banner) Üst Profil Kartı */}
+          {/* Profil Üst Kart */}
           <div style={{ backgroundColor: '#ffffff', borderRadius: '24px', overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.06)' }}>
-            
-            {/* Soft Gradient Banner */}
             <div style={{ height: '140px', background: 'linear-gradient(135deg, #e0e7ff 0%, #ede9fe 50%, #f3e8ff 100%)' }}></div>
             
             <div style={{ padding: '0 32px 32px 32px', display: 'flex', gap: '28px', alignItems: 'flex-start', marginTop: '-54px' }}>
-              
-              {/* 🚀 PREMIUM: Özel Çerçeveli Yuvarlak Avatar */}
               <div style={{ position: 'relative', flexShrink: 0, padding: '4px', background: 'linear-gradient(135deg, #818cf8 0%, #10b981 100%)', borderRadius: '50%', boxShadow: '0 15px 35px -5px rgba(99, 102, 241, 0.3)' }}>
                 <img 
                   src={teacher?.avatar_url || `https://ui-avatars.com/api/?name=${teacher?.tam_ad || 'Eğitmen'}&background=c7d2fe&color=3730a3&size=140&bold=true`} 
@@ -390,47 +462,21 @@ export default function TeacherProfilePage() {
               <div style={{ flex: 1, paddingTop: '62px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   
-                  {/* İsim, Unvan ve Rozet Alanı */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <h1 style={{ 
-                      fontSize: '2.4rem', 
-                      fontWeight: 900, 
-                      margin: 0, 
-                      color: '#0f172a', 
-                      letterSpacing: '-1px',
-                      lineHeight: 1.1 
-                    }}>
+                    <h1 style={{ fontSize: '2.4rem', fontWeight: 900, margin: 0, color: '#0f172a', letterSpacing: '-1px', lineHeight: 1.1 }}>
                       {teacher?.tam_ad}
                     </h1>
-                    <p style={{ 
-                      margin: 0, 
-                      fontSize: '1.15rem', 
-                      color: '#4f46e5', 
-                      fontWeight: 700,
-                      letterSpacing: '-0.2px'
-                    }}>
+                    <p style={{ margin: 0, fontSize: '1.15rem', color: '#4f46e5', fontWeight: 700, letterSpacing: '-0.2px' }}>
                       {teacher?.ders_turu || 'Türkçe Öğretmeni'}
                     </p>
 
                     <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ 
-                        padding: '8px 16px', 
-                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', 
-                        color: '#ffffff', 
-                        borderRadius: '12px', 
-                        fontSize: '0.9rem', 
-                        fontWeight: 800, 
-                        display: 'inline-flex', 
-                        alignItems: 'center', 
-                        gap: '8px',
-                        boxShadow: '0 4px 10px rgba(16, 185, 129, 0.25)'
-                      }}>
+                      <div style={{ padding: '8px 16px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#ffffff', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 10px rgba(16, 185, 129, 0.25)' }}>
                         <span style={{ fontSize: '1.1rem' }}>🌟</span> {tamamlananDersSayisi} Ders Tamamlandı
                       </div>
                     </div>
                   </div>
                   
-                  {/* Premium Puanlama */}
                   <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                     {dinamikOrtalama ? (
                       <div style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: '16px', border: '1px solid #f1f5f9' }}>
@@ -451,39 +497,33 @@ export default function TeacherProfilePage() {
                   </div>
                 </div>
 
-                {/* 🚀 PREMIUM: İkonlu Şık Rozetler (Konum & Eğitim) */}
                 <div style={{ marginTop: '24px', display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
                   {teacher?.konum && (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px 6px 8px', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', borderRadius: '24px', fontSize: '0.9rem', fontWeight: 600 }}>
-                      <span style={{ width: '28px', height: '28px', background: '#e0e7ff', color: '#4f46e5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem' }}>📍</span> {teacher.konum}
+                      <div style={{ width: '28px', height: '28px', background: '#e0e7ff', color: '#4f46e5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                      </div>
+                      {teacher.konum}
                     </span>
                   )}
                   {teacher?.egitim && (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px 6px 8px', background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', borderRadius: '24px', fontSize: '0.9rem', fontWeight: 600 }}>
-                      <span style={{ width: '28px', height: '28px', background: '#fef3c7', color: '#d97706', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem' }}>📚</span> {teacher.egitim}
+                      <div style={{ width: '28px', height: '28px', background: '#fef3c7', color: '#d97706', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+                      </div>
+                      {teacher.egitim}
                     </span>
                   )}
                 </div>
 
-                {/* Modern Diller Bölümü */}
                 {dillerArray.length > 0 && (
                   <div style={{ marginTop: '20px', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', background: '#f8fafc', padding: '12px 16px', borderRadius: '16px' }}>
                     <strong style={{ fontSize: '0.9rem', color: '#64748b' }}>Konuştuğu Diller:</strong>
                     {dillerArray.map((dil: string, index: number) => {
-                      const temizDil = dil.trim();
-                      const isAnaDil = temizDil.includes('(Ana Dil)');
+                      const isAnaDil = dil.includes('(Ana Dil)');
                       return (
-                        <span key={index} style={{ 
-                          padding: '4px 12px', 
-                          borderRadius: '8px', 
-                          fontSize: '0.85rem', 
-                          fontWeight: isAnaDil ? 700 : 600,
-                          backgroundColor: isAnaDil ? '#eef2ff' : '#ffffff',
-                          color: isAnaDil ? '#4338ca' : '#475569',
-                          border: isAnaDil ? '1px solid #c7d2fe' : '1px solid #cbd5e1',
-                          boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
-                        }}>
-                          {temizDil}
+                        <span key={index} style={{ padding: '4px 12px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: isAnaDil ? 700 : 600, backgroundColor: isAnaDil ? '#eef2ff' : '#ffffff', color: isAnaDil ? '#4338ca' : '#475569', border: isAnaDil ? '1px solid #c7d2fe' : '1px solid #cbd5e1', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                          {dil.replace('(Ana Dil)', '').trim()}
                         </span>
                       );
                     })}
@@ -493,7 +533,6 @@ export default function TeacherProfilePage() {
             </div>
           </div>
 
-          {/* Video Alanı */}
           <div style={{ width: '100%', height: '420px', backgroundColor: '#0f172a', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.1)', position: 'relative' }}>
             {teacher?.video_url ? (
               <iframe src={embedVideoUrl || ''} style={{ width: '100%', height: '100%', border: 'none' }} allowFullScreen />
@@ -505,13 +544,13 @@ export default function TeacherProfilePage() {
             )}
           </div>
 
-          {/* Bilgi Kartları */}
           <div style={{ backgroundColor: '#ffffff', padding: '40px', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', gap: '40px' }}>
             
-            {/* Uzmanlık ve Odak */}
             <div>
               <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '44px', height: '44px', background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>🎯</div>
+                <div style={{ width: '44px', height: '44px', background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0f172a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+                </div>
                 Uzmanlık ve Odak Alanları
               </h2>
               {(teacher?.amac || teacher?.odak) ? (
@@ -530,7 +569,6 @@ export default function TeacherProfilePage() {
 
             <div style={{ height: '1px', background: '#f1f5f9' }}></div>
 
-            {/* Metodoloji */}
             <div>
               <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{ width: '44px', height: '44px', background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>💡</div>
@@ -543,7 +581,6 @@ export default function TeacherProfilePage() {
 
             <div style={{ height: '1px', background: '#f1f5f9' }}></div>
 
-            {/* Biyografi */}
             <div>
               <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{ width: '44px', height: '44px', background: 'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>👤</div>
@@ -556,7 +593,6 @@ export default function TeacherProfilePage() {
 
           </div>
 
-          {/* 🚀 PREMIUM: Öğrenci Yorumları (Renkli Avatarlar) */}
           <div style={{ backgroundColor: '#ffffff', padding: '40px', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.03)', marginBottom: '40px' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', marginBottom: '32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span>Öğrenci Değerlendirmeleri</span>
@@ -569,12 +605,9 @@ export default function TeacherProfilePage() {
                   return (
                     <div key={i} style={{ borderBottom: i !== yorumlar.length -1 ? '1px solid #f1f5f9' : 'none', paddingBottom: i !== yorumlar.length -1 ? '28px' : '0' }}>
                       <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginBottom: '12px' }}>
-                        
-                        {/* Dinamik Renkli Premium Avatar */}
                         <div style={{ width: '52px', height: '52px', background: avatarGradients[gradIdx], color: avatarTextColors[gradIdx], borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.3rem', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
                           {y.ogrenci_adi ? y.ogrenci_adi.charAt(0).toUpperCase() : 'Ö'}
                         </div>
-                        
                         <div>
                           <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.05rem' }}>{y.ogrenci_adi || 'Öğrenci'}</div>
                           <div style={{ color: '#fbbf24', fontSize: '1rem', letterSpacing: '2px', marginTop: '2px' }}>
@@ -602,7 +635,6 @@ export default function TeacherProfilePage() {
               <span style={{ fontSize: '1rem', color: '#64748b', fontWeight: 600, paddingBottom: '4px' }}>/ 50 dk</span>
             </div>
 
-            {/* Takvim Modülü */}
             <div style={{ marginBottom: '28px' }}>
               <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a', marginBottom: '16px' }}>Gün Seçin</h3>
               <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '12px', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
@@ -629,7 +661,6 @@ export default function TeacherProfilePage() {
                 })}
               </div>
 
-              {/* Saatler */}
               <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a', marginBottom: '16px', marginTop: '12px' }}>Saat Seçin</h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', maxHeight: '220px', overflowY: 'auto', paddingRight: '8px' }}>
                 {selectedDate && HOURS.map(hour => {
@@ -657,7 +688,6 @@ export default function TeacherProfilePage() {
               </div>
             </div>
 
-            {/* Gradient Rezervasyon Butonu */}
             <button 
               onClick={handleBooking} 
               disabled={bookingLoading || !selectedHour} 
@@ -684,18 +714,41 @@ export default function TeacherProfilePage() {
               )}
             </button>
 
-            <button 
-              onClick={() => setShowMsgModal(true)}
-              style={{ 
-                width: '100%', padding: '16px', background: '#ffffff', color: '#0f172a', 
-                borderRadius: '16px', border: '1px solid #cbd5e1', fontWeight: 700, cursor: 'pointer', 
-                fontSize: '1rem', transition: 'all 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px' 
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#94a3b8'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
-            >
-              <span style={{ fontSize: '1.2rem' }}>✉️</span> Eğitmene Mesaj Gönder
-            </button>
+            {/* 🚀 FAVORİ (KALP) VE MESAJ BUTONLARI YAN YANA */}
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button 
+                onClick={() => setShowMsgModal(true)}
+                style={{ 
+                  flex: 1, padding: '16px', background: '#ffffff', color: '#0f172a', 
+                  borderRadius: '16px', border: '1px solid #cbd5e1', fontWeight: 700, cursor: 'pointer', 
+                  fontSize: '1rem', transition: 'all 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px' 
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#94a3b8'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+              >
+                <span style={{ fontSize: '1.2rem' }}>✉️</span> Eğitmene Mesaj Gönder
+              </button>
+
+              <button 
+                onClick={handleFavoriteToggle}
+                disabled={favLoading}
+                style={{ 
+                  width: '56px', height: '56px', flexShrink: 0, borderRadius: '16px', 
+                  background: isFavorited ? '#fee2e2' : '#ffffff', 
+                  color: isFavorited ? '#ef4444' : '#64748b', 
+                  border: `1px solid ${isFavorited ? '#fecaca' : '#cbd5e1'}`, 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                  cursor: favLoading ? 'wait' : 'pointer', transition: 'all 0.2s' 
+                }}
+                onMouseEnter={(e) => { if (!isFavorited) { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#94a3b8'; } }}
+                onMouseLeave={(e) => { if (!isFavorited) { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = '#cbd5e1'; } }}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill={isFavorited ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                </svg>
+              </button>
+            </div>
+
             <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem', marginTop: '20px', fontWeight: 500 }}>
               ⚡ Genellikle 1 saat içinde yanıt verir
             </p>
@@ -703,7 +756,6 @@ export default function TeacherProfilePage() {
         </div>
       </div>
 
-      {/* 🚀 PREMIUM: Blur Arka Planlı Mesaj Modalı (Yuvarlak Avatar) */}
       {showMsgModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
           <div style={{ backgroundColor: '#ffffff', borderRadius: '24px', width: '100%', maxWidth: '500px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3)', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '85vh' }}>

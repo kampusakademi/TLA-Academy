@@ -5,11 +5,10 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import LanguageToggle from '@/app/components/LanguageToggle';
 import { useTranslation } from '@/lib/useTranslation';
-// 1. ADIMDA OLUŞTURDUĞUMUZ ALTYAPIYI İÇERİ AKTARIYORUZ:
 import { useCurrency, currencies, CurrencyCode } from '@/lib/CurrencyContext';
 
 // ==============================================================================
-// PARA BİRİMİ SEÇİM MENÜSÜ (DROPDOWN) COMPONENT'İ
+// PARA BİRİMİ SEÇİM MENÜSÜ (MİNİMALİST, TEMİZ SAAS TASARIMI)
 // ==============================================================================
 function CurrencyToggle() {
     const { selectedCurrency, setSelectedCurrency } = useCurrency();
@@ -23,24 +22,22 @@ function CurrencyToggle() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
-                    padding: '8px 14px',
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '10px',
+                    padding: '8px 12px',
+                    backgroundColor: isOpen ? '#f1f5f9' : 'transparent',
+                    border: 'none',
+                    borderRadius: '8px',
                     cursor: 'pointer',
-                    color: '#1e1b4b',
-                    fontWeight: 700,
+                    color: '#334155',
+                    fontWeight: 600,
                     fontSize: '0.9rem',
-                    transition: 'all 0.2s',
+                    transition: 'all 0.2s ease',
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.borderColor = '#c7d2fe'}
-                onMouseLeave={(e) => e.currentTarget.style.borderColor = '#e2e8f0'}
+                onMouseEnter={(e) => !isOpen && (e.currentTarget.style.backgroundColor = '#f8fafc')}
+                onMouseLeave={(e) => !isOpen && (e.currentTarget.style.backgroundColor = 'transparent')}
             >
-                <span style={{ fontSize: '1.1rem', color: '#4f46e5' }}>
-                    {currencies[selectedCurrency].symbol}
-                </span>
-                {currencies[selectedCurrency].name}
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ transition: 'transform 0.2s', transform: isOpen ? 'rotate(180deg)' : 'rotate(0)' }}><path d="m6 9 6 6 6-6"/></svg>
+                <span style={{ fontWeight: 800, color: '#0f172a', fontSize: '1rem' }}>{currencies[selectedCurrency].symbol}</span>
+                {selectedCurrency}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: 'transform 0.2s', transform: isOpen ? 'rotate(180deg)' : 'rotate(0)' }}><path d="m6 9 6 6 6-6"/></svg>
             </button>
 
             {isOpen && (
@@ -48,6 +45,7 @@ function CurrencyToggle() {
                     {/* Arka plan kapatma katmanı */}
                     <div onClick={() => setIsOpen(false)} style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 998 }} />
                     
+                    {/* Temiz Dropdown Menü */}
                     <div style={{
                         position: 'absolute',
                         top: 'calc(100% + 8px)',
@@ -55,12 +53,13 @@ function CurrencyToggle() {
                         backgroundColor: '#ffffff',
                         border: '1px solid #e2e8f0',
                         borderRadius: '12px',
-                        boxShadow: '0 10px 25px rgba(0,0,0,0.08)',
+                        boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)',
                         zIndex: 999,
-                        minWidth: '120px',
+                        minWidth: '140px',
                         padding: '6px',
-                        overflow: 'hidden'
+                        animation: 'fadeIn 0.15s ease-out'
                     }}>
+                        <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }`}</style>
                         {Object.keys(currencies).map((code) => {
                             const currency = currencies[code as CurrencyCode];
                             const isSelected = selectedCurrency === code;
@@ -75,25 +74,39 @@ function CurrencyToggle() {
                                         display: 'flex',
                                         width: '100%',
                                         alignItems: 'center',
-                                        gap: '10px',
+                                        justifyContent: 'space-between',
                                         padding: '10px 12px',
                                         border: 'none',
-                                        backgroundColor: isSelected ? '#e0e7ff' : 'transparent',
-                                        color: isSelected ? '#4f46e5' : '#475569',
+                                        backgroundColor: isSelected ? '#f8fafc' : 'transparent',
+                                        color: isSelected ? '#0f172a' : '#475569',
                                         borderRadius: '8px',
                                         cursor: 'pointer',
-                                        fontWeight: isSelected ? 800 : 600,
-                                        fontSize: '0.85rem',
-                                        textAlign: 'left',
-                                        transition: 'background 0.2s'
+                                        fontWeight: isSelected ? 700 : 500,
+                                        fontSize: '0.9rem',
+                                        transition: 'background 0.2s',
                                     }}
-                                    onMouseEnter={(e) => !isSelected && (e.currentTarget.style.backgroundColor = '#f1f5f9')}
-                                    onMouseLeave={(e) => !isSelected && (e.currentTarget.style.backgroundColor = 'transparent')}
+                                    onMouseEnter={(e) => {
+                                        if (!isSelected) {
+                                            e.currentTarget.style.backgroundColor = '#f1f5f9';
+                                            e.currentTarget.style.color = '#0f172a';
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (!isSelected) {
+                                            e.currentTarget.style.backgroundColor = 'transparent';
+                                            e.currentTarget.style.color = '#475569';
+                                        }
+                                    }}
                                 >
-                                    <span style={{ fontSize: '1.2rem', width: '20px', textAlign: 'center', color: isSelected ? '#4f46e5' : '#94a3b8' }}>
-                                        {currency.symbol}
-                                    </span>
-                                    {currency.name}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span style={{ fontWeight: 800, color: isSelected ? '#4f46e5' : '#94a3b8', width: '20px', textAlign: 'center', fontSize: '1.1rem' }}>
+                                            {currency.symbol}
+                                        </span>
+                                        {code}
+                                    </div>
+                                    {isSelected && (
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                    )}
                                 </button>
                             );
                         })}
@@ -413,6 +426,7 @@ export default function HomePage() {
     }
   };
 
+  // 🚀 BURASI DÜZELTİLDİ: Arama çubuğu / Keşfet butonu "Tümünü Gör" ile birlikte egitmenler'e gider.
   const handleSearch = () => {
     router.push('/egitmenler'); 
   };
@@ -447,8 +461,10 @@ export default function HomePage() {
 
         <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* 🚀 DİL VE PARA BİRİMİ (TEMİZ & MİNİMALİST DİZİLİM) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <LanguageToggle />
+            <div style={{ width: '1px', height: '16px', backgroundColor: '#e2e8f0', margin: '0 4px' }}></div>
             <CurrencyToggle />
           </div>
 
@@ -497,8 +513,9 @@ export default function HomePage() {
           </p>
           
           <div>
+            {/* 🚀 BURASI DÜZELTİLDİ: Eğitmenini Bul butonu artık egitmen-bul sayfasına gidiyor */}
             <button 
-              onClick={() => router.push('/akilli-eslesme')}
+              onClick={() => router.push('/egitmen-bul')}
               style={{ 
                 padding: '16px 36px', 
                 backgroundColor: '#121117', 
@@ -537,23 +554,18 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* SAĞ GÖRSEL ALANI - 🚀 BURAYA 3'LÜ KATMAN EFEKTİ GELDİ */}
+        {/* SAĞ GÖRSEL ALANI */}
         <div style={{ flex: '1 1 350px', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', zIndex: 10 }}>
           <div style={{ 
             position: 'relative', 
             width: '100%', 
             maxWidth: '480px', 
             height: '320px', 
-            marginLeft: '30px', // Sol taraftaki katmanların taşması için yer
-            marginBottom: '30px' // Alt taraftaki katmanlar için yer
+            marginLeft: '30px',
+            marginBottom: '30px'
           }}>
-            {/* En arka kutu (Yarı saydam beyaz, cam efekti) */}
             <div style={{ position: 'absolute', left: '-30px', top: '30px', width: '100%', height: '100%', backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: '24px', backdropFilter: 'blur(4px)' }}></div>
-            
-            {/* Orta kutu (Biraz daha belirgin yarı saydam beyaz) */}
             <div style={{ position: 'absolute', left: '-15px', top: '15px', width: '100%', height: '100%', backgroundColor: 'rgba(255, 255, 255, 0.2)', borderRadius: '24px', backdropFilter: 'blur(4px)' }}></div>
-            
-            {/* Aktif Resim */}
             <img 
               src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
               alt="Online Language Learning"
@@ -656,7 +668,6 @@ export default function HomePage() {
         </h3>
       </div>
 
-      {/* YENİ EKLENEN ÖĞRENCİ YORUMLARI KAYDIRICISI (TESTIMONIAL SLIDER) */}
       <TestimonialSlider isEn={isEn} />
 
       {/* 4. "ÖĞRETMEN OL" AFİŞİ */}
@@ -672,7 +683,6 @@ export default function HomePage() {
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' 
         }}>
           
-          {/* SOL: EĞİTMEN FOTOĞRAFI */}
           <div style={{ flex: '1 1 400px', minHeight: '400px', position: 'relative' }}>
             <img 
               src="https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
@@ -681,7 +691,6 @@ export default function HomePage() {
             />
           </div>
 
-          {/* SAĞ: İÇERİK (Mint Yeşili Arka Plan) */}
           <div style={{ flex: '1 1 400px', backgroundColor: '#3bdfa6', padding: '60px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             <h2 style={{ fontSize: '3.5rem', fontWeight: 900, color: '#0f172a', marginBottom: '20px', letterSpacing: '-1.5px' }}>
               {isEn ? "Become a tutor" : "Öğretmen ol"}
@@ -746,6 +755,8 @@ export default function HomePage() {
                 {t.home.featuredSub}
               </p>
             </div>
+            
+            {/* 🚀 BURASI DÜZELTİLDİ: "Tümünü Gör" butonu eski yerine (/egitmenler) geri döndü */}
             <button 
               onClick={() => router.push('/egitmenler')}
               style={{ padding: '12px 24px', backgroundColor: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '12px', fontWeight: 700, color: '#4f46e5', cursor: 'pointer', transition: 'all 0.2s' }}
@@ -760,6 +771,14 @@ export default function HomePage() {
             {filteredTeachers.length > 0 ? (
               filteredTeachers.map((tItem) => {
                 const online = isOnline(tItem.son_gorulme);
+
+                // Dilleri Ayıklama
+                let dillerArray: string[] = [];
+                if (tItem.diller) {
+                  const rawData = typeof tItem.diller === 'string' ? tItem.diller : JSON.stringify(tItem.diller);
+                  const cleanedData = rawData.replace(/[\[\]"]/g, ''); 
+                  dillerArray = cleanedData.split(',').map((d: string) => d.trim()).filter((d: string) => d !== "");
+                }
 
                 return (
                   <div 
@@ -831,26 +850,37 @@ export default function HomePage() {
                         </div>
                       </div>
 
-                      {/* Orta Kısım: Tagler (Etiketler) */}
+                      {/* PREMIUM İKONLU ROZETLER (Konum, Eğitim, Uzmanlık) */}
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                         {tItem.konum && (
-                          <span style={{ padding: '6px 12px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                          <span style={{ padding: '4px 10px 4px 6px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', borderRadius: '16px', fontSize: '0.85rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                            <div style={{ width: '22px', height: '22px', background: '#e0e7ff', color: '#4f46e5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                            </div>
                             {tItem.konum}
                           </span>
                         )}
                         {tItem.egitim && (
-                          <span style={{ padding: '6px 12px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                          <span style={{ padding: '4px 10px 4px 6px', backgroundColor: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', borderRadius: '16px', fontSize: '0.85rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                            <div style={{ width: '22px', height: '22px', background: '#fef3c7', color: '#d97706', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+                            </div>
                             {tItem.egitim}
                           </span>
                         )}
+                        
+                        {/* Uzmanlık Etiketleri (3 Tane ve Yeni SVG İkonu) */}
                         {(tItem.amac || tItem.odak || '')
                           .split(',')
                           .filter((item: string) => item.trim() !== '')
-                          .slice(0, 2)
+                          .slice(0, 3)
                           .map((item: string, i: number) => (
-                            <span key={i} style={{ padding: '6px 12px', backgroundColor: '#eef2ff', border: '1px solid #c7d2fe', color: '#4f46e5', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span key={i} style={{ padding: '6px 12px', backgroundColor: '#eef2ff', border: '1px solid #c7d2fe', color: '#4f46e5', borderRadius: '16px', fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <circle cx="12" cy="12" r="6"></circle>
+                                <circle cx="12" cy="12" r="2"></circle>
+                              </svg>
                               {item.trim()}
                             </span>
                           ))}
@@ -860,10 +890,37 @@ export default function HomePage() {
                       <p style={{ color: '#475569', lineHeight: 1.6, fontSize: '0.95rem', height: '3em', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', margin: 0 }}>
                         {tItem.biyografi || 'Alanında uzman, ana dili Türkçe olan deneyimli eğitmen ile pratik yapmaya hemen başlayın.'}
                       </p>
+                      
+                      {/* Diller Bölümü */}
+                      {dillerArray.length > 0 && (
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap', marginTop: '-4px' }}>
+                          <strong style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Konuştuğu Diller:</strong>
+                          {dillerArray.slice(0, 3).map((dil: string, index: number) => {
+                            const isAnaDil = dil.includes('(Ana Dil)');
+                            return (
+                              <span key={index} style={{ 
+                                padding: '2px 8px', 
+                                borderRadius: '6px', 
+                                fontSize: '0.8rem', 
+                                fontWeight: isAnaDil ? 700 : 600,
+                                backgroundColor: isAnaDil ? '#eef2ff' : '#f8fafc',
+                                color: isAnaDil ? '#4f46e5' : '#475569',
+                                border: isAnaDil ? '1px solid #c7d2fe' : '1px solid #e2e8f0'
+                              }}>
+                                {dil.replace('(Ana Dil)', '').trim()}
+                              </span>
+                            );
+                          })}
+                          {dillerArray.length > 3 && (
+                            <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600 }}>+{dillerArray.length - 3}</span>
+                          )}
+                        </div>
+                      )}
+
                     </div>
                     
-                    {/* Alt Kısım: Fiyat ve Butonlar (DİNAMİK FİYAT BURADA) */}
-                    <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '20px', marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    {/* Alt Kısım: Fiyat ve Butonlar */}
+                    <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '20px', marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
                         <span style={{ fontSize: '1.5rem', fontWeight: 900, color: '#0f172a' }}>
                             {formatPrice(tItem.saatlik_ucret)}
@@ -916,7 +973,7 @@ export default function HomePage() {
         <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: '40px', justifyContent: 'space-between', borderBottom: '1px solid #1e293b', paddingBottom: '40px', marginBottom: '40px' }}>
           <div style={{ maxWidth: '300px' }}>
             <h2 style={{ color: '#ffffff', fontSize: '1.5rem', fontWeight: 900, marginBottom: '20px', letterSpacing: '-0.5px' }}>Turkish Learning Academy.</h2>
-            <p style={{ lineHeight: 1.6 }}>Dünyanın dört bir yanından Türkçe öğrenmek isteyenleri uzman eğitmenlerle buluşturan lider platform.</p>
+            <p style={{ lineHeight: 1.6 }}>Dünyanın dört bir yanından Türkçe öğrenmek isteyenleri uzman eğitmenlerle buluşturan yenilikçi platform.</p>
           </div>
           <div style={{ display: 'flex', gap: '80px' }}>
             <div>
