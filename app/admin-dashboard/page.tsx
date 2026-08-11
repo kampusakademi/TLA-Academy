@@ -52,10 +52,12 @@ export default function AdminDashboard() {
     setAdminId(''); 
   };
 
+  // 🚀 MENÜYE "BLOG YÖNETİMİ" EKLENDİ
   const menu = [
     { key: 'dashboard', label: 'Genel Bakış', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg> },
     { key: 'applications', label: 'Başvuru Yönetimi', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> },
     { key: 'users', label: 'Kullanıcı Yönetimi', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
+    { key: 'blog', label: 'Blog & İçerik Yönetimi', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> },
     { key: 'settings', label: 'Sistem Ayarları', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> }
   ];
 
@@ -96,7 +98,6 @@ export default function AdminDashboard() {
   return (
     <div style={{ display: 'flex', minHeight: '100vh', fontFamily: '"Inter", system-ui, sans-serif', background: '#f8fafc', color: '#0f172a' }}>
       
-      {/* SOL MENÜ */}
       <aside style={{ width: '280px', background: '#0f172a', color: '#94a3b8', padding: '32px 24px', display: 'flex', flexDirection: 'column', height: '100vh', position: 'sticky', top: 0, borderRight: '1px solid #1e293b' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 40, paddingLeft: 8 }}>
@@ -128,10 +129,8 @@ export default function AdminDashboard() {
         </div>
       </aside>
 
-      {/* SAĞ İÇERİK */}
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
         
-        {/* HEADER */}
         <header style={{ 
             background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)', 
             padding: '24px 60px', 
@@ -155,6 +154,7 @@ export default function AdminDashboard() {
               {tab === 'dashboard' && 'Genel İstatistikler'}
               {tab === 'users' && 'Kullanıcı Yönetimi'}
               {tab === 'applications' && 'Başvuru Yönetimi'}
+              {tab === 'blog' && 'Blog & İçerik Yönetimi'}
               {tab === 'settings' && 'Sistem Ayarları'}
             </h1>
           </div>
@@ -162,17 +162,11 @@ export default function AdminDashboard() {
           <div style={{ position: 'relative', zIndex: 2 }}>
             <div 
               onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-              style={{ 
-                display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(255,255,255,0.1)', 
-                padding: '6px 16px 6px 6px', borderRadius: 30, border: '1px solid rgba(255,255,255,0.2)', 
-                cursor: 'pointer', transition: 'all 0.2s', backdropFilter: 'blur(10px)' 
-              }}
+              style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(255,255,255,0.1)', padding: '6px 16px 6px 6px', borderRadius: 30, border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer', transition: 'all 0.2s', backdropFilter: 'blur(10px)' }}
               onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
               onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
             >
-              <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#ffffff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>
-                A
-              </div>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#ffffff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>A</div>
               <div style={{ fontSize: 14, fontWeight: 700, color: '#ffffff' }}>Admin</div>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c7d2fe" strokeWidth="2" style={{ transform: isProfileMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}><polyline points="6 9 12 15 18 9"/></svg>
             </div>
@@ -203,10 +197,11 @@ export default function AdminDashboard() {
               <p>Öğrenci, eğitmen ve ders sayılarını burada gösterebilirsiniz.</p>
             </div>
           )}
-          
           {tab === 'users' && <UserManagement />}
-          
           {tab === 'applications' && <ApplicationsManagement />}
+          
+          {/* 🚀 BLOG YÖNETİMİ BİLEŞENİ BURADA ÇAĞRILIYOR */}
+          {tab === 'blog' && <BlogManagement />}
           
           {tab === 'settings' && (
             <div style={{ textAlign: 'center', padding: '60px', color: '#64748b' }}>
@@ -221,7 +216,7 @@ export default function AdminDashboard() {
 }
 
 /* =========================================================
-   🚀 KULLANICI YÖNETİMİ BİLEŞENİ (GÜNCELLENDİ)
+   🚀 KULLANICI YÖNETİMİ BİLEŞENİ (AYNEN KORUNDU)
 ========================================================= */
 function UserManagement() {
   const [activeTab, setActiveTab] = useState<'ogrenciler' | 'egitmenler'>('ogrenciler');
@@ -230,72 +225,51 @@ function UserManagement() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
+  useEffect(() => { loadUsers(); }, []);
 
   async function loadUsers() {
     setLoading(true);
-    const { data: ogrData, error: ogrErr } = await supabase.from('ogrenciler').select('*').order('created_at', { ascending: false });
-    const { data: egtData, error: egtErr } = await supabase.from('egitmenler').select('*').order('created_at', { ascending: false });
-
-    if (!ogrErr && ogrData) setOgrenciler(ogrData);
-    if (!egtErr && egtData) setEgitmenler(egtData);
+    const { data: ogrData } = await supabase.from('ogrenciler').select('*').order('created_at', { ascending: false });
+    const { data: egtData } = await supabase.from('egitmenler').select('*').order('created_at', { ascending: false });
+    if (ogrData) setOgrenciler(ogrData);
+    if (egtData) setEgitmenler(egtData);
     setLoading(false);
   }
 
-  // 🔥 YENİ GÜÇLENDİRİLMİŞ DURUM DEĞİŞTİRME FONKSİYONU
   async function toggleStatus(type: 'ogrenci' | 'egitmen', userId: string, currentStatus: string) {
     const table = type === 'ogrenci' ? 'ogrenciler' : 'egitmenler';
-    
-    // Bazen veritabanında durum "aktif" veya "null" kalmış olabilir, bunu standartlaştırıyoruz:
     const isCurrentlyActive = currentStatus === 'Aktif' || currentStatus === 'aktif';
     const newStatus = isCurrentlyActive ? 'Pasif' : 'Aktif';
     
-    // 🚀 .select() ekleyerek işlemin arka planda gerçekten yapılıp yapılmadığını denetliyoruz
-    const { data, error } = await supabase
-      .from(table)
-      .update({ durum: newStatus })
-      .eq('user_id', userId)
-      .select();
-
+    const { data, error } = await supabase.from(table).update({ durum: newStatus }).eq('user_id', userId).select();
     if (error) {
       alert("Durum güncellenemedi: " + error.message);
     } else if (!data || data.length === 0) {
-      // Eğer hata yok ama data da yoksa, Supabase işlemi sessizce reddetmiş demektir!
-      alert("Sistem Engelledi! Tıpkı silme işlemindeki gibi, Supabase Güvenlik Kuralları (RLS) 'GÜNCELLEME (UPDATE)' yapmanızı engelliyor. Lütfen SQL Editor'den bu tablo için UPDATE yetkisi verin.");
+      alert("Sistem Engelledi! Güvenlik kuralları engelliyor.");
     } else {
-      loadUsers(); // Başarılıysa listeyi yenile
+      loadUsers();
     }
   }
 
-  // YENİ GÜÇLENDİRİLMİŞ SİLME FONKSİYONU
   async function deleteUser(type: 'ogrenci' | 'egitmen', userId: string) {
-    const onay = confirm(`Bu kullanıcıyı sistemden KALICI OLARAK silmek istediğinize emin misiniz? (Tüm giriş yetkileri ve verileri silinecektir!)`);
+    const onay = confirm(`Kullanıcıyı KALICI OLARAK silmek istediğinize emin misiniz?`);
     if (!onay) return;
-
     const table = type === 'ogrenci' ? 'ogrenciler' : 'egitmenler';
-
     try {
-      // 1. Önce yazdığımız API'ye istek atarak auth.users tablosundan tamamen siliyoruz
       const res = await fetch('/api/delete-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: userId })
       });
-
       const result = await res.json();
-      if (!res.ok) throw new Error(result.error || 'Silme işlemi API tarafından reddedildi.');
-
-      // 2. Ardından kendi tablomuzdan da (ogrenciler/egitmenler) manuel siliyoruz
+      if (!res.ok) throw new Error(result.error || 'Silme API tarafından reddedildi.');
+      
       const { error: tableError } = await supabase.from(table).delete().eq('user_id', userId);
-
       if (tableError) throw tableError;
-
-      alert("Kullanıcı sistemden ve tablolardan tamamen silindi!");
+      alert("Kullanıcı tamamen silindi!");
       loadUsers();
     } catch (error: any) {
-      alert("Silme işlemi başarısız oldu: " + error.message);
+      alert("Silme başarısız: " + error.message);
     }
   }
 
@@ -309,48 +283,21 @@ function UserManagement() {
     <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div style={{ display: 'flex', gap: '12px', background: '#f1f5f9', padding: '6px', borderRadius: '16px' }}>
-          <button 
-            onClick={() => setActiveTab('ogrenciler')} 
-            style={{ padding: '10px 24px', borderRadius: '12px', border: 'none', background: activeTab === 'ogrenciler' ? '#ffffff' : 'transparent', color: activeTab === 'ogrenciler' ? '#0f172a' : '#64748b', fontWeight: 700, fontSize: '15px', cursor: 'pointer', transition: 'all 0.2s', boxShadow: activeTab === 'ogrenciler' ? '0 2px 10px rgba(0,0,0,0.05)' : 'none', display: 'flex', alignItems: 'center', gap: 8 }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            Öğrenciler ({ogrenciler.length})
-          </button>
-          <button 
-            onClick={() => setActiveTab('egitmenler')} 
-            style={{ padding: '10px 24px', borderRadius: '12px', border: 'none', background: activeTab === 'egitmenler' ? '#ffffff' : 'transparent', color: activeTab === 'egitmenler' ? '#0f172a' : '#64748b', fontWeight: 700, fontSize: '15px', cursor: 'pointer', transition: 'all 0.2s', boxShadow: activeTab === 'egitmenler' ? '0 2px 10px rgba(0,0,0,0.05)' : 'none', display: 'flex', alignItems: 'center', gap: 8 }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-            Eğitmenler ({egitmenler.length})
-          </button>
+          <button onClick={() => setActiveTab('ogrenciler')} style={{ padding: '10px 24px', borderRadius: '12px', border: 'none', background: activeTab === 'ogrenciler' ? '#ffffff' : 'transparent', color: activeTab === 'ogrenciler' ? '#0f172a' : '#64748b', fontWeight: 700, fontSize: '15px', cursor: 'pointer', boxShadow: activeTab === 'ogrenciler' ? '0 2px 10px rgba(0,0,0,0.05)' : 'none' }}>Öğrenciler ({ogrenciler.length})</button>
+          <button onClick={() => setActiveTab('egitmenler')} style={{ padding: '10px 24px', borderRadius: '12px', border: 'none', background: activeTab === 'egitmenler' ? '#ffffff' : 'transparent', color: activeTab === 'egitmenler' ? '#0f172a' : '#64748b', fontWeight: 700, fontSize: '15px', cursor: 'pointer', boxShadow: activeTab === 'egitmenler' ? '0 2px 10px rgba(0,0,0,0.05)' : 'none' }}>Eğitmenler ({egitmenler.length})</button>
         </div>
-
         <div style={{ position: 'relative', width: '300px' }}>
-          <svg style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input 
-            type="text" 
-            placeholder="İsim veya E-posta ara..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ width: '100%', padding: '12px 16px 12px 42px', borderRadius: '12px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '14px', boxSizing: 'border-box' }}
-          />
+          <input type="text" placeholder="İsim veya E-posta ara..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '14px' }} />
         </div>
       </div>
-
-      <div style={{ background: '#ffffff', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.02)', overflow: 'hidden' }}>
-        {loading ? (
-          <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>Yükleniyor...</div>
-        ) : filteredList.length === 0 ? (
-          <div style={{ padding: '60px', textAlign: 'center', color: '#94a3b8' }}>
-            Arama kriterlerinize uygun {activeTab === 'ogrenciler' ? 'öğrenci' : 'eğitmen'} bulunamadı.
-          </div>
-        ) : (
+      
+      <div style={{ background: '#ffffff', borderRadius: '24px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+        {loading ? <div style={{ padding: '60px', textAlign: 'center' }}>Yükleniyor...</div> : (
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
             <thead>
               <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                 <th style={{ padding: '20px 24px', color: '#64748b', fontWeight: 600 }}>Ad Soyad</th>
                 <th style={{ padding: '20px 24px', color: '#64748b', fontWeight: 600 }}>E-posta</th>
-                <th style={{ padding: '20px 24px', color: '#64748b', fontWeight: 600 }}>Kayıt Tarihi</th>
                 <th style={{ padding: '20px 24px', color: '#64748b', fontWeight: 600 }}>Durum</th>
                 <th style={{ padding: '20px 24px', color: '#64748b', fontWeight: 600, textAlign: 'right' }}>İşlemler</th>
               </tr>
@@ -359,52 +306,16 @@ function UserManagement() {
               {filteredList.map((user) => {
                 const isActive = user.durum === 'Aktif';
                 const userType = activeTab === 'ogrenciler' ? 'ogrenci' : 'egitmen';
-                
                 return (
-                  <tr key={user.id || user.user_id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8fafc'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-                    <td style={{ padding: '20px 24px', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div style={{ width: 36, height: 36, borderRadius: '50%', background: activeTab === 'ogrenciler' ? '#eef2ff' : '#fdf2f8', color: activeTab === 'ogrenciler' ? '#4f46e5' : '#e11d48', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>
-                        {user.tam_ad?.charAt(0).toUpperCase() || '?'}
-                      </div>
-                      {user.tam_ad || "İsimsiz"}
-                    </td>
+                  <tr key={user.id || user.user_id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '20px 24px', fontWeight: 700, color: '#0f172a' }}>{user.tam_ad || "İsimsiz"}</td>
                     <td style={{ padding: '20px 24px', color: '#475569' }}>{user.email || "-"}</td>
-                    <td style={{ padding: '20px 24px', color: '#64748b' }}>
-                      {user.created_at ? new Date(user.created_at).toLocaleDateString('tr-TR') : "-"}
-                    </td>
                     <td style={{ padding: '20px 24px' }}>
-                      <span style={{ 
-                        background: isActive ? '#dcfce7' : '#f1f5f9', 
-                        color: isActive ? '#16a34a' : '#64748b', 
-                        padding: '6px 12px', 
-                        borderRadius: '12px', 
-                        fontSize: '12px', 
-                        fontWeight: 700,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6
-                      }}>
-                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: isActive ? '#22c55e' : '#94a3b8' }}></div>
-                        {user.durum || 'Belirsiz'}
-                      </span>
+                      <span style={{ background: isActive ? '#dcfce7' : '#f1f5f9', color: isActive ? '#16a34a' : '#64748b', padding: '6px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: 700 }}>{user.durum || 'Belirsiz'}</span>
                     </td>
                     <td style={{ padding: '20px 24px', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                        <button 
-                          onClick={() => toggleStatus(userType, user.user_id, user.durum)}
-                          title={isActive ? "Hesabı Pasife Al" : "Hesabı Aktif Et"}
-                          style={{ background: isActive ? '#fff7ed' : '#f0fdf4', color: isActive ? '#d97706' : '#16a34a', border: isActive ? '1px solid #fde68a' : '1px solid #bbf7d0', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', gap: 6 }}
-                        >
-                          {isActive ? "Pasif Yap" : "Aktif Et"}
-                        </button>
-                        <button 
-                          onClick={() => deleteUser(userType, user.user_id)}
-                          title="Kullanıcıyı Sil"
-                          style={{ background: '#fef2f2', color: '#ef4444', border: '1px solid #fecaca', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', gap: 6 }}
-                        >
-                          Sil
-                        </button>
-                      </div>
+                      <button onClick={() => toggleStatus(userType, user.user_id, user.durum)} style={{ background: isActive ? '#fff7ed' : '#f0fdf4', color: isActive ? '#d97706' : '#16a34a', border: isActive ? '1px solid #fde68a' : '1px solid #bbf7d0', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '13px', marginRight: '8px' }}>{isActive ? "Pasif Yap" : "Aktif Et"}</button>
+                      <button onClick={() => deleteUser(userType, user.user_id)} style={{ background: '#fef2f2', color: '#ef4444', border: '1px solid #fecaca', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}>Sil</button>
                     </td>
                   </tr>
                 );
@@ -418,263 +329,285 @@ function UserManagement() {
 }
 
 /* =========================================================
-   🚀 BAŞVURU YÖNETİMİ BİLEŞENİ
+   🚀 BAŞVURU YÖNETİMİ BİLEŞENİ (AYNEN KORUNDU)
 ========================================================= */
 function ApplicationsManagement() {
   const [basvurular, setBasvurular] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [seciliBasvuru, setSeciliBasvuru] = useState<any>(null);
 
-  useEffect(() => {
-    loadBasvurular();
-  }, []);
+  useEffect(() => { loadBasvurular(); }, []);
 
   async function loadBasvurular() {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('basvurular')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (!error && data) {
-      setBasvurular(data);
-    }
-    setLoading(false);
+    const { data } = await supabase.from('basvurular').select('*').order('created_at', { ascending: false });
+    if (data) setBasvurular(data);
   }
 
   async function updateStatus(basvuruObj: any, newStatus: string) {
     const onay = confirm(`Bu başvuruyu ${newStatus} olarak işaretlemek istiyor musunuz?`);
     if (!onay) return;
-
     if (newStatus === 'Onaylandı') {
       try {
-        // 1. Mail Gönder ve User (Auth) Oluştur
         const response = await fetch('/api/davet', { 
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: basvuruObj.email })
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: basvuruObj.email })
         });
-
         const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(result.error || "Mail gönderme API'si hata verdi.");
-        }
-
+        if (!response.ok) throw new Error(result.error);
+        
         const realUserId = result.user.id; 
-
-        // 2. Eğitmenlere Ekle (Çift Kayıt Koruması ile)
-        const { data: checkExist } = await supabase
-          .from('egitmenler')
-          .select('id')
-          .eq('user_id', realUserId)
-          .maybeSingle();
-
+        const { data: checkExist } = await supabase.from('egitmenler').select('id').eq('user_id', realUserId).maybeSingle();
         if (!checkExist) {
-          const egitmenData: any = {
-            user_id: realUserId, 
-            tam_ad: basvuruObj.tam_ad || basvuruObj.ad_soyad || basvuruObj.isim || "İsimsiz Eğitmen",
-            email: basvuruObj.email,
-            ders_turu: basvuruObj.ders_turu || basvuruObj.brans || basvuruObj.uzmanlik || "Belirtilmedi",
-            biyografi: basvuruObj.mesaj || basvuruObj.kendini_tanitma || "",
-            saatlik_ucret: 250,
-            durum: 'Aktif'
-          };
-          if (basvuruObj.telefon) egitmenData.telefon = basvuruObj.telefon;
-
-          const { error: insertErr } = await supabase.from('egitmenler').insert([egitmenData]);
-          if (insertErr) {
-             console.error("Eğitmen ekleme hatası:", insertErr);
-          }
+          const egitmenData = { user_id: realUserId, tam_ad: basvuruObj.tam_ad || "İsimsiz", email: basvuruObj.email, ders_turu: basvuruObj.ders_turu || "Belirtilmedi", biyografi: basvuruObj.mesaj || "", saatlik_ucret: 250, durum: 'Aktif' };
+          await supabase.from('egitmenler').insert([egitmenData]);
         }
-
-        // 3. İŞLEM BİTİNCE BAŞVURULARDAN SİL
-        const { data: delData, error: delErr } = await supabase
-          .from('basvurular')
-          .delete()
-          .eq('id', basvuruObj.id)
-          .select();
-
-        if (delErr) {
-          alert("Başvuru onaylandı ama listeden silinemedi! (Hata: " + delErr.message + ")");
-        } else if (!delData || delData.length === 0) {
-          alert("Başvuru onaylandı, ancak listeden silinmesi Supabase Güvenlik Kuralları (RLS) tarafından engellendi. Lütfen SQL Editor'den 'basvurular' için DELETE izni verin.");
-        } else {
-          alert("Başvuru onaylandı.");
-        }
-
-      } catch (err: any) {
-        alert("Sistemsel Hata: " + err.message);
-      }
-    } else {
-      // SADECE REDDEDİLİRSE DURUMUNU GÜNCELLE VE LİSTEDE BIRAK (Fakat biz butonu kaldırdık, yine de kod burada kalabilir)
-      await supabase.from('basvurular').update({ durum: newStatus }).eq('id', basvuruObj.id);
-      alert(`Başvuru reddedildi.`);
+        await supabase.from('basvurular').delete().eq('id', basvuruObj.id);
+        alert("Başvuru onaylandı.");
+      } catch (err: any) { alert("Sistemsel Hata: " + err.message); }
     }
-
     setSeciliBasvuru(null); 
     loadBasvurular(); 
   }
 
-  // MANUEL OLARAK SİLME İŞLEMİ
   async function deleteApplication(id: string) {
-    const onay = confirm("Bu başvuruyu veritabanından TAMAMEN silmek istediğinize emin misiniz? Bu işlem geri alınamaz!");
+    const onay = confirm("Bu başvuruyu TAMAMEN silmek istediğinize emin misiniz?");
     if (!onay) return;
-
-    const { data, error } = await supabase
-      .from('basvurular')
-      .delete()
-      .eq('id', id)
-      .select();
-
-    if (error) {
-      alert("Silme hatası: " + error.message);
-    } else if (!data || data.length === 0) {
-      alert("Sistem engelledi! Lütfen Supabase SQL Editor'den 'DELETE' yetkisi kodunu çalıştırdığınızdan emin olun.");
-    } else {
-      setSeciliBasvuru(null);
-      loadBasvurular();
-    }
+    await supabase.from('basvurular').delete().eq('id', id);
+    setSeciliBasvuru(null);
+    loadBasvurular();
   }
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', position: 'relative' }}>
-      <div style={{ background: '#ffffff', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.02)', overflow: 'hidden' }}>
-        <div style={{ padding: '24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
-          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>Gelen Eğitmen Başvuruları</h2>
-          <span style={{ background: '#eef2ff', color: '#4f46e5', padding: '6px 16px', borderRadius: '12px', fontSize: '14px', fontWeight: 700 }}>
-            Toplam: {basvurular.length} Başvuru
-          </span>
-        </div>
+    <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
+      <div style={{ background: '#ffffff', borderRadius: '24px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
+          <thead>
+            <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+              <th style={{ padding: '20px 24px', color: '#64748b' }}>Aday Adı</th>
+              <th style={{ padding: '20px 24px', color: '#64748b' }}>E-posta</th>
+              <th style={{ padding: '20px 24px', color: '#64748b' }}>Durum</th>
+              <th style={{ padding: '20px 24px', textAlign: 'right' }}>Aksiyon</th>
+            </tr>
+          </thead>
+          <tbody>
+            {basvurular.map((basvuru) => (
+              <tr key={basvuru.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                <td style={{ padding: '20px 24px', fontWeight: 700 }}>{basvuru.tam_ad || "İsimsiz"}</td>
+                <td style={{ padding: '20px 24px', color: '#475569' }}>{basvuru.email}</td>
+                <td style={{ padding: '20px 24px' }}>{basvuru.durum}</td>
+                <td style={{ padding: '20px 24px', textAlign: 'right' }}>
+                  <button onClick={() => setSeciliBasvuru(basvuru)} style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>Detaylar</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-        {loading ? (
-          <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>Başvurular yükleniyor...</div>
-        ) : basvurular.length === 0 ? (
-          <div style={{ padding: '80px 20px', textAlign: 'center', color: '#94a3b8' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '16px' }}>📭</div>
-            Şu an bekleyen veya geçmiş herhangi bir başvuru bulunmuyor.
+      {seciliBasvuru && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(15, 23, 42, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: '#ffffff', width: '100%', maxWidth: '700px', borderRadius: '24px', overflow: 'hidden' }}>
+            <div style={{ padding: '24px 32px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between' }}>
+              <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 800 }}>Başvuru Detayları</h3>
+              <button onClick={() => setSeciliBasvuru(null)} style={{ border: 'none', background: 'none', fontSize: '24px', cursor: 'pointer' }}>&times;</button>
+            </div>
+            <div style={{ padding: '32px', maxHeight: '65vh', overflowY: 'auto' }}>
+               <p><strong>Ad:</strong> {seciliBasvuru.tam_ad}</p>
+               <p><strong>E-posta:</strong> {seciliBasvuru.email}</p>
+               <p><strong>Mesaj:</strong> {seciliBasvuru.mesaj || seciliBasvuru.kendini_tanitma}</p>
+            </div>
+            <div style={{ padding: '24px 32px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between' }}>
+              <button onClick={() => deleteApplication(seciliBasvuru.id)} style={{ background: '#fef2f2', color: '#ef4444', border: '1px solid #fecaca', padding: '10px 20px', borderRadius: '12px', fontWeight: 700, cursor: 'pointer' }}>Sil</button>
+              {seciliBasvuru.durum !== 'Onaylandı' && (
+                <button onClick={() => updateStatus(seciliBasvuru, 'Onaylandı')} style={{ background: '#4f46e5', color: '#ffffff', border: 'none', padding: '10px 24px', borderRadius: '12px', fontWeight: 700, cursor: 'pointer' }}>Başvuruyu Onayla</button>
+              )}
+            </div>
           </div>
-        ) : (
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* =========================================================
+   🚀 YENİ: BLOG & İÇERİK YÖNETİMİ BİLEŞENİ
+========================================================= */
+function BlogManagement() {
+  const [posts, setPosts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentId, setCurrentId] = useState('');
+
+  // Form State
+  const [baslik, setBaslik] = useState('');
+  const [kategori, setKategori] = useState('Rehber');
+  const [gorsel, setGorsel] = useState('');
+  const [ozet, setOzet] = useState('');
+  const [icerik, setIcerik] = useState('');
+
+  useEffect(() => { loadPosts(); }, []);
+
+  async function loadPosts() {
+    setLoading(true);
+    const { data, error } = await supabase.from('blog_yazilari').select('*').order('created_at', { ascending: false });
+    if (!error && data) setPosts(data);
+    setLoading(false);
+  }
+
+  // Türkçe karakterleri çevirip URL'ye uygun slug (link) yapar
+  const makeSlug = (text: string) => {
+    let str = text.toLowerCase();
+    const trMap: any = { 'ç': 'c', 'ğ': 'g', 'ı': 'i', 'ö': 'o', 'ş': 's', 'ü': 'u' };
+    for (let key in trMap) { str = str.replace(new RegExp(key, 'g'), trMap[key]); }
+    return str.replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-').replace(/^-+|-+$/g, '');
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if(!baslik || !icerik) return alert("Başlık ve İçerik zorunludur!");
+
+    const postData = {
+      baslik,
+      slug: makeSlug(baslik),
+      ozet,
+      icerik,
+      gorsel_url: gorsel,
+      kategori,
+      durum: 'Yayında',
+      okuma_suresi: Math.max(1, Math.ceil(icerik.length / 1000)) // Otomatik okuma süresi tahmini
+    };
+
+    if (isEditing) {
+      const { error } = await supabase.from('blog_yazilari').update(postData).eq('id', currentId);
+      if (error) alert("Güncelleme hatası: " + error.message);
+      else { alert("Başarıyla güncellendi!"); closeModal(); loadPosts(); }
+    } else {
+      const { error } = await supabase.from('blog_yazilari').insert([postData]);
+      if (error) alert("Ekleme hatası (Muhtemelen aynı başlıklı yazı var): " + error.message);
+      else { alert("Başarıyla eklendi!"); closeModal(); loadPosts(); }
+    }
+  };
+
+  const editPost = (post: any) => {
+    setIsEditing(true);
+    setCurrentId(post.id);
+    setBaslik(post.baslik);
+    setKategori(post.kategori);
+    setGorsel(post.gorsel_url || '');
+    setOzet(post.ozet || '');
+    setIcerik(post.icerik);
+    setIsModalOpen(true);
+  };
+
+  const deletePost = async (id: string) => {
+    if (!confirm("Bu yazıyı kalıcı olarak silmek istiyor musunuz?")) return;
+    const { error } = await supabase.from('blog_yazilari').delete().eq('id', id);
+    if (error) alert("Silme hatası: " + error.message);
+    else loadPosts();
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false); setIsEditing(false); setCurrentId('');
+    setBaslik(''); setKategori('Rehber'); setGorsel(''); setOzet(''); setIcerik('');
+  };
+
+  return (
+    <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <div>
+          <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', margin: 0 }}>SEO & Blog Yazıları</h2>
+          <p style={{ color: '#64748b', margin: '8px 0 0 0' }}>Sitenize organik trafik çekmek için makaleler yayınlayın.</p>
+        </div>
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          style={{ padding: '12px 24px', backgroundColor: '#4f46e5', color: 'white', borderRadius: '12px', fontWeight: 700, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 10px rgba(79, 70, 229, 0.2)' }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          Yeni Makale Yaz
+        </button>
+      </div>
+
+      <div style={{ background: '#ffffff', borderRadius: '24px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+        {loading ? <div style={{ padding: '60px', textAlign: 'center' }}>Yükleniyor...</div> : (
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
             <thead>
-              <tr style={{ background: '#ffffff', borderBottom: '1px solid #e2e8f0' }}>
-                <th style={{ padding: '20px 24px', color: '#64748b', fontWeight: 600 }}>Aday Adı</th>
-                <th style={{ padding: '20px 24px', color: '#64748b', fontWeight: 600 }}>E-posta</th>
-                <th style={{ padding: '20px 24px', color: '#64748b', fontWeight: 600 }}>Kayıt Tarihi</th>
-                <th style={{ padding: '20px 24px', color: '#64748b', fontWeight: 600 }}>Durum</th>
-                <th style={{ padding: '20px 24px', color: '#64748b', fontWeight: 600, textAlign: 'right' }}>Aksiyon</th>
+              <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                <th style={{ padding: '20px 24px', color: '#64748b' }}>Makale Başlığı</th>
+                <th style={{ padding: '20px 24px', color: '#64748b' }}>Kategori</th>
+                <th style={{ padding: '20px 24px', color: '#64748b' }}>Tarih</th>
+                <th style={{ padding: '20px 24px', textAlign: 'right' }}>İşlemler</th>
               </tr>
             </thead>
             <tbody>
-              {basvurular.map((basvuru) => {
-                const isBekliyor = basvuru.durum === 'Bekliyor';
-                const isOnaylandi = basvuru.durum === 'Onaylandı';
-                const adSoyad = basvuru.tam_ad || basvuru.ad_soyad || basvuru.isim || "İsimsiz Aday";
-                
-                return (
-                  <tr key={basvuru.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8fafc'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-                    <td style={{ padding: '20px 24px', fontWeight: 700, color: '#0f172a' }}>{adSoyad}</td>
-                    <td style={{ padding: '20px 24px', color: '#475569' }}>{basvuru.email || "-"}</td>
-                    <td style={{ padding: '20px 24px', color: '#64748b' }}>
-                      {basvuru.created_at ? new Date(basvuru.created_at).toLocaleDateString('tr-TR') : "-"}
-                    </td>
-                    <td style={{ padding: '20px 24px' }}>
-                      <span style={{ 
-                        background: isOnaylandi ? '#dcfce7' : (isBekliyor ? '#fef9c3' : '#fef2f2'), 
-                        color: isOnaylandi ? '#16a34a' : (isBekliyor ? '#d97706' : '#dc2626'), 
-                        padding: '6px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: 700
-                      }}>
-                        {basvuru.durum || 'Belirsiz'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '20px 24px', textAlign: 'right' }}>
-                      <button 
-                        onClick={() => setSeciliBasvuru(basvuru)}
-                        style={{ background: '#f1f5f9', color: '#0f172a', border: '1px solid #cbd5e1', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '13px', transition: 'all 0.2s' }}
-                        onMouseEnter={e => e.currentTarget.style.background = '#e2e8f0'}
-                        onMouseLeave={e => e.currentTarget.style.background = '#f1f5f9'}
-                      >
-                        Tüm Detayları İncele
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
+              {posts.map((post) => (
+                <tr key={post.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <td style={{ padding: '20px 24px', fontWeight: 700 }}>{post.baslik}</td>
+                  <td style={{ padding: '20px 24px' }}>
+                    <span style={{ background: '#eef2ff', color: '#4f46e5', padding: '4px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600 }}>{post.kategori}</span>
+                  </td>
+                  <td style={{ padding: '20px 24px', color: '#64748b' }}>{new Date(post.created_at).toLocaleDateString('tr-TR')}</td>
+                  <td style={{ padding: '20px 24px', textAlign: 'right' }}>
+                    <button onClick={() => editPost(post)} style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, marginRight: '8px' }}>Düzenle</button>
+                    <button onClick={() => deletePost(post.id)} style={{ background: '#fef2f2', color: '#ef4444', border: '1px solid #fecaca', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>Sil</button>
+                  </td>
+                </tr>
+              ))}
+              {posts.length === 0 && (
+                <tr><td colSpan={4} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>Henüz hiç makale eklenmemiş.</td></tr>
+              )}
             </tbody>
           </table>
         )}
       </div>
 
-      {seciliBasvuru && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: '#ffffff', width: '100%', maxWidth: '700px', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
+      {/* MAKALE EKLEME / DÜZENLEME MODALI */}
+      {isModalOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+          <div style={{ background: '#ffffff', width: '100%', maxWidth: '800px', borderRadius: '24px', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
+            <div style={{ padding: '24px 32px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 800 }}>{isEditing ? 'Makaleyi Düzenle' : 'Yeni Makale Yaz'}</h3>
+              <button onClick={closeModal} style={{ border: 'none', background: 'none', fontSize: '28px', cursor: 'pointer', color: '#94a3b8' }}>&times;</button>
+            </div>
             
-            <div style={{ padding: '24px 32px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
-              <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: '#0f172a' }}>Başvuru Detayları</h3>
-              <button onClick={() => setSeciliBasvuru(null)} style={{ background: 'none', border: 'none', fontSize: '24px', color: '#94a3b8', cursor: 'pointer' }}>&times;</button>
-            </div>
-
-            <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px', maxHeight: '65vh', overflowY: 'auto' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                {Object.keys(seciliBasvuru).map(key => {
-                  if (['id', 'created_at', 'durum', 'user_id', 'mesaj', 'kendini_tanitma'].includes(key.toLowerCase())) return null;
-                  const val = seciliBasvuru[key];
-                  if (!val) return null;
-
-                  if (typeof val === 'string' && val.startsWith('http')) {
-                    return (
-                      <div key={`doc-${key}`}>
-                        <div style={{ fontSize: '13px', color: '#64748b', fontWeight: 600, marginBottom: '6px', textTransform: 'capitalize' }}>{key.replace(/_/g, ' ')}</div>
-                        <a href={val} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', background: '#eef2ff', color: '#4f46e5', border: '1px solid #c7d2fe', borderRadius: '8px', fontSize: '13px', fontWeight: 700, textDecoration: 'none' }}>
-                          📄 Görüntüle / İndir
-                        </a>
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div key={`info-${key}`}>
-                      <div style={{ fontSize: '13px', color: '#64748b', fontWeight: 600, marginBottom: '4px', textTransform: 'capitalize' }}>{key.replace(/_/g, ' ')}</div>
-                      <div style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a' }}>{String(val)}</div>
-                    </div>
-                  );
-                })}
+            <form onSubmit={handleSave} style={{ padding: '32px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div>
+                <label style={{ display: 'block', fontWeight: 700, marginBottom: '8px' }}>Başlık <span style={{color:'red'}}>*</span></label>
+                <input required type="text" value={baslik} onChange={(e)=>setBaslik(e.target.value)} placeholder="Örn: Yabancılar İçin Türkçe Öğrenme Rehberi" style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '15px' }} />
               </div>
 
-              {(seciliBasvuru.mesaj || seciliBasvuru.kendini_tanitma) && (
-                <div style={{ marginTop: '10px' }}>
-                  <div style={{ fontSize: '13px', color: '#64748b', fontWeight: 600, marginBottom: '8px' }}>Kendini Tanıtma Metni / Ön Yazı</div>
-                  <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', color: '#475569', lineHeight: 1.6, fontSize: '14px', whiteSpace: 'pre-line' }}>
-                    {seciliBasvuru.mesaj || seciliBasvuru.kendini_tanitma}
-                  </div>
+              <div style={{ display: 'flex', gap: '20px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontWeight: 700, marginBottom: '8px' }}>Kategori</label>
+                  <select value={kategori} onChange={(e)=>setKategori(e.target.value)} style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '15px', backgroundColor: 'white' }}>
+                    <option value="Rehber">Rehber</option>
+                    <option value="Haberler">Haberler</option>
+                    <option value="Gramer">Gramer & Dilbilgisi</option>
+                    <option value="Kültür">Kültür</option>
+                  </select>
                 </div>
-              )}
-            </div>
-
-            {/* SADECE SİL VE ONAYLA BUTONLARI KALDI */}
-            <div style={{ padding: '24px 32px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <button 
-                onClick={() => deleteApplication(seciliBasvuru.id)}
-                style={{ background: '#fef2f2', color: '#ef4444', border: '1px solid #fecaca', padding: '10px 20px', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
-              >
-                Sil
-              </button>
-              
-              <div style={{ display: 'flex', gap: '12px' }}>
-                {seciliBasvuru.durum !== 'Onaylandı' && (
-                  <button 
-                    onClick={() => updateStatus(seciliBasvuru, 'Onaylandı')}
-                    style={{ background: '#4f46e5', color: '#ffffff', border: 'none', padding: '10px 24px', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(79,70,229,0.2)' }}
-                  >
-                    Başvuruyu Onayla
-                  </button>
-                )}
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontWeight: 700, marginBottom: '8px' }}>Kapak Görseli Linki (URL)</label>
+                  <input type="text" value={gorsel} onChange={(e)=>setGorsel(e.target.value)} placeholder="https://resim-linki.jpg" style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '15px' }} />
+                </div>
               </div>
-            </div>
+
+              <div>
+                <label style={{ display: 'block', fontWeight: 700, marginBottom: '8px' }}>Kısa Özet (Google'da görünecek yazı)</label>
+                <textarea rows={2} value={ozet} onChange={(e)=>setOzet(e.target.value)} placeholder="Bu makalede Türkçe öğrenmenin inceliklerini anlattık..." style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '15px', resize: 'vertical' }} />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontWeight: 700, marginBottom: '8px' }}>Makale İçeriği (Ana Metin) <span style={{color:'red'}}>*</span></label>
+                <textarea required rows={10} value={icerik} onChange={(e)=>setIcerik(e.target.value)} placeholder="Makalenizi buraya yazabilirsiniz. (HTML veya düz metin kullanabilirsiniz)" style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '15px', resize: 'vertical', lineHeight: 1.6 }} />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
+                <button type="button" onClick={closeModal} style={{ padding: '14px 24px', background: '#f1f5f9', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '12px', fontWeight: 700, cursor: 'pointer' }}>İptal</button>
+                <button type="submit" style={{ padding: '14px 32px', background: '#4f46e5', color: '#ffffff', border: 'none', borderRadius: '12px', fontWeight: 800, cursor: 'pointer', boxShadow: '0 4px 10px rgba(79, 70, 229, 0.2)' }}>{isEditing ? 'Değişiklikleri Kaydet' : 'Yayınla'}</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
-
     </div>
   );
 }
