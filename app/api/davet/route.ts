@@ -13,7 +13,7 @@ export async function POST(request: Request) {
 
     // Supabase üzerinden davet e-postası gönderiyoruz ve canlı siteye (Vercel) yönlendiriyoruz
     const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: 'https://tla-academy-git-main-kampusakademi1.vercel.app/sifre-belirle'
+      redirectTo: 'https://tla-academy.vercel.app/sifre-belirle'
     });
 
     if (error) throw error;
