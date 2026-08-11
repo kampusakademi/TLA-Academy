@@ -244,17 +244,32 @@ function UserManagement() {
     setLoading(false);
   }
 
+  // 🔥 YENİ GÜÇLENDİRİLMİŞ DURUM DEĞİŞTİRME FONKSİYONU
   async function toggleStatus(type: 'ogrenci' | 'egitmen', userId: string, currentStatus: string) {
     const table = type === 'ogrenci' ? 'ogrenciler' : 'egitmenler';
-    const newStatus = currentStatus === 'Aktif' ? 'Pasif' : 'Aktif';
     
-    const { error } = await supabase.from(table).update({ durum: newStatus }).eq('user_id', userId);
+    // Bazen veritabanında durum "aktif" veya "null" kalmış olabilir, bunu standartlaştırıyoruz:
+    const isCurrentlyActive = currentStatus === 'Aktif' || currentStatus === 'aktif';
+    const newStatus = isCurrentlyActive ? 'Pasif' : 'Aktif';
+    
+    // 🚀 .select() ekleyerek işlemin arka planda gerçekten yapılıp yapılmadığını denetliyoruz
+    const { data, error } = await supabase
+      .from(table)
+      .update({ durum: newStatus })
+      .eq('user_id', userId)
+      .select();
 
-    if (error) alert("Durum güncellenemedi: " + error.message);
-    else loadUsers();
+    if (error) {
+      alert("Durum güncellenemedi: " + error.message);
+    } else if (!data || data.length === 0) {
+      // Eğer hata yok ama data da yoksa, Supabase işlemi sessizce reddetmiş demektir!
+      alert("Sistem Engelledi! Tıpkı silme işlemindeki gibi, Supabase Güvenlik Kuralları (RLS) 'GÜNCELLEME (UPDATE)' yapmanızı engelliyor. Lütfen SQL Editor'den bu tablo için UPDATE yetkisi verin.");
+    } else {
+      loadUsers(); // Başarılıysa listeyi yenile
+    }
   }
 
-  // 🔥 1. YENİ GÜÇLENDİRİLMİŞ SİLME FONKSİYONU
+  // YENİ GÜÇLENDİRİLMİŞ SİLME FONKSİYONU
   async function deleteUser(type: 'ogrenci' | 'egitmen', userId: string) {
     const onay = confirm(`Bu kullanıcıyı sistemden KALICI OLARAK silmek istediğinize emin misiniz? (Tüm giriş yetkileri ve verileri silinecektir!)`);
     if (!onay) return;
@@ -492,7 +507,7 @@ function ApplicationsManagement() {
         alert("Sistemsel Hata: " + err.message);
       }
     } else {
-      // 🚀 SADECE REDDEDİLİRSE DURUMUNU GÜNCELLE VE LİSTEDE BIRAK (Fakat biz butonu kaldırdık, yine de kod burada kalabilir)
+      // SADECE REDDEDİLİRSE DURUMUNU GÜNCELLE VE LİSTEDE BIRAK (Fakat biz butonu kaldırdık, yine de kod burada kalabilir)
       await supabase.from('basvurular').update({ durum: newStatus }).eq('id', basvuruObj.id);
       alert(`Başvuru reddedildi.`);
     }
@@ -636,7 +651,7 @@ function ApplicationsManagement() {
               )}
             </div>
 
-            {/* 🔥 2. DÜZELTME: SADECE SİL VE ONAYLA BUTONLARI KALDI */}
+            {/* SADECE SİL VE ONAYLA BUTONLARI KALDI */}
             <div style={{ padding: '24px 32px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <button 
                 onClick={() => deleteApplication(seciliBasvuru.id)}
