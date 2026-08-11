@@ -49,7 +49,7 @@ export default function AdminDashboard() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    setAdminId(''); // Çıkış yapınca durumu sıfırlar, böylece otomatik giriş ekranı gelir
+    setAdminId(''); 
   };
 
   const menu = [
@@ -59,12 +59,10 @@ export default function AdminDashboard() {
     { key: 'settings', label: 'Sistem Ayarları', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> }
   ];
 
-  // 1. EKRAN YÜKLENİYORSA
   if (authChecking) {
     return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#f8fafc', color: '#64748b' }}>Güvenlik kontrolü yapılıyor...</div>;
   }
 
-  // 2. GİRİŞ YAPILMAMIŞSA (GÜVENLİK DUVARI)
   if (!adminId) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f1f5f9', fontFamily: '"Inter", sans-serif' }}>
@@ -95,7 +93,6 @@ export default function AdminDashboard() {
     );
   }
 
-  // 3. GİRİŞ BAŞARILIYSA DASHBOARD'U GÖSTER
   return (
     <div style={{ display: 'flex', minHeight: '100vh', fontFamily: '"Inter", system-ui, sans-serif', background: '#f8fafc', color: '#0f172a' }}>
       
@@ -224,7 +221,7 @@ export default function AdminDashboard() {
 }
 
 /* =========================================================
-   🚀 KULLANICI YÖNETİMİ BİLEŞENİ
+   🚀 KULLANICI YÖNETİMİ BİLEŞENİ (GÜNCELLENDİ)
 ========================================================= */
 function UserManagement() {
   const [activeTab, setActiveTab] = useState<'ogrenciler' | 'egitmenler'>('ogrenciler');
@@ -257,21 +254,33 @@ function UserManagement() {
     else loadUsers();
   }
 
+  // 🔥 1. YENİ GÜÇLENDİRİLMİŞ SİLME FONKSİYONU
   async function deleteUser(type: 'ogrenci' | 'egitmen', userId: string) {
-    const onay = confirm(`Bu kullanıcıyı platformdan KALICI olarak silmek istediğinize emin misiniz? (Bu işlem geri alınamaz!)`);
+    const onay = confirm(`Bu kullanıcıyı sistemden KALICI OLARAK silmek istediğinize emin misiniz? (Tüm giriş yetkileri ve verileri silinecektir!)`);
     if (!onay) return;
 
     const table = type === 'ogrenci' ? 'ogrenciler' : 'egitmenler';
-    
-    const { data, error } = await supabase.from(table).delete().eq('user_id', userId).select();
 
-    if (error) {
-      alert("Silme işlemi başarısız oldu: " + error.message);
-    } else if (!data || data.length === 0) {
-      alert("Sistem engelledi! Lütfen Supabase SQL Editor'den 'DELETE' yetkisi kodunu çalıştırdığınızdan emin olun.");
-    } else {
-      alert("Kullanıcı profili başarıyla silindi.");
+    try {
+      // 1. Önce yazdığımız API'ye istek atarak auth.users tablosundan tamamen siliyoruz
+      const res = await fetch('/api/delete-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: userId })
+      });
+
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Silme işlemi API tarafından reddedildi.');
+
+      // 2. Ardından kendi tablomuzdan da (ogrenciler/egitmenler) manuel siliyoruz
+      const { error: tableError } = await supabase.from(table).delete().eq('user_id', userId);
+
+      if (tableError) throw tableError;
+
+      alert("Kullanıcı sistemden ve tablolardan tamamen silindi!");
       loadUsers();
+    } catch (error: any) {
+      alert("Silme işlemi başarısız oldu: " + error.message);
     }
   }
 
@@ -418,7 +427,6 @@ function ApplicationsManagement() {
     setLoading(false);
   }
 
-  // 🚀 ONAYLA VEYA REDDET
   async function updateStatus(basvuruObj: any, newStatus: string) {
     const onay = confirm(`Bu başvuruyu ${newStatus} olarak işaretlemek istiyor musunuz?`);
     if (!onay) return;
@@ -477,7 +485,6 @@ function ApplicationsManagement() {
         } else if (!delData || delData.length === 0) {
           alert("Başvuru onaylandı, ancak listeden silinmesi Supabase Güvenlik Kuralları (RLS) tarafından engellendi. Lütfen SQL Editor'den 'basvurular' için DELETE izni verin.");
         } else {
-          // İstenilen kısa ve öz uyarı
           alert("Başvuru onaylandı.");
         }
 
@@ -485,7 +492,7 @@ function ApplicationsManagement() {
         alert("Sistemsel Hata: " + err.message);
       }
     } else {
-      // 🚀 SADECE REDDEDİLİRSE DURUMUNU GÜNCELLE VE LİSTEDE BIRAK
+      // 🚀 SADECE REDDEDİLİRSE DURUMUNU GÜNCELLE VE LİSTEDE BIRAK (Fakat biz butonu kaldırdık, yine de kod burada kalabilir)
       await supabase.from('basvurular').update({ durum: newStatus }).eq('id', basvuruObj.id);
       alert(`Başvuru reddedildi.`);
     }
@@ -629,6 +636,7 @@ function ApplicationsManagement() {
               )}
             </div>
 
+            {/* 🔥 2. DÜZELTME: SADECE SİL VE ONAYLA BUTONLARI KALDI */}
             <div style={{ padding: '24px 32px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <button 
                 onClick={() => deleteApplication(seciliBasvuru.id)}
@@ -638,15 +646,6 @@ function ApplicationsManagement() {
               </button>
               
               <div style={{ display: 'flex', gap: '12px' }}>
-                {seciliBasvuru.durum !== 'Reddedildi' && (
-                  <button 
-                    onClick={() => updateStatus(seciliBasvuru, 'Reddedildi')}
-                    style={{ background: '#ffffff', color: '#ef4444', border: '1px solid #cbd5e1', padding: '10px 20px', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
-                  >
-                    Reddet
-                  </button>
-                )}
-                
                 {seciliBasvuru.durum !== 'Onaylandı' && (
                   <button 
                     onClick={() => updateStatus(seciliBasvuru, 'Onaylandı')}
