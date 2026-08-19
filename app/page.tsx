@@ -376,10 +376,10 @@ export default function HomePage() {
         <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
           
           <div style={{ textAlign: 'center', marginBottom: '64px' }}>
-            <span style={{ color: '#4f46e5', fontWeight: 800, fontSize: '3.85rem', textTransform: 'uppercase', letterSpacing: '1.5px', display: 'block', marginBottom: '12px' }}>
+            <span style={{ color: '#4f46e5', fontWeight: 800, fontSize: '3.00rem', textTransform: 'uppercase', letterSpacing: '1.5px', display: 'block', marginBottom: '12px' }}>
               {isEn ? "How it Works?" : "Nasıl Çalışır?"}
             </span>
-            <h3 style={{ fontSize: '2.8rem', fontWeight: 900, color: '#0f172a', letterSpacing: '-1.5px', margin: 0 }}>
+            <h3 style={{ fontSize: '2.2rem', fontWeight: 900, color: '#0f172a', letterSpacing: '-1.5px', margin: 0 }}>
               {isEn ? "Start Learning in 3 Simple Steps" : "Sadece 3 Adımda Öğrenmeye Başlayın"}
             </h3>
             <p style={{ color: '#64748b', fontSize: '1.1rem', maxWidth: '600px', margin: '16px auto 0', lineHeight: 1.6 }}>
