@@ -15,6 +15,18 @@ const getYouTubeId = (url: string) => {
   return (match && match[2].length === 11) ? match[2] : null;
 };
 
+// 🚀 DİLLERİ TEMİZLEYEN FONKSİYON EKLENDİ
+const formatDiller = (diller: any) => {
+  if (!diller) return '';
+  try {
+    let parsed = typeof diller === 'string' ? JSON.parse(diller) : diller;
+    if (Array.isArray(parsed)) return parsed.join(', ');
+  } catch(e) {
+    return String(diller).replace(/[\[\]"']/g, '').split(',').map(s => s.trim()).join(', ');
+  }
+  return String(diller);
+};
+
 export default function TeachersListPage() {
   const router = useRouter();
   const { t } = useTranslation();
@@ -24,10 +36,7 @@ export default function TeachersListPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Sağ taraftaki video paneli için üzerine gelinen eğitmeni tutan state
   const [hoveredTeacher, setHoveredTeacher] = useState<any>(null);
-  
-  // Ekranın genişliğine göre sağ paneli gösterip/gizlemek için
   const [isDesktop, setIsDesktop] = useState(true);
 
   useEffect(() => {
@@ -131,7 +140,6 @@ export default function TeachersListPage() {
   return (
     <div style={{ fontFamily: '"Inter", system-ui, sans-serif', color: '#0f172a', backgroundColor: '#f8fafc', minHeight: '100vh', paddingBottom: '80px' }}>
       
-      {/* MODERN GLASSMORPHISM NAVİGASYON */}
       <nav style={{ padding: '16px 8%', backgroundColor: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(226, 232, 240, 0.8)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 50 }}>
         <div onClick={handleLogoClick} style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
           <h1 style={{ fontSize: '1.4rem', fontWeight: 900, color: '#1e1b4b', margin: 0, letterSpacing: '-0.5px' }}>
@@ -145,7 +153,6 @@ export default function TeachersListPage() {
 
       <div style={{ maxWidth: '1400px', margin: '30px auto 0', padding: '0 20px' }}>
         
-        {/* ÜST GERİ DÖN BUTONU (Çift ok sorunu çözüldü) */}
         <div style={{ marginBottom: '20px' }}>
           <button 
             onClick={() => router.back()} 
@@ -162,7 +169,6 @@ export default function TeachersListPage() {
             {t.listPage.title}
           </h1>
           
-          {/* MODERN ARAMA VE AKILLI EŞLEŞME ALANI */}
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center', backgroundColor: '#ffffff', padding: '10px', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)' }}>
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '12px', padding: '0 16px' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -187,10 +193,8 @@ export default function TeachersListPage() {
           </div>
         </div>
 
-        {/* İKİYE BÖLÜNMÜŞ DÜZEN */}
         <div style={{ display: 'flex', gap: '32px', alignItems: 'flex-start' }}>
           
-          {/* SOL TARAF: MODERN EĞİTMEN LİSTESİ */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '24px' }}>
             {loading ? (
               <div style={{ textAlign: 'center', padding: '80px', color: '#64748b', fontSize: '1.2rem', fontWeight: 500 }}>
@@ -198,7 +202,8 @@ export default function TeachersListPage() {
               </div>
             ) : filteredTeachers.length > 0 ? (
               filteredTeachers.map((tItem) => {
-                const dillerMetni = tItem.konustugu_diller || tItem.diller || '';
+                // 🚀 DİLLER BURADA TERTEMİZ EKRANA BASILIYOR
+                const dillerMetni = formatDiller(tItem.konustugu_diller || tItem.diller);
                 const onlineStatus = isOnline(tItem.son_gorulme); 
 
                 return (
@@ -221,7 +226,6 @@ export default function TeachersListPage() {
                       transform: hoveredTeacher?.id === tItem.id ? 'translateY(-2px)' : 'translateY(0)'
                     }}
                   >
-                    {/* SOL: AVATAR */}
                     <div style={{ flexShrink: 0, width: '140px' }}>
                       <div style={{ position: 'relative', width: '100%', paddingTop: '100%' }}>
                         <img 
@@ -235,10 +239,8 @@ export default function TeachersListPage() {
                       </div>
                     </div>
 
-                    {/* ORTA: BİLGİLER */}
                     <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                       
-                      {/* İsim ve Başlık */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
                         <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: '#0f172a' }}>
                           {tItem.tam_ad}
@@ -262,7 +264,6 @@ export default function TeachersListPage() {
                         )}
                       </div>
 
-                      {/* Minimal Puan ve Ders İstatistikleri */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '0.9rem', marginBottom: '16px' }}>
                         {tItem.gercek_puan_ortalamasi ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -284,7 +285,6 @@ export default function TeachersListPage() {
                         </div>
                       </div>
 
-                      {/* SaaS Stili Modern Etiketler */}
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
                         {tItem.konum && (
                           <span style={{ padding: '6px 12px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -318,15 +318,12 @@ export default function TeachersListPage() {
                         </div>
                       )}
 
-                      {/* Biyografi */}
                       <p style={{ margin: 0, fontSize: '0.95rem', color: '#475569', lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                         {tItem.biyografi || t.listPage?.noBio || 'Biyografi bulunmuyor.'}
                       </p>
                     </div>
 
-                    {/* SAĞ: FİYAT VE BUTONLAR */}
                     <div style={{ flexShrink: 0, width: '180px', borderLeft: '1px solid #f1f5f9', paddingLeft: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-start' }}>
-                      
                       <div style={{ marginBottom: '24px' }}>
                         <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>
                           {formatPrice(tItem.saatlik_ucret || 0)}
@@ -356,7 +353,6 @@ export default function TeachersListPage() {
                       </div>
                     </div>
                     
-                    {/* Öne Çıkan Etiketi (Mutlak Konum) */}
                     {tItem.one_cikan_etiket && (
                       <div style={{ position: 'absolute', top: '16px', right: '16px' }}>
                         <span style={{ padding: '6px 12px', backgroundColor: '#0f172a', color: '#ffffff', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.5px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -365,7 +361,6 @@ export default function TeachersListPage() {
                         </span>
                       </div>
                     )}
-
                   </div>
                 );
               })
@@ -380,37 +375,15 @@ export default function TeachersListPage() {
             )}
           </div>
 
-          {/* 🚀 SAĞ TARAF: AŞAĞI KAYDIRILDIĞINDA EKRANDA SABİT KALAN (STICKY) VİDEO ALANI */}
           {isDesktop && (
             <div style={{ width: '420px', flexShrink: 0, position: 'sticky', top: '100px' }}>
-              <div style={{ 
-                backgroundColor: '#ffffff', 
-                border: '1px solid #e2e8f0', 
-                borderRadius: '24px', 
-                padding: '24px', 
-                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '16px'
-              }}>
-                {/* İkon Kaldırıldı, Temiz Başlık Bırakıldı */}
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
-                  Eğitmen Önizlemesi
-                </h3>
-
+              <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '24px', padding: '24px', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>Eğitmen Önizlemesi</h3>
                 {hoveredTeacher ? (
                   <div style={{ animation: 'fadeIn 0.3s ease' }}>
-                    
-                    {/* VIDEO PLAYER */}
                     {hoveredTeacher.video_url && getYouTubeId(hoveredTeacher.video_url) ? (
                       <div style={{ width: '100%', borderRadius: '16px', overflow: 'hidden', backgroundColor: '#0f172a', marginBottom: '16px', position: 'relative', paddingTop: '56.25%' }}>
-                        <iframe
-                          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
-                          src={`https://www.youtube.com/embed/${getYouTubeId(hoveredTeacher.video_url)}?autoplay=1&mute=1`}
-                          title="YouTube video player"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                        ></iframe>
+                        <iframe style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }} src={`https://www.youtube.com/embed/${getYouTubeId(hoveredTeacher.video_url)}?autoplay=1&mute=1`} title="YouTube video player" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen></iframe>
                       </div>
                     ) : (
                       <div style={{ width: '100%', height: '220px', borderRadius: '16px', backgroundColor: '#f8fafc', border: '1px dashed #cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', marginBottom: '16px' }}>
@@ -419,7 +392,6 @@ export default function TeachersListPage() {
                       </div>
                     )}
 
-                    {/* EĞİTMEN KISA ÖZETİ */}
                     <div>
                       <h4 style={{ margin: '0 0 4px 0', fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>{hoveredTeacher.tam_ad}</h4>
                       <p style={{ margin: '0 0 12px 0', fontSize: '0.95rem', color: '#4f46e5', fontWeight: 600 }}>{hoveredTeacher.ders_turu || 'Türkçe Eğitmeni'}</p>
@@ -438,7 +410,6 @@ export default function TeachersListPage() {
                         Profili Ziyaret Et <span style={{ fontSize: '1.2rem' }}>→</span>
                       </button>
                     </div>
-
                   </div>
                 ) : (
                   <div style={{ height: '300px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', textAlign: 'center', padding: '0 20px' }}>
@@ -453,9 +424,7 @@ export default function TeachersListPage() {
             </div>
           )}
         </div>
-
       </div>
-
       <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }`}</style>
     </div>
   );

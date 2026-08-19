@@ -203,7 +203,6 @@ export default function TeacherProfilePage() {
     }
   }
 
-  // ... (Geri kalan mesaj, randevu, socket kodları aynı)
   useEffect(() => {
     if (showMsgModal && teacher) {
       checkAndLoadChat();
@@ -400,18 +399,77 @@ export default function TeacherProfilePage() {
     return (now - lastSeen) < 15 * 60 * 1000;
   };
 
+  // 🚀 DİNAMİK YANIT SÜRESİ HESAPLAYICISI 
+  const getDynamicResponseTime = (sonGorulmeTarihi: string | null) => {
+    if (!sonGorulmeTarihi) return "⏱️ Genellikle birkaç saat içinde yanıt verir";
+    const lastSeen = new Date(sonGorulmeTarihi).getTime();
+    const now = new Date().getTime();
+    const diffInMinutes = Math.floor((now - lastSeen) / (1000 * 60));
+
+    if (diffInMinutes < 30) return "🟢 Şu an aktif - Hemen yanıt verebilir";
+    if (diffInMinutes < 120) return "⚡ Genellikle 1 saat içinde yanıt verir";
+    if (diffInMinutes < 1440) return "⏱️ Genellikle birkaç saat içinde yanıt verir";
+    return "📅 Genellikle 1 gün içinde yanıt verir";
+  };
+
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontWeight: 600, color: '#475569', backgroundColor: '#f8fafc' }}>Bilgiler yükleniyor...</div>;
   if (!teacher) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontWeight: 600, color: '#ef4444', backgroundColor: '#f8fafc' }}>Eğitmen profili bulunamadı.</div>;
 
   const embedVideoUrl = getYouTubeEmbedUrl(teacher?.video_url);
   const isTeacherOnline = isOnline(teacher?.son_gorulme);
 
+  // Yanıt süresini hesapla
+  const yanitSuresiMetni = getDynamicResponseTime(teacher?.son_gorulme);
+  const isCevrimici = yanitSuresiMetni.includes("Şu an aktif");
+
+  // 🚀 AKILLI DİL AYIKLAYICI (Köşeli parantezleri temizler)
   let dillerArray: string[] = [];
   if (teacher?.diller) {
-    const rawData = typeof teacher.diller === 'string' ? teacher.diller : JSON.stringify(teacher.diller);
-    const cleanedData = rawData.replace(/[\[\]"]/g, ''); 
-    dillerArray = cleanedData.split(',').map((d: string) => d.trim()).filter((d: string) => d !== "");
+    try {
+      let parsedDiller = teacher.diller;
+      if (typeof parsedDiller === 'string') {
+        if (parsedDiller.startsWith('[') || parsedDiller.startsWith('{')) {
+          parsedDiller = JSON.parse(parsedDiller);
+        } else {
+          parsedDiller = parsedDiller.split(',').map((s:string)=>s.trim());
+        }
+      }
+      if (Array.isArray(parsedDiller)) {
+        dillerArray = parsedDiller.map((d:any) => typeof d === 'string' ? d.trim() : String(d)).filter(Boolean);
+      }
+    } catch(e) {
+      const rawData = String(teacher.diller);
+      const cleanedData = rawData.replace(/[\[\]"']/g, ''); 
+      dillerArray = cleanedData.split(',').map((d: string) => d.trim()).filter(Boolean);
+    }
   }
+
+  const getSafeKonum = (konum: any) => {
+    if (!konum) return null;
+    if (typeof konum === 'object') {
+      const ulke = konum.ulke || '';
+      const sehir = konum.sehir || '';
+      if (ulke && sehir) return `${ulke} - ${sehir}`;
+      return ulke || sehir || null;
+    }
+    if (typeof konum === 'string') return konum.replace(/\s*-\s*/, ' - ');
+    return String(konum);
+  };
+
+  const getSafeEgitim = (egitim: any) => {
+    if (!egitim) return null;
+    if (typeof egitim === 'object') {
+      const seviye = egitim.seviye || egitim.egitim_seviyesi || '';
+      const okul = egitim.okul || egitim.universite || egitim.okul_adi || '';
+      if (seviye && okul) return `${seviye} - ${okul}`;
+      return seviye || okul || null;
+    }
+    if (typeof egitim === 'string') return egitim.replace(/\s*-\s*/, ' - ');
+    return String(egitim);
+  };
+
+  const safeKonum = getSafeKonum(teacher?.konum);
+  const safeEgitim = getSafeEgitim(teacher?.egitim);
 
   const gecerliPuanlar = yorumlar.filter(y => Number(y.puan) > 0 && Number(y.puan) <= 5);
   const dinamikOrtalama = gecerliPuanlar.length > 0
@@ -498,20 +556,20 @@ export default function TeacherProfilePage() {
                 </div>
 
                 <div style={{ marginTop: '24px', display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-                  {teacher?.konum && (
+                  {safeKonum && (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px 6px 8px', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', borderRadius: '24px', fontSize: '0.9rem', fontWeight: 600 }}>
                       <div style={{ width: '28px', height: '28px', background: '#e0e7ff', color: '#4f46e5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
                       </div>
-                      {teacher.konum}
+                      {safeKonum}
                     </span>
                   )}
-                  {teacher?.egitim && (
+                  {safeEgitim && (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px 6px 8px', background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', borderRadius: '24px', fontSize: '0.9rem', fontWeight: 600 }}>
                       <div style={{ width: '28px', height: '28px', background: '#fef3c7', color: '#d97706', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
                       </div>
-                      {teacher.egitim}
+                      {safeEgitim}
                     </span>
                   )}
                 </div>
@@ -749,8 +807,8 @@ export default function TeacherProfilePage() {
               </button>
             </div>
 
-            <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem', marginTop: '20px', fontWeight: 500 }}>
-              ⚡ Genellikle 1 saat içinde yanıt verir
+            <p style={{ textAlign: 'center', color: isCevrimici ? '#10b981' : '#94a3b8', fontSize: '0.85rem', marginTop: '20px', fontWeight: isCevrimici ? 700 : 500 }}>
+              {yanitSuresiMetni}
             </p>
           </div>
         </div>

@@ -10,7 +10,6 @@ export default function AdminDashboard() {
   const [adminId, setAdminId] = useState('');
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   
-  // GİRİŞ EKRANI (GÜVENLİK DUVARI) STATE'LERİ
   const [authChecking, setAuthChecking] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -52,7 +51,6 @@ export default function AdminDashboard() {
     setAdminId(''); 
   };
 
-  // 🚀 MENÜYE "BLOG YÖNETİMİ" EKLENDİ
   const menu = [
     { key: 'dashboard', label: 'Genel Bakış', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg> },
     { key: 'applications', label: 'Başvuru Yönetimi', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> },
@@ -191,24 +189,11 @@ export default function AdminDashboard() {
         </header>
 
         <div style={{ flex: 1, padding: '40px 60px', overflowY: 'auto' }}>
-          {tab === 'dashboard' && (
-            <div style={{ textAlign: 'center', padding: '60px', color: '#64748b' }}>
-              <h2>Burası Genel Bakış Alanı</h2>
-              <p>Öğrenci, eğitmen ve ders sayılarını burada gösterebilirsiniz.</p>
-            </div>
-          )}
+          {tab === 'dashboard' && <DashboardOverview />}
           {tab === 'users' && <UserManagement />}
           {tab === 'applications' && <ApplicationsManagement />}
-          
-          {/* 🚀 BLOG YÖNETİMİ BİLEŞENİ BURADA ÇAĞRILIYOR */}
           {tab === 'blog' && <BlogManagement />}
-          
-          {tab === 'settings' && (
-            <div style={{ textAlign: 'center', padding: '60px', color: '#64748b' }}>
-              <h2>Sistem Ayarları</h2>
-              <p>Platform genel ayarları burada yer alacak.</p>
-            </div>
-          )}
+          {tab === 'settings' && <SystemSettings />}
         </div>
       </main>
     </div>
@@ -216,7 +201,174 @@ export default function AdminDashboard() {
 }
 
 /* =========================================================
-   🚀 KULLANICI YÖNETİMİ BİLEŞENİ (AYNEN KORUNDU)
+   🚀 GENEL BAKIŞ (DASHBOARD OVERVIEW) BİLEŞENİ
+========================================================= */
+function DashboardOverview() {
+  const [stats, setStats] = useState({ ogrenciler: 0, egitmenler: 0, bekleyenBasvurular: 0, tamamlananDersler: 0 });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        const { count: oCount } = await supabase.from('ogrenciler').select('*', { count: 'exact', head: true });
+        const { count: eCount } = await supabase.from('egitmenler').select('*', { count: 'exact', head: true });
+        const { count: bCount } = await supabase.from('basvurular').select('*', { count: 'exact', head: true }).eq('durum', 'bekliyor');
+        const { count: dCount } = await supabase.from('dersler').select('*', { count: 'exact', head: true }).eq('durum', 'Tamamlanan');
+
+        setStats({
+          ogrenciler: oCount || 0,
+          egitmenler: eCount || 0,
+          bekleyenBasvurular: bCount || 0,
+          tamamlananDersler: dCount || 0
+        });
+      } catch (err) {
+        console.error("İstatistikler yüklenemedi", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadStats();
+  }, []);
+
+  if (loading) return <div style={{ padding: '40px', color: '#64748b' }}>İstatistikler yükleniyor...</div>;
+
+  return (
+    <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
+      <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', marginBottom: '24px', marginTop: 0 }}>Platform Özeti</h2>
+      
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '24px' }}>
+        <div style={{ background: '#ffffff', padding: '24px', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: '14px', fontWeight: 600, color: '#64748b', marginBottom: '8px' }}>Toplam Öğrenci</div>
+            <div style={{ fontSize: '32px', fontWeight: 900, color: '#0f172a' }}>{stats.ogrenciler}</div>
+          </div>
+          <div style={{ background: '#eef2ff', padding: '12px', borderRadius: '12px', color: '#4f46e5' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+        </div>
+
+        <div style={{ background: '#ffffff', padding: '24px', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: '14px', fontWeight: 600, color: '#64748b', marginBottom: '8px' }}>Aktif Eğitmenler</div>
+            <div style={{ fontSize: '32px', fontWeight: 900, color: '#0f172a' }}>{stats.egitmenler}</div>
+          </div>
+          <div style={{ background: '#f0fdf4', padding: '12px', borderRadius: '12px', color: '#16a34a' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+        </div>
+
+        <div style={{ background: '#ffffff', padding: '24px', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: '14px', fontWeight: 600, color: '#64748b', marginBottom: '8px' }}>Bekleyen Başvurular</div>
+            <div style={{ fontSize: '32px', fontWeight: 900, color: '#0f172a' }}>{stats.bekleyenBasvurular}</div>
+          </div>
+          <div style={{ background: '#fff7ed', padding: '12px', borderRadius: '12px', color: '#d97706' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </div>
+        </div>
+
+        <div style={{ background: '#ffffff', padding: '24px', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: '14px', fontWeight: 600, color: '#64748b', marginBottom: '8px' }}>Tamamlanan Ders</div>
+            <div style={{ fontSize: '32px', fontWeight: 900, color: '#0f172a' }}>{stats.tamamlananDersler}</div>
+          </div>
+          <div style={{ background: '#fef2f2', padding: '12px', borderRadius: '12px', color: '#dc2626' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="m9 16 2 2 4-4"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   🚀 SİSTEM AYARLARI BİLEŞENİ
+========================================================= */
+function SystemSettings() {
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [komisyon, setKomisyon] = useState('20');
+
+  const handlePasswordUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      alert("Şifreler birbiriyle eşleşmiyor!");
+      return;
+    }
+    if (newPassword.length < 6) {
+      alert("Şifre en az 6 karakter olmalıdır.");
+      return;
+    }
+
+    setLoading(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      alert("Şifre güncellenirken hata oluştu: " + error.message);
+    } else {
+      alert("Yönetici şifreniz başarıyla güncellendi!");
+      setNewPassword('');
+      setConfirmPassword('');
+    }
+    setLoading(false);
+  };
+
+  const handleSettingsSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    alert(`Platform ayarları kaydedildi. (Mevcut Komisyon: %${komisyon})`);
+  };
+
+  return (
+    <div style={{ maxWidth: '800px', margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', gap: '32px' }}>
+      
+      {/* Yönetici Hesap Ayarları */}
+      <div style={{ background: '#ffffff', borderRadius: '24px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+        <div style={{ padding: '24px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>Güvenlik & Hesap Ayarları</h2>
+          <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '14px' }}>Yönetici paneli giriş şifrenizi buradan değiştirebilirsiniz.</p>
+        </div>
+        <form onSubmit={handlePasswordUpdate} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div>
+            <label style={{ display: 'block', fontWeight: 600, fontSize: '14px', marginBottom: '8px', color: '#334155' }}>Yeni Şifre</label>
+            <input type="password" required value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Yeni şifrenizi girin" style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1px solid #cbd5e1', outline: 'none', boxSizing: 'border-box' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontWeight: 600, fontSize: '14px', marginBottom: '8px', color: '#334155' }}>Yeni Şifre (Tekrar)</label>
+            <input type="password" required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Yeni şifrenizi tekrar girin" style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1px solid #cbd5e1', outline: 'none', boxSizing: 'border-box' }} />
+          </div>
+          <button type="submit" disabled={loading} style={{ marginTop: '8px', padding: '12px 24px', background: loading ? '#94a3b8' : '#0f172a', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 700, cursor: loading ? 'default' : 'pointer', alignSelf: 'flex-start' }}>
+            {loading ? 'Güncelleniyor...' : 'Şifreyi Güncelle'}
+          </button>
+        </form>
+      </div>
+
+      {/* Platform Genel Ayarları */}
+      <div style={{ background: '#ffffff', borderRadius: '24px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+        <div style={{ padding: '24px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>Platform Ayarları</h2>
+          <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '14px' }}>Sistem genelindeki kuralları ve oranları düzenleyin.</p>
+        </div>
+        <form onSubmit={handleSettingsSave} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div>
+            <label style={{ display: 'block', fontWeight: 600, fontSize: '14px', marginBottom: '8px', color: '#334155' }}>Platform Kesinti / Komisyon Oranı (%)</label>
+            <div style={{ position: 'relative', width: '100%', maxWidth: '200px' }}>
+              <input type="number" required value={komisyon} onChange={e => setKomisyon(e.target.value)} style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1px solid #cbd5e1', outline: 'none', boxSizing: 'border-box' }} />
+              <span style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', fontWeight: 600 }}>%</span>
+            </div>
+            <p style={{ fontSize: '12px', color: '#94a3b8', margin: '6px 0 0 0' }}>Eğitmenlerin ders ücretlerinden kesilecek platform hizmet bedeli.</p>
+          </div>
+          <button type="submit" style={{ marginTop: '8px', padding: '12px 24px', background: '#4f46e5', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', alignSelf: 'flex-start' }}>
+            Ayarları Kaydet
+          </button>
+        </form>
+      </div>
+
+    </div>
+  );
+}
+
+/* =========================================================
+   🚀 KULLANICI YÖNETİMİ BİLEŞENİ
 ========================================================= */
 function UserManagement() {
   const [activeTab, setActiveTab] = useState<'ogrenciler' | 'egitmenler'>('ogrenciler');
@@ -244,8 +396,6 @@ function UserManagement() {
     const { data, error } = await supabase.from(table).update({ durum: newStatus }).eq('user_id', userId).select();
     if (error) {
       alert("Durum güncellenemedi: " + error.message);
-    } else if (!data || data.length === 0) {
-      alert("Sistem Engelledi! Güvenlik kuralları engelliyor.");
     } else {
       loadUsers();
     }
@@ -329,8 +479,52 @@ function UserManagement() {
 }
 
 /* =========================================================
-   🚀 BAŞVURU YÖNETİMİ BİLEŞENİ (AYNEN KORUNDU)
+   🚀 BAŞVURU YÖNETİMİ BİLEŞENİ
 ========================================================= */
+
+function parseKonum(konum: any) {
+  if (!konum) return { ulke: '-', sehir: '-' };
+  if (typeof konum === 'object') return { ulke: konum.ulke || '-', sehir: konum.sehir || '-' };
+  const str = String(konum);
+  if (str.includes('-')) {
+      const parts = str.split('-');
+      return { ulke: parts[0]?.trim() || '-', sehir: parts[1]?.trim() || '-' };
+  }
+  return { ulke: str, sehir: '-' };
+}
+
+function parseEgitim(egitim: any) {
+  if (!egitim) return { seviye: '-', okul: '-' };
+  if (typeof egitim === 'object') return { seviye: egitim.seviye || egitim.egitim_seviyesi || '-', okul: egitim.okul || egitim.universite || '-' };
+  const str = String(egitim);
+  if (str.includes('-')) {
+      const parts = str.split('-');
+      return { seviye: parts[0]?.trim() || '-', okul: parts[1]?.trim() || '-' };
+  }
+  return { seviye: str, okul: '-' };
+}
+
+function parseDiller(diller: any) {
+  if (!diller) return { ana: '-', diger: '-' };
+  let arr: string[] = [];
+  if (Array.isArray(diller)) {
+      arr = diller;
+  } else if (typeof diller === 'string') {
+      try {
+          arr = JSON.parse(diller);
+      } catch(e) {
+          arr = diller.replace(/[\[\]{}"']/g, '').split(',').map((s:string) => s.trim());
+      }
+  }
+  
+  const ana = arr.find(d => d.includes('(Ana Dil)'))?.replace('(Ana Dil)', '')?.trim() || '-';
+  const digerList = arr.filter(d => !d.includes('(Ana Dil)')).filter(Boolean);
+  const diger = digerList.length > 0 ? digerList.join(', ') : '-';
+  
+  return { ana, diger };
+}
+
+
 function ApplicationsManagement() {
   const [basvurular, setBasvurular] = useState<any[]>([]);
   const [seciliBasvuru, setSeciliBasvuru] = useState<any>(null);
@@ -354,13 +548,39 @@ function ApplicationsManagement() {
         if (!response.ok) throw new Error(result.error);
         
         const realUserId = result.user.id; 
+        
         const { data: checkExist } = await supabase.from('egitmenler').select('id').eq('user_id', realUserId).maybeSingle();
-        if (!checkExist) {
-          const egitmenData = { user_id: realUserId, tam_ad: basvuruObj.tam_ad || "İsimsiz", email: basvuruObj.email, ders_turu: basvuruObj.ders_turu || "Belirtilmedi", biyografi: basvuruObj.mesaj || "", saatlik_ucret: 250, durum: 'Aktif' };
-          await supabase.from('egitmenler').insert([egitmenData]);
+        
+        // DİKKAT: diploma_url ve sertifika_url `egitmenler` tablosunda yok!
+        // Yalnızca tabloda var olan alanları gönderiyoruz.
+        const egitmenData = { 
+          user_id: realUserId, 
+          tam_ad: basvuruObj.tam_ad || "İsimsiz", 
+          email: basvuruObj.email, 
+          ders_turu: "Türkçe Eğitmeni", 
+          biyografi: basvuruObj.biyografi || "", 
+          saatlik_ucret: Number(basvuruObj.saatlik_ucret) || 250, 
+          durum: 'Aktif',
+          onay_durumu: 'Onaylandı',
+          konum: basvuruObj.konum || null,       
+          egitim: basvuruObj.egitim || null,     
+          diller: basvuruObj.diller || null,     
+          amac: basvuruObj.amac || null,
+          sure: basvuruObj.sure || null,
+          odak: basvuruObj.odak || null,
+          seviye: basvuruObj.seviye || null
+        };
+
+        if (checkExist) {
+          const { error: updErr } = await supabase.from('egitmenler').update(egitmenData).eq('user_id', realUserId);
+          if (updErr) throw updErr;
+        } else {
+          const { error: insErr } = await supabase.from('egitmenler').insert([egitmenData]);
+          if (insErr) throw insErr;
         }
+        
         await supabase.from('basvurular').delete().eq('id', basvuruObj.id);
-        alert("Başvuru onaylandı.");
+        alert("Başvuru onaylandı. Eğitmen profili eksiksiz bir şekilde güncellendi!");
       } catch (err: any) { alert("Sistemsel Hata: " + err.message); }
     }
     setSeciliBasvuru(null); 
@@ -374,6 +594,17 @@ function ApplicationsManagement() {
     setSeciliBasvuru(null);
     loadBasvurular();
   }
+
+  const parsedKonum = parseKonum(seciliBasvuru?.konum);
+  const parsedEgitim = parseEgitim(seciliBasvuru?.egitim);
+  const parsedDiller = parseDiller(seciliBasvuru?.diller);
+
+  const pAmac = seciliBasvuru?.amac || 'Belirtilmemiş';
+  const pSure = seciliBasvuru?.sure || 'Belirtilmemiş';
+  const pOdak = seciliBasvuru?.odak || 'Belirtilmemiş';
+  const pSeviye = seciliBasvuru?.seviye || 'Belirtilmemiş';
+  const pBio = seciliBasvuru?.biyografi || 'Biyografi metni girilmemiş.';
+  const pUcret = seciliBasvuru?.saatlik_ucret || '-';
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
@@ -398,26 +629,74 @@ function ApplicationsManagement() {
                 </td>
               </tr>
             ))}
+            {basvurular.length === 0 && (
+              <tr><td colSpan={4} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>Bekleyen başvuru bulunmuyor.</td></tr>
+            )}
           </tbody>
         </table>
       </div>
 
       {seciliBasvuru && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(15, 23, 42, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: '#ffffff', width: '100%', maxWidth: '700px', borderRadius: '24px', overflow: 'hidden' }}>
-            <div style={{ padding: '24px 32px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between' }}>
-              <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 800 }}>Başvuru Detayları</h3>
-              <button onClick={() => setSeciliBasvuru(null)} style={{ border: 'none', background: 'none', fontSize: '24px', cursor: 'pointer' }}>&times;</button>
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(15, 23, 42, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+          <div style={{ background: '#ffffff', width: '100%', maxWidth: '900px', borderRadius: '24px', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
+            <div style={{ padding: '24px 32px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 800 }}>Eğitmen Başvuru Formu Detayları</h3>
+              <button onClick={() => setSeciliBasvuru(null)} style={{ border: 'none', background: 'none', fontSize: '28px', cursor: 'pointer', color: '#94a3b8' }}>&times;</button>
             </div>
-            <div style={{ padding: '32px', maxHeight: '65vh', overflowY: 'auto' }}>
-               <p><strong>Ad:</strong> {seciliBasvuru.tam_ad}</p>
-               <p><strong>E-posta:</strong> {seciliBasvuru.email}</p>
-               <p><strong>Mesaj:</strong> {seciliBasvuru.mesaj || seciliBasvuru.kendini_tanitma}</p>
+            
+            <div style={{ padding: '32px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '24px', fontSize: '15px' }}>
+               
+               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', background: '#f8fafc', padding: '20px', borderRadius: '16px', border: '1px solid #f1f5f9' }}>
+                 <div><strong style={{ display: 'block', color: '#64748b', fontSize: '12px', textTransform: 'uppercase', marginBottom: '6px' }}>Ad Soyad</strong> <span style={{ fontWeight: 600, color: '#0f172a' }}>{seciliBasvuru.tam_ad}</span></div>
+                 <div><strong style={{ display: 'block', color: '#64748b', fontSize: '12px', textTransform: 'uppercase', marginBottom: '6px' }}>E-posta</strong> <span style={{ fontWeight: 600, color: '#0f172a' }}>{seciliBasvuru.email}</span></div>
+                 <div><strong style={{ display: 'block', color: '#64748b', fontSize: '12px', textTransform: 'uppercase', marginBottom: '6px' }}>Konum (Ülke)</strong> <span style={{ color: '#0f172a' }}>{parsedKonum.ulke}</span></div>
+                 <div><strong style={{ display: 'block', color: '#64748b', fontSize: '12px', textTransform: 'uppercase', marginBottom: '6px' }}>Şehir</strong> <span style={{ color: '#0f172a' }}>{parsedKonum.sehir}</span></div>
+                 <div><strong style={{ display: 'block', color: '#64748b', fontSize: '12px', textTransform: 'uppercase', marginBottom: '6px' }}>Eğitim Seviyesi</strong> <span style={{ color: '#0f172a' }}>{parsedEgitim.seviye}</span></div>
+                 <div><strong style={{ display: 'block', color: '#64748b', fontSize: '12px', textTransform: 'uppercase', marginBottom: '6px' }}>Üniversite / Okul Adı</strong> <span style={{ color: '#0f172a' }}>{parsedEgitim.okul}</span></div>
+                 <div><strong style={{ display: 'block', color: '#64748b', fontSize: '12px', textTransform: 'uppercase', marginBottom: '6px' }}>Ana Dil</strong> <span style={{ background: '#eef2ff', color: '#4f46e5', padding: '4px 10px', borderRadius: '8px', fontWeight: 700, fontSize: '13px' }}>{parsedDiller.ana}</span></div>
+                 <div><strong style={{ display: 'block', color: '#64748b', fontSize: '12px', textTransform: 'uppercase', marginBottom: '6px' }}>Diğer Diller</strong> <span style={{ color: '#0f172a' }}>{parsedDiller.diger}</span></div>
+                 <div><strong style={{ display: 'block', color: '#64748b', fontSize: '12px', textTransform: 'uppercase', marginBottom: '6px' }}>Saatlik Ders Ücreti</strong> <span style={{ fontWeight: 700, color: '#10b981' }}>{pUcret !== '-' ? `${pUcret} ₺` : '-'}</span></div>
+               </div>
+
+               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', background: '#fffbeb', padding: '20px', borderRadius: '16px', border: '1px solid #fef3c7' }}>
+                 <div style={{ gridColumn: '1 / -1' }}><strong style={{ display: 'block', color: '#d97706', fontSize: '14px', textTransform: 'uppercase', marginBottom: '12px' }}>Uzmanlık ve Tercihler</strong></div>
+                 <div><strong style={{ display: 'block', color: '#92400e', fontSize: '12px', textTransform: 'uppercase', marginBottom: '6px' }}>Hedef Kitle (Amaç)</strong> <span style={{ color: '#b45309', fontWeight: 600 }}>{pAmac}</span></div>
+                 <div><strong style={{ display: 'block', color: '#92400e', fontSize: '12px', textTransform: 'uppercase', marginBottom: '6px' }}>Program Süresi</strong> <span style={{ color: '#b45309', fontWeight: 600 }}>{pSure}</span></div>
+                 <div><strong style={{ display: 'block', color: '#92400e', fontSize: '12px', textTransform: 'uppercase', marginBottom: '6px' }}>Öğrenci Seviyesi</strong> <span style={{ color: '#b45309', fontWeight: 600 }}>{pSeviye}</span></div>
+                 <div><strong style={{ display: 'block', color: '#92400e', fontSize: '12px', textTransform: 'uppercase', marginBottom: '6px' }}>Odak Alanları</strong> <span style={{ color: '#b45309', fontWeight: 600 }}>{pOdak}</span></div>
+               </div>
+
+               <div>
+                 <strong style={{ display: 'block', color: '#0f172a', marginBottom: '8px', fontSize: '16px' }}>Kısa Biyografi</strong>
+                 <p style={{ margin: 0, color: '#475569', lineHeight: 1.6, background: '#f8fafc', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0', whiteSpace: 'pre-wrap' }}>{pBio}</p>
+               </div>
+
+               {(seciliBasvuru.diploma_url || seciliBasvuru.sertifika_url) && (
+                 <div>
+                   <strong style={{ display: 'block', color: '#0f172a', marginBottom: '12px', fontSize: '16px' }}>Yüklenen Belgeler</strong>
+                   <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                     {seciliBasvuru.diploma_url && (
+                       <a href={seciliBasvuru.diploma_url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 20px', background: '#f0fdf4', color: '#16a34a', borderRadius: '12px', textDecoration: 'none', fontWeight: 600, border: '1px solid #bbf7d0', transition: 'all 0.2s' }}>
+                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                         Mezuniyet Diploması İncele
+                       </a>
+                     )}
+                     {seciliBasvuru.sertifika_url && (
+                       <a href={seciliBasvuru.sertifika_url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 20px', background: '#fff7ed', color: '#d97706', borderRadius: '12px', textDecoration: 'none', fontWeight: 600, border: '1px solid #fde68a', transition: 'all 0.2s' }}>
+                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
+                         TÖMER / Sertifika İncele
+                       </a>
+                     )}
+                   </div>
+                 </div>
+               )}
+
             </div>
+
             <div style={{ padding: '24px 32px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between' }}>
-              <button onClick={() => deleteApplication(seciliBasvuru.id)} style={{ background: '#fef2f2', color: '#ef4444', border: '1px solid #fecaca', padding: '10px 20px', borderRadius: '12px', fontWeight: 700, cursor: 'pointer' }}>Sil</button>
+              <button onClick={() => deleteApplication(seciliBasvuru.id)} style={{ background: '#fef2f2', color: '#ef4444', border: '1px solid #fecaca', padding: '12px 24px', borderRadius: '12px', fontWeight: 700, cursor: 'pointer' }}>Başvuruyu Sil</button>
               {seciliBasvuru.durum !== 'Onaylandı' && (
-                <button onClick={() => updateStatus(seciliBasvuru, 'Onaylandı')} style={{ background: '#4f46e5', color: '#ffffff', border: 'none', padding: '10px 24px', borderRadius: '12px', fontWeight: 700, cursor: 'pointer' }}>Başvuruyu Onayla</button>
+                <button onClick={() => updateStatus(seciliBasvuru, 'Onaylandı')} style={{ background: '#4f46e5', color: '#ffffff', border: 'none', padding: '12px 32px', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 10px rgba(79, 70, 229, 0.2)' }}>Onayla ve Eğitmen Yap</button>
               )}
             </div>
           </div>
@@ -428,7 +707,7 @@ function ApplicationsManagement() {
 }
 
 /* =========================================================
-   🚀 YENİ: BLOG & İÇERİK YÖNETİMİ BİLEŞENİ
+   🚀 BLOG & İÇERİK YÖNETİMİ BİLEŞENİ
 ========================================================= */
 function BlogManagement() {
   const [posts, setPosts] = useState<any[]>([]);
@@ -437,7 +716,6 @@ function BlogManagement() {
   const [isEditing, setIsEditing] = useState(false);
   const [currentId, setCurrentId] = useState('');
 
-  // Form State
   const [baslik, setBaslik] = useState('');
   const [kategori, setKategori] = useState('Rehber');
   const [gorsel, setGorsel] = useState('');
@@ -453,7 +731,6 @@ function BlogManagement() {
     setLoading(false);
   }
 
-  // Türkçe karakterleri çevirip URL'ye uygun slug (link) yapar
   const makeSlug = (text: string) => {
     let str = text.toLowerCase();
     const trMap: any = { 'ç': 'c', 'ğ': 'g', 'ı': 'i', 'ö': 'o', 'ş': 's', 'ü': 'u' };
@@ -473,7 +750,7 @@ function BlogManagement() {
       gorsel_url: gorsel,
       kategori,
       durum: 'Yayında',
-      okuma_suresi: Math.max(1, Math.ceil(icerik.length / 1000)) // Otomatik okuma süresi tahmini
+      okuma_suresi: Math.max(1, Math.ceil(icerik.length / 1000))
     };
 
     if (isEditing) {
@@ -482,7 +759,7 @@ function BlogManagement() {
       else { alert("Başarıyla güncellendi!"); closeModal(); loadPosts(); }
     } else {
       const { error } = await supabase.from('blog_yazilari').insert([postData]);
-      if (error) alert("Ekleme hatası (Muhtemelen aynı başlıklı yazı var): " + error.message);
+      if (error) alert("Ekleme hatası: " + error.message);
       else { alert("Başarıyla eklendi!"); closeModal(); loadPosts(); }
     }
   };
@@ -559,7 +836,6 @@ function BlogManagement() {
         )}
       </div>
 
-      {/* MAKALE EKLEME / DÜZENLEME MODALI */}
       {isModalOpen && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
           <div style={{ background: '#ffffff', width: '100%', maxWidth: '800px', borderRadius: '24px', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>

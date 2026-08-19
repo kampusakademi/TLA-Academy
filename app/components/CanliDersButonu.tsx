@@ -1,73 +1,69 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
-interface CanliDersButonuProps {
-  dersId: string | number;
-  tarihSaat: string; // Örn: '2026-07-28T15:00:00Z'
-}
+export default function CanliDersButonu({ dersId, tarihSaat }: { dersId: string; tarihSaat: string }) {
+  const router = useRouter();
 
-export default function CanliDersButonu({ dersId, tarihSaat }: CanliDersButonuProps) {
-  const [aktif, setAktif] = useState(false);
-  const [mesaj, setMesaj] = useState('Hesaplanıyor...');
+  // 🚀 NOT: Kullanıcıyı video odasına yönlendireceğiniz linki buraya yazın.
+  // Kendi sisteminize göre "/ders-odasi/...", "/toplanti/..." gibi değiştirebilirsiniz.
+  const handleJoin = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Kartın tıklanmasını engeller, sadece butona tıklar
+    router.push(`/ders-odasi/${dersId}`); 
+  };
 
-  useEffect(() => {
-    const zamanKontrolu = () => {
-      const suAn = new Date();
-      const dersVakti = new Date(tarihSaat);
-
-      // Farkı dakika cinsinden buluyoruz
-      // Pozitif = Derse var | Negatif = Ders saati geçti
-      const fark = dersVakti.getTime() - suAn.getTime();
-      const dakikaFarki = Math.floor(fark / (1000 * 60));
-
-      // 1. DURUM: Derse 2 saatten (120 dk) FAZLA var (Henüz erken -> Kilitli)
-      if (dakikaFarki > 120) {
-        setAktif(false);
-        const saatKaldi = Math.floor(dakikaFarki / 60);
-        const dkKaldi = dakikaFarki % 60;
-        setMesaj(saatKaldi > 0 ? `${saatKaldi} sa ${dkKaldi} dk kaldı` : `${dkKaldi} dk kaldı`);
-      }
-      // 2. DURUM: Ders saatinin üzerinden 2 saatten (120 dk) FAZLA geçti (Ders bitti -> Kilitli)
-      else if (dakikaFarki < -120) {
-        setAktif(false);
-        setMesaj('Ders süresi doldu');
-      }
-      // 3. DURUM: Derse 2 saat kala açılır, ders bittikten 2 saat sonrasına kadar AKTİF kalır!
-      else {
-        setAktif(true);
-      }
-    };
-
-    // Sayfa açıldığında hemen kontrol et
-    zamanKontrolu();
-
-    // Her 1 dakikada bir saati tekrar kontrol et
-    const zamanlayici = setInterval(zamanKontrolu, 60000);
-
-    return () => clearInterval(zamanlayici);
-  }, [tarihSaat]);
-
-  // VAKİT GELDİYSE GÖRÜNECEK AKTİF BUTON (Yeşil)
-  if (aktif) {
-    return (
-      <Link 
-        href={`/ders-odasi/${dersId}`} 
-        style={{ padding: '10px 20px', backgroundColor: '#22c55e', color: 'white', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', display: 'inline-block', textAlign: 'center', transition: 'background-color 0.3s', boxShadow: '0 4px 12px rgba(34, 197, 94, 0.3)' }}
-      >
-        🎥 Canlı Derse Katıl
-      </Link>
-    );
-  }
-
-  // VAKİT GELMEDİYSE VEYA SÜRE DOLDUYSA GÖRÜNECEK PASİF BUTON (Gri)
   return (
     <button 
-      disabled 
-      style={{ padding: '10px 20px', backgroundColor: '#64748b', color: '#cbd5e1', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'not-allowed' }}
+      onClick={handleJoin}
+      style={{
+        background: 'linear-gradient(135deg, #1308a7 0%, #1308a7 100%)', // Modern Zümrüt Yeşili Gradyan
+        color: '#ffffff',
+        border: 'none',
+        padding: '10px 20px',
+        borderRadius: '12px',
+        fontSize: '0.95rem',
+        fontWeight: 800,
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)',
+        transition: 'all 0.3s ease',
+        position: 'relative',
+        overflow: 'hidden'
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'translateY(-2px)';
+        e.currentTarget.style.boxShadow = '0 8px 20px rgba(41, 3, 206, 0.45)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)';
+        e.currentTarget.style.boxShadow = '0 4px 15px rgba(40, 8, 129, 0.3)';
+      }}
     >
-      🔒 {mesaj === 'Ders süresi doldu' ? 'Ders Süresi Doldu' : `Bekleniyor (${mesaj})`}
+      {/* 🔴 Yanan Sönen (Pulse) Canlı Yayın Noktası */}
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '12px', height: '12px' }}>
+        <span style={{ position: 'absolute', width: '100%', height: '100%', backgroundColor: '#ffffff', borderRadius: '50%', opacity: 0.8, animation: 'pingPulse 1.5s cubic-bezier(0, 0, 0.2, 1) infinite' }}></span>
+        <span style={{ position: 'relative', width: '6px', height: '6px', backgroundColor: '#ffffff', borderRadius: '50%' }}></span>
+      </div>
+
+      {/* 🎥 Profesyonel Video Kamera SVG İkonu */}
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M23 7l-7 5 7 5V7z"></path>
+        <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+      </svg>
+
+      Canlı Derse Katıl
+
+      {/* CSS Animasyonu (Sayfa render edildiğinde otomatik çalışır) */}
+      <style>{`
+        @keyframes pingPulse {
+          75%, 100% {
+            transform: scale(2.8);
+            opacity: 0;
+          }
+        }
+      `}</style>
     </button>
   );
 }

@@ -1,38 +1,52 @@
 import { NextResponse } from 'next/server';
-import { RtcTokenBuilder, RtcRole } from 'agora-token';
 
 export async function POST(request: Request) {
   try {
-    const { channelName } = await request.json();
+    console.log("=== AGORA TOKEN API TETİKLENDİ ===");
+    
+    const body = await request.json();
+    const channelName = body.channelName || "test_odasi";
+    console.log("İstenen Kanal Adı:", channelName);
+
+    let agora;
+    try {
+      agora = require('agora-access-token');
+    } catch (pkgErr) {
+      console.error("🚨 KRİTİK HATA: 'agora-access-token' paketi yüklü değil!");
+      return NextResponse.json({ error: "Lütfen terminalde 'npm install agora-access-token' komutunu çalıştırın." });
+    }
+
+    const RtcTokenBuilder = agora.RtcTokenBuilder;
+    const RtcRole = agora.RtcRole;
 
     const appId = process.env.NEXT_PUBLIC_AGORA_APP_ID;
     const appCertificate = process.env.AGORA_APP_CERTIFICATE;
 
     if (!appId || !appCertificate) {
-      console.error("Agora App ID veya Certificate eksik!");
-      return NextResponse.json({ error: 'Agora App ID veya Certificate eksik!' }, { status: 500 });
+      console.error("🚨 KRİTİK HATA: .env.local dosyasında Agora şifreleri eksik!");
+      return NextResponse.json({ error: "Agora App ID veya Certificate bulunamadı." });
     }
 
-    const uid = 0; // 0 verilmesi, Agora'nın kullanıcıya otomatik benzersiz bir ID atamasını sağlar
-    const role = RtcRole.PUBLISHER; // Hem yayın yapma hem de karşı tarafı izleme yetkisi
-    const expirationTimeInSeconds = 3600 * 4; // Token 4 saat boyunca geçerli
-    const currentTimestamp = Math.floor(Date.now() / 1000);
-    const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
+    // 🚀 ÇÖZÜM BURADA: uid değerini 0 (Joker/Wildcard) yapıyoruz!
+    const uid = 0; 
+    
+    const role = RtcRole.PUBLISHER;
+    const privilegeExpiredTs = Math.floor(Date.now() / 1000) + 3600; 
 
-    // Yeni ve güncel pakete (agora-token) uygun resmi token üretimi
     const token = RtcTokenBuilder.buildTokenWithUid(
-      appId,
-      appCertificate,
-      channelName,
-      uid,
-      role,
-      expirationTimeInSeconds,
+      appId, 
+      appCertificate, 
+      channelName, 
+      uid, 
+      role, 
       privilegeExpiredTs
     );
 
-    return NextResponse.json({ token });
-  } catch (error) {
-    console.error('Token oluşturma hatası:', error);
-    return NextResponse.json({ error: 'Token oluşturulamadı' }, { status: 500 });
+    console.log("✅ Token Başarıyla Üretildi! Odaya giriliyor...");
+    return NextResponse.json({ token: token, uid: uid });
+
+  } catch (error: any) {
+    console.error("🚨 SUNUCU HATASI:", error);
+    return NextResponse.json({ error: error.message });
   }
 }
