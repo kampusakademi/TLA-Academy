@@ -15,7 +15,7 @@ const getYouTubeId = (url: string) => {
   return (match && match[2].length === 11) ? match[2] : null;
 };
 
-// 🚀 DİLLERİ TEMİZLEYEN FONKSİYON EKLENDİ
+// 🚀 DİLLERİ TEMİZLEYEN FONKSİYON
 const formatDiller = (diller: any) => {
   if (!diller) return '';
   try {
@@ -49,14 +49,32 @@ export default function TeachersListPage() {
   useEffect(() => {
     async function fetchTeachers() {
       const { data: teacherList, error } = await supabase.from('egitmenler').select('*');
+      
       if (error) {
         console.error("Eğitmenler çekilirken hata:", error);
         setLoading(false);
         return;
       }
 
+      // 🚀 AGRESİF FİLTRELEME: HİÇBİR PASİF EĞİTMEN KAÇAMAZ
+      const aktifEgitmenler = (teacherList || []).filter(item => {
+        // İhtimallere karşı tüm olası durum sütunlarını kontrol et ve küçük harfe çevirip boşlukları sil
+        const durumText = String(item.durum || '').toLowerCase().trim();
+        const statusText = String(item.status || '').toLowerCase().trim(); 
+        
+        // Eğer durum veya status içinde pasif, beklemede, iptal geçiyorsa GİZLE
+        if (durumText.includes('pasif') || durumText.includes('beklemede') || durumText.includes('iptal')) return false;
+        if (statusText.includes('pasif') || statusText.includes('beklemede') || statusText.includes('iptal')) return false;
+        
+        // Admin paneli aktif_mi diye bir true/false mantığı kullanıyorsa GİZLE
+        if (item.aktif_mi === false) return false;
+
+        // Yukarıdakilere takılmayanlar Aktif kabul edilir
+        return true;
+      });
+
       const teachersWithStats = await Promise.all(
-        (teacherList || []).map(async (item) => {
+        aktifEgitmenler.map(async (item) => {
           const targetId = item.user_id || item.id;
 
           const { data: lessonData } = await supabase
@@ -202,7 +220,6 @@ export default function TeachersListPage() {
               </div>
             ) : filteredTeachers.length > 0 ? (
               filteredTeachers.map((tItem) => {
-                // 🚀 DİLLER BURADA TERTEMİZ EKRANA BASILIYOR
                 const dillerMetni = formatDiller(tItem.konustugu_diller || tItem.diller);
                 const onlineStatus = isOnline(tItem.son_gorulme); 
 

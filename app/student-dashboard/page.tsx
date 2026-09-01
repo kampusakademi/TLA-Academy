@@ -3,7 +3,83 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import CanliDersButonu from '@/app/components/CanliDersButonu';
+
+// =========================================================
+// 🚀 ÖĞRENCİ ÖZEL DERS GİRİŞ KONTROLÜ (15 DK KURALI)
+// =========================================================
+function useOgrenciDersAktifMi(dersTarihiISO: string) {
+  const [isAktif, setIsAktif] = useState(false);
+  const [durumMesaji, setDurumMesaji] = useState("Hesaplanıyor...");
+
+  useEffect(() => {
+    if (!dersTarihiISO) return;
+
+    const kontrolEt = () => {
+      const suAn = new Date();
+      const dersZamani = new Date(dersTarihiISO);
+
+      // Sıkı Kurallar: 15 dk öncesi ve 15 dk sonrası
+      const aktiflesmeZamani = new Date(dersZamani.getTime() - 15 * 60000);
+      const kapanmaZamani = new Date(dersZamani.getTime() + 15 * 60000);
+
+      if (suAn < aktiflesmeZamani) {
+        setIsAktif(false);
+        setDurumMesaji("Henüz Başlamadı");
+      } else if (suAn > kapanmaZamani) {
+        setIsAktif(false);
+        setDurumMesaji("Süresi Doldu / Geç Kaldınız");
+      } else {
+        setIsAktif(true);
+        setDurumMesaji("Canlı Derse Katıl");
+      }
+    };
+
+    kontrolEt();
+    const interval = setInterval(kontrolEt, 10000);
+
+    return () => clearInterval(interval);
+  }, [dersTarihiISO]);
+
+  return { isAktif, durumMesaji };
+}
+
+function OgrenciCanliDersButonu({ dersId, tarihSaat }: { dersId: string, tarihSaat: string }) {
+  const router = useRouter();
+  const { isAktif, durumMesaji } = useOgrenciDersAktifMi(tarihSaat);
+
+  if (isAktif) {
+    return (
+      <button 
+        onClick={() => router.push(`/ders-odasi/${dersId}`)}
+        style={{ 
+          width: '100%', padding: '10px 16px', backgroundColor: '#4f46e5', color: '#ffffff', 
+          border: 'none', borderRadius: '12px', fontWeight: 700, fontSize: '0.95rem', 
+          cursor: 'pointer', boxShadow: '0 4px 12px rgba(79, 70, 229, 0.25)', transition: 'all 0.2s',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+        }}
+        onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+        onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14v-4z"/><rect x="3" y="6" width="12" height="12" rx="2" ry="2"/></svg>
+        {durumMesaji}
+      </button>
+    );
+  }
+
+  return (
+    <button 
+      disabled 
+      style={{ 
+        width: '100%', padding: '10px 16px', backgroundColor: '#f1f5f9', color: '#94a3b8', 
+        border: '1px solid #cbd5e1', borderRadius: '12px', fontWeight: 600, fontSize: '0.9rem', 
+        cursor: 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' 
+      }}
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      {durumMesaji}
+    </button>
+  );
+}
 
 export default function StudentDashboard() {
   const router = useRouter();
@@ -32,109 +108,163 @@ export default function StudentDashboard() {
   const [yazilanYorum, setYazilanYorum] = useState("");
   const [ratingLoading, setRatingLoading] = useState(false);
 
+  // 🚀 Öğrenci onay mekanizması için Local Storage bazlı State
+  const [onayliDersler, setOnayliDersler] = useState<string[]>([]);
+
   useEffect(() => {
-    async function fetchData() {
-      try {
-        setLoading(true);
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error || !session) {
-          router.push('/');
-          return;
-        }
-        
-        const currentUser = session.user;
-        setUser(currentUser);
-        
-        let fetchedName = currentUser.user_metadata?.full_name;
-
-        // 1. Öğrenci Verilerini Çek
-        const { data: profile } = await supabase
-          .from('ogrenciler')
-          .select('tam_ad, email, seviye, durum, created_at')
-          .eq('user_id', currentUser.id)
-          .maybeSingle();
-          
-        if (profile) {
-          fetchedName = profile.tam_ad || fetchedName;
-          setStats({
-            seviye: profile.seviye || '-',
-            durum: profile.durum || '-',
-            created_at: profile.created_at || new Date().toISOString()
-          });
-          setSettingsForm({ tamAd: profile.tam_ad || '', telefon: '' });
-        } else {
-          const newStudentData = {
-            user_id: currentUser.id,
-            email: currentUser.email,
-            tam_ad: currentUser.user_metadata?.full_name || 'Yeni Öğrenci',
-            seviye: 'Belirlenmedi',
-            durum: 'Aktif'
-          };
-          const { data: newProfile, error: insertError } = await supabase.from('ogrenciler').insert([newStudentData]).select().single();
-          if (!insertError && newProfile) {
-            fetchedName = newProfile.tam_ad;
-            setStats({ seviye: newProfile.seviye || '-', durum: newProfile.durum || '-', created_at: newProfile.created_at || new Date().toISOString() });
-            setSettingsForm({ tamAd: newProfile.tam_ad || '', telefon: '' });
-          }
-        }
-        setUserName(fetchedName || 'Öğrenci');
-
-        // 2. Dersleri Çek
-        const { data: allLessons } = await supabase
-          .from('dersler')
-          .select('*, egitmenler(user_id, id, tam_ad, avatar_url, ders_turu)')
-          .eq('ogrenci_id', currentUser.id)
-          .order('tarih_saat', { ascending: true });
-
-        if (allLessons) {
-          const suAn = new Date().getTime();
-
-          const guncelYaklasanlar = allLessons.filter(ders => {
-            const dersZamani = new Date(ders.tarih_saat).getTime();
-            const dakikaFarki = (dersZamani - suAn) / (1000 * 60);
-            const iptalVeyaTamam = ['Tamamlanan', 'İptal', 'İptal Edildi', 'İptal Edilen'].includes(ders.durum);
-            return !iptalVeyaTamam && dakikaFarki >= -120;
-          });
-
-          const guncelGecmis = allLessons.filter(ders => {
-            const dersZamani = new Date(ders.tarih_saat).getTime();
-            const dakikaFarki = (dersZamani - suAn) / (1000 * 60);
-            const iptalVeyaTamam = ['Tamamlanan', 'İptal', 'İptal Edildi', 'İptal Edilen'].includes(ders.durum);
-            return iptalVeyaTamam || dakikaFarki < -120;
-          }).reverse(); 
-
-          setUpcomingLessons(guncelYaklasanlar);
-          setPastLessons(guncelGecmis);
-        }
-
-        // 3. Favori Eğitmenleri Çek
-        const { data: favData } = await supabase
-          .from('favoriler')
-          .select('egitmen_id')
-          .eq('ogrenci_id', currentUser.id);
-
-        if (favData && favData.length > 0) {
-          const egitmenIds = favData.map((f: any) => f.egitmen_id);
-          const { data: favTeachers } = await supabase
-            .from('egitmenler')
-            .select('id, user_id, tam_ad, avatar_url, ders_turu, saatlik_ucret')
-            .in('user_id', egitmenIds);
-            
-          if (favTeachers) setFavoriteTeachers(favTeachers);
-        } else {
-          setFavoriteTeachers([]);
-        }
-
-      } catch (err) {
-        console.error("Veriler çekilirken bir hata oluştu:", err);
-      } finally {
-        setLoading(false);
-      }
+    const saved = localStorage.getItem('onayli_dersler');
+    if (saved) {
+      setOnayliDersler(JSON.parse(saved));
     }
-    
-    fetchData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error || !session) {
+        router.push('/');
+        return;
+      }
+      
+      const currentUser = session.user;
+      setUser(currentUser);
+      
+      let fetchedName = currentUser.user_metadata?.full_name;
+
+      const { data: profile } = await supabase
+        .from('ogrenciler')
+        .select('tam_ad, email, seviye, durum, created_at')
+        .eq('user_id', currentUser.id)
+        .maybeSingle();
+        
+      if (profile) {
+        fetchedName = profile.tam_ad || fetchedName;
+        setStats({
+          seviye: profile.seviye || '-',
+          durum: profile.durum || '-',
+          created_at: profile.created_at || new Date().toISOString()
+        });
+        setSettingsForm({ tamAd: profile.tam_ad || '', telefon: '' });
+      } else {
+        const newStudentData = {
+          user_id: currentUser.id,
+          email: currentUser.email,
+          tam_ad: currentUser.user_metadata?.full_name || 'Yeni Öğrenci',
+          seviye: 'Belirlenmedi',
+          durum: 'Aktif'
+        };
+        const { data: newProfile, error: insertError } = await supabase.from('ogrenciler').insert([newStudentData]).select().single();
+        if (!insertError && newProfile) {
+          fetchedName = newProfile.tam_ad;
+          setStats({ seviye: newProfile.seviye || '-', durum: newProfile.durum || '-', created_at: newProfile.created_at || new Date().toISOString() });
+          setSettingsForm({ tamAd: newProfile.tam_ad || '', telefon: '' });
+        }
+      }
+      setUserName(fetchedName || 'Öğrenci');
+
+      const { data: allLessons } = await supabase
+        .from('dersler')
+        .select('*, egitmenler(user_id, id, tam_ad, avatar_url, ders_turu)')
+        .eq('ogrenci_id', currentUser.id)
+        .order('tarih_saat', { ascending: true });
+
+      if (allLessons) {
+        // Yerel state güncellenmemiş olabilir diye direkt localStorage'dan da çekiyoruz.
+        const savedStr = localStorage.getItem('onayli_dersler');
+        const localOnayli = savedStr ? JSON.parse(savedStr) : onayliDersler;
+
+        const guncelYaklasanlar = allLessons.filter(ders => {
+          if (ders.durum === 'Yaklaşan') return true;
+          // 🚀 ÖĞRETMEN ERKEN BİTİRDİYSE: Öğrenci henüz onaylamadıysa ve puanlamadıysa onaylamak üzere bu ekranda kalır.
+          if (ders.durum === 'Tamamlanan' && !ders.puan && !localOnayli.includes(ders.id)) return true;
+          return false;
+        });
+
+        const guncelGecmis = allLessons.filter(ders => {
+          if (ders.durum === 'Yaklaşan') return false;
+          // Eğer onay bekliyorsa, geçmişe düşürme.
+          if (ders.durum === 'Tamamlanan' && !ders.puan && !localOnayli.includes(ders.id)) return false;
+          return true;
+        }).reverse(); 
+
+        setUpcomingLessons(guncelYaklasanlar);
+        setPastLessons(guncelGecmis);
+      }
+
+      const { data: favData } = await supabase
+        .from('favoriler')
+        .select('egitmen_id')
+        .eq('ogrenci_id', currentUser.id);
+
+      if (favData && favData.length > 0) {
+        const egitmenIds = favData.map((f: any) => f.egitmen_id);
+        const { data: favTeachers } = await supabase
+          .from('egitmenler')
+          .select('id, user_id, tam_ad, avatar_url, ders_turu, saatlik_ucret')
+          .in('user_id', egitmenIds);
+          
+        if (favTeachers) setFavoriteTeachers(favTeachers);
+      } else {
+        setFavoriteTeachers([]);
+      }
+
+    } catch (err) {
+      console.error("Veriler çekilirken bir hata oluştu:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDashboardData();
   }, [router]);
+
+  // 🚀 DERS ONAYLAMA / REDDETME VE OTOMATİK MESAJ FONKSİYONU
+  const handleDersOnayla = async (dersId: string, yeniDurum: string, targetTeacherId: string) => {
+    const onayMesaji = yeniDurum === 'Tamamlanan' 
+      ? "Öğretmenin derse katıldığını ve dersin başarıyla işlendiğini onaylıyorsunuz. Emin misiniz?" 
+      : "Öğretmenin derse GELMEDİĞİNİ bildiriyorsunuz. Bu işlem incelenecektir. Emin misiniz?";
+
+    if (!window.confirm(onayMesaji)) return;
+
+    try {
+      const { error } = await supabase
+        .from('dersler')
+        .update({ durum: yeniDurum })
+        .eq('id', dersId);
+
+      if (error) throw error;
+
+      // OTOMATİK SİSTEM MESAJINI GÖNDER
+      if (targetTeacherId && user?.id) {
+        const mesajIcerik = yeniDurum === 'Tamamlanan'
+          ? `📌 Sistem Bildirimi:\n\nTebrikler! 🎉\n"${userName}" adlı öğrenciniz az önce işlediğiniz dersin başarıyla tamamlandığını onayladı. Kendisine bir teşekkür mesajı atarak sonraki dersleri planlayabilirsiniz.`
+          : `📌 Sistem Bildirimi:\n\n⚠️ ÖNEMLİ BİLDİRİM:\n"${userName}" adlı öğrenciniz, az önce bitmesi gereken dersinize KATILMADIĞINIZI bildirdi.\n\nEğer bu durum teknik bir sorundan kaynaklandıysa veya bir yanlışlık varsa lütfen hemen öğrencinizle iletişime geçin. Aksi takdirde profil puanınız olumsuz etkilenebilir.`;
+
+        await supabase.from('mesajlar').insert([{
+          gonderen_id: user.id,
+          alici_id: targetTeacherId,
+          icerik: mesajIcerik,
+          okundu: false
+        }]);
+      }
+      
+      if (yeniDurum === 'Tamamlanan') {
+        // Öğrenci onayladığı an, dersi onaylılar listesine alıp puanlama ekranını açıyoruz.
+        const newOnayli = [...onayliDersler, dersId];
+        setOnayliDersler(newOnayli);
+        localStorage.setItem('onayli_dersler', JSON.stringify(newOnayli));
+        setDegerlendirmeModali(dersId);
+      } else {
+        alert('⚠️ Bildiriminiz yönetime ve eğitmene iletildi.');
+      }
+      
+      loadDashboardData(); // Arayüzü yenile
+    } catch (error: any) {
+      alert("Bir hata oluştu: " + error.message);
+    }
+  };
 
   // 🚀 CANLI BİLDİRİM VE SAYAÇ DİNLEYİCİSİ
   useEffect(() => {
@@ -210,6 +340,7 @@ export default function StudentDashboard() {
         setDegerlendirmeModali(null);
         setSecilenPuan(0);
         setYazilanYorum("");
+        loadDashboardData(); // Tüm listeleri temizle ve güncelle
       } else {
         alert("Değerlendirme kaydedilirken bir hata oluştu.");
       }
@@ -436,40 +567,82 @@ export default function StudentDashboard() {
                 
                 {upcomingLessons.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b', backgroundColor: '#f8fafc', borderRadius: '16px', border: '1px dashed #cbd5e1' }}>
-                    <p style={{ margin: 0, fontWeight: 500 }}>Şu an "Yaklaşan" durumunda bir canlı dersiniz bulunmuyor.</p>
+                    <p style={{ margin: 0, fontWeight: 500 }}>Şu an planlanmış bir canlı dersiniz bulunmuyor.</p>
                     <button onClick={() => router.push('/egitmenler')} style={{ marginTop: '16px', padding: '10px 24px', backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>Eğitmen Keşfet</button>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     {upcomingLessons.map((ders, idx) => {
                       const egitmenId = ders.egitmenler?.user_id || ders.egitmenler?.id || ders.user_id;
+                      const suAn = new Date();
+                      const dersZamani = new Date(ders.tarih_saat);
+                      // Ders saati üzerinden 50 dk geçtiyse VEYA öğretmen "Tamamlandı" işaretlediyse onay ekranı çıksın
+                      const dersBittiMi = suAn > new Date(dersZamani.getTime() + 50 * 60000) || ders.durum === 'Tamamlanan';
 
                       return (
-                        <div key={idx} style={{ border: '1px solid #e2e8f0', borderRadius: '16px', padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                        <div key={idx} style={{ border: '1px solid #e2e8f0', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', backgroundColor: '#f8fafc', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
                           
-                          <div 
-                            onClick={() => egitmenId && router.push(`/teachers/${egitmenId}`)}
-                            style={{ display: 'flex', gap: '16px', alignItems: 'center', cursor: egitmenId ? 'pointer' : 'default', transition: 'opacity 0.2s' }}
-                            onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.8'; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
-                            title="Eğitmen profiline git"
-                          >
-                            <img src={ders.egitmenler?.avatar_url || `https://ui-avatars.com/api/?name=${ders.egitmenler?.tam_ad || 'E'}&background=eef2ff&color=4f46e5`} style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #e2e8f0' }} />
-                            <div>
-                              <h4 style={{ margin: '0 0 4px 0', fontSize: '1.1rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                {ders.egitmenler?.tam_ad}
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
-                              </h4>
-                              <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>{ders.egitmenler?.ders_turu || 'Ders'} • Birebir Görüşme</p>
+                          {/* Üst Bilgi Satırı */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div 
+                              onClick={() => egitmenId && router.push(`/teachers/${egitmenId}`)}
+                              style={{ display: 'flex', gap: '16px', alignItems: 'center', cursor: egitmenId ? 'pointer' : 'default', transition: 'opacity 0.2s' }}
+                              onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.8'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
+                              title="Eğitmen profiline git"
+                            >
+                              <img src={ders.egitmenler?.avatar_url || `https://ui-avatars.com/api/?name=${ders.egitmenler?.tam_ad || 'E'}&background=eef2ff&color=4f46e5`} style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #e2e8f0' }} />
+                              <div>
+                                <h4 style={{ margin: '0 0 4px 0', fontSize: '1.1rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  {ders.egitmenler?.tam_ad}
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+                                </h4>
+                                <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>{ders.egitmenler?.ders_turu || 'Ders'} • Birebir Görüşme</p>
+                              </div>
+                            </div>
+                            
+                            <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12 }}>
+                              <div style={{ color: '#4f46e5', fontWeight: 800 }}>
+                                {new Date(ders.tarih_saat).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+                              </div>
+                              
+                              {/* 🚀 15 DK KURALLI ÖĞRENCİ BUTONU (Eğer onay süreci başlamadıysa) */}
+                              {!dersBittiMi && (
+                                <OgrenciCanliDersButonu dersId={ders.id} tarihSaat={ders.tarih_saat} />
+                              )}
                             </div>
                           </div>
-                          
-                          <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12 }}>
-                            <div style={{ color: '#4f46e5', fontWeight: 800 }}>
-                              {new Date(ders.tarih_saat).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+
+                          {/* 🚀 DERS DURUM ONAYI / DEĞERLENDİRME ALANI (Ders bittiyse veya öğretmen onayladıysa) */}
+                          {dersBittiMi ? (
+                            <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+                              <p style={{ margin: '0 0 12px 0', fontSize: '0.95rem', color: '#0f172a', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '1.2rem' }}>🔔</span> Öğretmen derse katıldı mı?
+                              </p>
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                <button 
+                                  onClick={() => handleDersOnayla(ders.id, 'Tamamlanan', egitmenId)}
+                                  style={{ flex: 1, padding: '12px', backgroundColor: '#10b981', color: '#ffffff', border: 'none', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', transition: 'all 0.2s', boxShadow: '0 4px 10px rgba(16, 185, 129, 0.2)' }}
+                                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#059669'}
+                                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#10b981'}
+                                >
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                  Evet, Katıldı
+                                </button>
+                                
+                                <button 
+                                  onClick={() => handleDersOnayla(ders.id, 'Öğretmen Gelmedi', egitmenId)}
+                                  style={{ flex: 1, padding: '12px', backgroundColor: '#ffffff', color: '#ef4444', border: '1px solid #fca5a5', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', transition: 'all 0.2s' }}
+                                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fef2f2'}
+                                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
+                                >
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                  Hayır, Gelmedi
+                                </button>
+                              </div>
                             </div>
-                            <CanliDersButonu dersId={ders.id} tarihSaat={ders.tarih_saat} />
-                          </div>
+                          ) : null}
+
                         </div>
                       );
                     })}
@@ -554,8 +727,10 @@ export default function StudentDashboard() {
                         <div>
                           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '8px' }}>
                             <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: "#0f172a" }}>{ders.egitmenler?.ders_turu || 'Özel Ders'}</h4>
-                            {ders.durum.includes('İptal') ? (
-                              <span style={{ backgroundColor: '#fef2f2', color: '#dc2626', padding: '4px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700 }}>İptal Edildi</span>
+                            {ders.durum.includes('İptal') || ders.durum === 'Öğretmen Gelmedi' ? (
+                              <span style={{ backgroundColor: '#fef2f2', color: '#dc2626', padding: '4px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700 }}>
+                                {ders.durum === 'Öğretmen Gelmedi' ? 'Öğretmen Gelmedi' : 'İptal Edildi'}
+                              </span>
                             ) : (
                               <span style={{ backgroundColor: '#f0fdf4', color: '#16a34a', padding: '4px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700 }}>Tamamlandı</span>
                             )}
@@ -610,7 +785,7 @@ export default function StudentDashboard() {
                         </div>
 
                         {/* Değerlendirme Butonu */}
-                        {!ders.puan && !ders.durum.includes('İptal') && (
+                        {!ders.puan && !ders.durum.includes('İptal') && ders.durum !== 'Öğretmen Gelmedi' && (
                           <button 
                             onClick={() => setDegerlendirmeModali(ders.id)}
                             style={{ backgroundColor: "#ffffff", color: "#0f172a", padding: "12px 20px", borderRadius: "10px", border: "1px solid #cbd5e1", cursor: "pointer", fontWeight: "700", whiteSpace: "nowrap", display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
@@ -699,7 +874,7 @@ export default function StudentDashboard() {
 
             <div style={{ display: "flex", gap: "16px" }}>
               <button 
-                onClick={() => { setDegerlendirmeModali(null); setSecilenPuan(0); setYazilanYorum(""); }} 
+                onClick={() => { setDegerlendirmeModali(null); setSecilenPuan(0); setYazilanYorum(""); loadDashboardData(); }} 
                 style={{ flex: 1, padding: "16px", backgroundColor: "#ffffff", color: "#475569", border: "1px solid #cbd5e1", borderRadius: "12px", fontWeight: "700", cursor: "pointer", fontSize: "1rem" }}
               >
                 İptal
@@ -719,7 +894,7 @@ export default function StudentDashboard() {
   );
 }
 
-/* ---------------- 6. MESSAGES COMPONENT (🚀 SİLME & HAYALET FİLTRE EKLENDİ) ---------------- */
+/* ---------------- MESSAGES COMPONENT ---------------- */
 function Messages({ userId, onMessageRead }: any) {
   const [teachers, setTeachers] = useState<any[]>([]); 
   const [selectedTeacher, setSelectedTeacher] = useState<any>(null); 
@@ -741,11 +916,7 @@ function Messages({ userId, onMessageRead }: any) {
         .eq('okundu', false);
         
       if (unreadData && unreadData.length > 0) {
-          await supabase
-            .from('mesajlar')
-            .update({ okundu: true })
-            .in('id', unreadData.map(m => m.id));
-            
+          await supabase.from('mesajlar').update({ okundu: true }).in('id', unreadData.map(m => m.id));
           setTimeout(() => { if (onMessageRead) onMessageRead(); }, 300);
       }
 
@@ -755,7 +926,6 @@ function Messages({ userId, onMessageRead }: any) {
         .or(`and(gonderen_id.eq.${userId},alici_id.eq.${selectedTeacher.id}),and(gonderen_id.eq.${selectedTeacher.id},alici_id.eq.${userId})`)
         .order('olusturulma_tarihi', { ascending: true });
       
-      // 🚀 HAYALET FİLTRE 1: Öğrenci, "Sistem Bildirimi" ile başlayan kendi otomatik mesajlarını görmez!
       const filteredMessages = (data || []).filter(m => !(m.gonderen_id === userId && m.icerik && m.icerik.includes('📌 Sistem Bildirimi')));
       setMessages(filteredMessages);
     };
@@ -763,12 +933,10 @@ function Messages({ userId, onMessageRead }: any) {
     fetchAndMarkMessages();
 
     const channel = supabase.channel('chat-room-student').on('postgres_changes', { event: '*', schema: 'public', table: 'mesajlar' }, async (payload: any) => {
-      
       if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
         const msg = payload.new;
         const isRelevant = (msg.gonderen_id === userId && msg.alici_id === selectedTeacher.id) || (msg.gonderen_id === selectedTeacher.id && msg.alici_id === userId);
         
-        // Hayalet filtre 1 (Canlı dinlemede de çalışmalı)
         if (isRelevant && !(msg.gonderen_id === userId && msg.icerik && msg.icerik.includes('📌 Sistem Bildirimi'))) {
           setMessages(prev => {
             const exists = prev.some(m => m.id === msg.id || (m.icerik === msg.icerik && m.gonderen_id === msg.gonderen_id && !m.id));
@@ -781,7 +949,6 @@ function Messages({ userId, onMessageRead }: any) {
             if (onMessageRead) setTimeout(() => onMessageRead(), 300);
           }
         } else {
-           // Bize gelen mesajsa (öğretmenden) ve okunmamışsa rozeti güncelle
            if (msg.alici_id === userId && !msg.okundu) {
              loadTeachers();
            }
@@ -797,7 +964,6 @@ function Messages({ userId, onMessageRead }: any) {
   }, [selectedTeacher, userId]);
 
   async function loadTeachers() {
-    // 🚀 HAYALET FİLTRE 2 İÇİN 'icerik' SÜTUNUNU DA ÇEKİYORUZ
     const { data, error } = await supabase.from('mesajlar').select('gonderen_id, alici_id, okundu, icerik').or(`gonderen_id.eq.${userId},alici_id.eq.${userId}`);
     if (!data || error) return;
     
@@ -805,10 +971,7 @@ function Messages({ userId, onMessageRead }: any) {
     const unreadMap = new Map<string, number>();
 
     data.forEach(m => { 
-      // 🚀 HAYALET FİLTRE 2: Sadece "Sistem Bildirimi" olan mesajı atladıysak o kişi listeye eklenmez!
-      if (m.gonderen_id === userId && m.icerik && m.icerik.includes('📌 Sistem Bildirimi')) {
-         return; // Geç, bunu sayma
-      }
+      if (m.gonderen_id === userId && m.icerik && m.icerik.includes('📌 Sistem Bildirimi')) return; 
 
       const isMeSender = m.gonderen_id === userId;
       const otherId = isMeSender ? m.alici_id : m.gonderen_id;
@@ -825,7 +988,6 @@ function Messages({ userId, onMessageRead }: any) {
        return;
     }
     
-    // EĞİTMENLERİ ÇEK
     const { data: egitmenProfilleri } = await supabase.from('egitmenler').select('user_id, id, tam_ad, avatar_url, ders_turu').in('user_id', idList);
     
     const mappedTeachers = idList.map(id => {
@@ -852,7 +1014,6 @@ function Messages({ userId, onMessageRead }: any) {
   async function send() {
     if (!text.trim() || !selectedTeacher) return;
     const mesajIcerigi = text.trim();
-    
     const tempId = `temp-${Date.now()}`;
     const anlikMesajTaslagi = { id: tempId, gonderen_id: userId, alici_id: selectedTeacher.id, icerik: mesajIcerigi, olusturulma_tarihi: new Date().toISOString(), okundu: false };
     
@@ -873,7 +1034,6 @@ function Messages({ userId, onMessageRead }: any) {
     }
   }
 
-  // TEK MESAJ SİLME
   const deleteMessage = async (msgId: string) => {
     if (!msgId || msgId.startsWith('temp-')) return;
     const onay = confirm("Bu mesajı silmek istediğinize emin misiniz?");
@@ -887,7 +1047,6 @@ function Messages({ userId, onMessageRead }: any) {
     }
   };
 
-  // 🚀 TÜM SOHBETİ SİLME (Dropdown)
   const clearChat = async () => {
     const onay = confirm("Bu kişiyle olan TÜM sohbet geçmişinizi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.");
     if (!onay) return;
@@ -911,7 +1070,6 @@ function Messages({ userId, onMessageRead }: any) {
   return (
     <div style={{ display: 'flex', height: '100%', backgroundColor: '#ffffff', borderRadius: 24, border: '1px solid #e2e8f0', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
       
-      {/* SOL: SOHBET LİSTESİ */}
       <div style={{ width: '340px', borderRight: '1px solid #e2e8f0', overflowY: 'auto', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '24px', fontWeight: 800, fontSize: '1.2rem', color: '#0f172a', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -964,13 +1122,11 @@ function Messages({ userId, onMessageRead }: any) {
         )}
       </div>
       
-      {/* SAĞ: SOHBET EKRANI */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', position: 'relative' }}>
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.02, pointerEvents: 'none', backgroundImage: 'radial-gradient(#4f46e5 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
         
         {selectedTeacher ? (
           <>
-            {/* 🚀 SOHBET HEADER & 3 NOKTA (DROPDOWN) */}
             <div style={{ padding: '20px 32px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(8px)', position: 'relative', zIndex: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                 <img src={selectedTeacher.avatar_url || `https://ui-avatars.com/api/?name=${selectedTeacher.tam_ad || 'E'}&background=eef2ff&color=4f46e5`} style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #ffffff', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }} />
@@ -983,7 +1139,6 @@ function Messages({ userId, onMessageRead }: any) {
                 </div>
               </div>
 
-              {/* SOHBETİ SİL (3 Nokta İkonu) */}
               <div style={{ position: 'relative' }}>
                 <button 
                   onClick={() => setShowChatMenu(!showChatMenu)}
@@ -1019,7 +1174,6 @@ function Messages({ userId, onMessageRead }: any) {
               </div>
             </div>
             
-            {/* Mesaj Alanı */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '32px', display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative', zIndex: 5 }}>
               {messages.length === 0 && (
                 <div style={{ textAlign: 'center', margin: 'auto', color: '#94a3b8', backgroundColor: '#f8fafc', padding: '20px', borderRadius: '16px', border: '1px dashed #cbd5e1' }}>
@@ -1046,7 +1200,6 @@ function Messages({ userId, onMessageRead }: any) {
                       <div style={{ fontSize: '0.75rem', textAlign: 'right', marginTop: '8px', color: isMe ? '#c7d2fe' : '#94a3b8', fontWeight: 500, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '8px' }}>
                         {new Date(m.olusturulma_tarihi).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
                         
-                        {/* 🚀 TEK MESAJ SİLME BUTONU (Sadece kendi mesajlarında çıkar) */}
                         {isMe && m.id && !m.id.toString().startsWith('temp-') && (
                           <button 
                             onClick={() => deleteMessage(m.id)} 
@@ -1065,7 +1218,6 @@ function Messages({ userId, onMessageRead }: any) {
               })}
             </div>
             
-            {/* Mesaj Gönderme Çubuğu */}
             <div style={{ padding: '24px 32px', backgroundColor: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(8px)', borderTop: '1px solid #f1f5f9', position: 'relative', zIndex: 10 }}>
               <form 
                 onSubmit={(e) => { e.preventDefault(); send(); }} 
@@ -1118,178 +1270,3 @@ function Messages({ userId, onMessageRead }: any) {
     </div>
   );
 }
-
-/* ---------------- 7. EARNINGS COMPONENT ---------------- */
-function Earnings({ profile, stats }: any) {
-  const tahminiKazanc = (stats.completedLessons || 0) * (profile?.saatlik_ucret || 0);
-  return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-      <div style={grid}>
-        <Box title="Toplam Kazanılan Tutar" value={`${tahminiKazanc} TL`} icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>} color="#f0fdf4" textColor="#16a34a" />
-        <Box title="Tamamlanan Toplam Ders" value={`${stats.completedLessons} Saat`} icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>} />
-        <Box title="Mevcut Saatlik Ücret" value={`${profile?.saatlik_ucret || 0} TL`} icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>} />
-      </div>
-    </div>
-  );
-}
-
-/* ---------------- 8. SETTINGS COMPONENT ---------------- */
-function Settings({ profile, stats, userId, onProfileUpdate }: any) {
-  const localInputStyle = { width: "100%", padding: '14px 16px', border: "1px solid #cbd5e1", borderRadius: '12px', outline: "none", fontSize: '15px', color: '#0f172a', background: '#ffffff', boxSizing: 'border-box' as const, transition: 'all 0.2s', marginTop: '6px', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)' };
-  const localSelectStyle = { ...localInputStyle, appearance: 'none' as const, WebkitAppearance: 'none' as const, backgroundImage: 'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2364748b%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 16px top 50%', backgroundSize: '12px auto', paddingRight: '40px', cursor: 'pointer' };
-
-  const LOCATIONS = ['Türkiye', 'Almanya', 'Amerika Birleşik Devletleri', 'İngiltere', 'Fransa', 'Hollanda', 'Azerbaycan', 'Kuzey Kıbrıs', 'Diğer'];
-  const CITIES = ['Adana', 'Ankara', 'Antalya', 'Bursa', 'Diyarbakır', 'Erzurum', 'Eskişehir', 'Gaziantep', 'İstanbul', 'İzmir', 'Kayseri', 'Kocaeli', 'Konya', 'Mersin', 'Sakarya', 'Samsun', 'Şanlıurfa', 'Trabzon', 'Van', 'Diğer'];
-  const EDUCATIONS = ['Lise', 'Ön Lisans', 'Lisans', 'Yüksek Lisans', 'Doktora'];
-  const LANGUAGES = ['Türkçe', 'İngilizce', 'Almanca', 'Fransızca', 'İspanyolca', 'Arapça', 'Rusça', 'Çince'];
-
-  const [name, setName] = useState(profile?.tam_ad || "");
-  const [bio, setBio] = useState(profile?.biyografi || "");
-  const [price, setPrice] = useState(profile?.saatlik_ucret || 250);
-  const [subject, setSubject] = useState(profile?.ders_turu || "Türkçe Eğitmeni");
-  const [metodoloji, setMetodoloji] = useState(profile?.metodoloji || "");
-  const [videoUrl, setVideoUrl] = useState(profile?.video_url || "");
-  const [amac, setAmac] = useState(profile?.amac || "");
-  const [odak, setOdak] = useState(profile?.odak || "");
-  const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || "");
-
-  const [konumUlke, setKonumUlke] = useState("");
-  const [konumSehir, setKonumSehir] = useState("");
-  const [egitimSeviye, setEgitimSeviye] = useState("");
-  const [egitimOkul, setEgitimOkul] = useState("");
-  const [anaDil, setAnaDil] = useState("");
-  const [digerDiller, setDigerDiller] = useState<string[]>([]);
-  const [uploading, setUploading] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (profile) {
-      setName(profile.tam_ad || ""); setBio(profile.biyografi || ""); setPrice(profile.saatlik_ucret || 250); setSubject(profile.ders_turu || "Türkçe Eğitmeni"); setMetodoloji(profile.metodoloji || ""); setAvatarUrl(profile.avatar_url || ""); setVideoUrl(profile.video_url || ""); setAmac(profile.amac || ""); setOdak(profile.odak || "");
-      if (profile.konum) { const parts = profile.konum.split(' - '); setKonumUlke(parts[0]?.trim() || ""); setKonumSehir(parts[1]?.trim() || ""); }
-      if (profile.egitim) { const parts = profile.egitim.split(' - '); setEgitimSeviye(parts[0]?.trim() || ""); setEgitimOkul(parts[1]?.trim() || ""); }
-      if (profile.diller) {
-        const dillerStr = typeof profile.diller === 'string' ? profile.diller : JSON.stringify(profile.diller);
-        let aDil = ""; let dDiller: string[] = [];
-        LANGUAGES.forEach(lang => { if (dillerStr.includes(`${lang} (Ana Dil)`)) { aDil = lang; } else if (dillerStr.includes(lang)) { dDiller.push(lang); } });
-        setAnaDil(aDil); setDigerDiller(dDiller);
-      } else { setAnaDil(""); setDigerDiller([]); }
-    }
-  }, [profile]);
-
-  const handleDilToggle = (dil: string) => { setDigerDiller(prev => { const cleanDil = dil.trim(); if (prev.includes(cleanDil)) return prev.filter(d => d !== cleanDil); return [...prev, cleanDil]; }); };
-  
-  async function handleAvatarUpload(event: any) {
-    try { setUploading(true); if (!event.target.files || event.target.files.length === 0) throw new Error('Lütfen bir resim seçin.'); const file = event.target.files[0]; const fileExt = file.name.split('.').pop(); const fileName = `${userId}-${Math.random()}.${fileExt}`; const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file, { upsert: true }); if (uploadError) throw uploadError; const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName); setAvatarUrl(publicUrl); alert("Fotoğraf yüklendi! Lütfen değişiklikleri kaydedin."); } catch (error: any) { alert('Hata: ' + error.message); } finally { setUploading(false); }
-  }
-  
-  async function handleSave() {
-    if (!userId) return alert("Kullanıcı oturumu bulunamadı.");
-    try {
-      setSaving(true);
-      const tamKonum = konumUlke && konumSehir ? `${konumUlke.trim()} - ${konumSehir.trim()}` : konumUlke.trim();
-      const tamEgitim = egitimSeviye && egitimOkul ? `${egitimSeviye.trim()} - ${egitimOkul.trim()}` : egitimSeviye.trim();
-      const tumDiller = anaDil ? [`${anaDil} (Ana Dil)`, ...digerDiller] : digerDiller;
-      const updateData = { user_id: userId, tam_ad: name, biyografi: bio, saatlik_ucret: Number(price), ders_turu: subject, konum: tamKonum, egitim: tamEgitim, diller: tumDiller, metodoloji: metodoloji, avatar_url: avatarUrl, video_url: videoUrl, amac: amac, odak: odak };
-      let error;
-      if (profile?.id) { const { error: err } = await supabase.from('egitmenler').update(updateData).eq('user_id', userId); error = err; } else { const { error: err } = await supabase.from('egitmenler').insert([updateData]); error = err; }
-      if (error) throw error;
-      alert("Değişiklikler başarıyla kaydedildi! 🎉 Profilinize anında yansıdı.");
-      onProfileUpdate();
-    } catch (err: any) { console.error(err); alert("Hata: " + err.message); } finally { setSaving(false); }
-  }
-
-  return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-      <div style={{ background: 'white', padding: '40px', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.05)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 32, borderBottom: '1px solid #f1f5f9', paddingBottom: 16 }}>
-          <div style={{ width: '40px', height: '40px', background: '#e0e7ff', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4f46e5' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
-          <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>Profil Bilgileri</h3>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-          <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '20px', border: '1px dashed #cbd5e1', display: 'flex', alignItems: 'center', gap: '24px' }}>
-            <div style={{ width: '90px', height: '90px', borderRadius: '50%', background: '#e2e8f0', backgroundImage: avatarUrl ? `url(${avatarUrl})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', border: '4px solid white', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>{!avatarUrl && <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>}</div>
-            <div>
-              <label style={{ ...labelStyle, marginBottom: '6px' }}>Profil Fotoğrafı</label>
-              <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#64748b' }}>JPEG veya PNG formatında profesyonel bir fotoğraf yükleyin.</p>
-              <input type="file" accept="image/*" onChange={handleAvatarUpload} disabled={uploading} style={{ fontSize: '14px', color: '#475569', cursor: 'pointer' }} />
-              {uploading && <span style={{ fontSize: '13px', color: '#4f46e5', marginLeft: '12px', fontWeight: 700 }}>Yükleniyor...</span>}
-            </div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
-            <div><label style={labelStyle}>Ad Soyad</label><input value={name} onChange={(e) => setName(e.target.value)} style={localInputStyle} /></div>
-            <div><label style={labelStyle}>Vitrin Metni <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 500 }}>(Örn: Türkçe Öğretmeni)</span></label><input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Örn: TÖMER Uzmanı, Türkçe Öğretmeni..." style={localInputStyle} /></div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', background: '#f8fafc', padding: '24px', borderRadius: '20px', border: '1px solid #f1f5f9' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label style={labelStyle}>Konum (Ülke)</label>
-                <select value={konumUlke} onChange={(e) => { setKonumUlke(e.target.value); setKonumSehir(""); }} style={localSelectStyle}><option value="" disabled>Ülke Seçiniz...</option>{LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}</select>
-              </div>
-              <div>
-                <label style={labelStyle}>Şehir</label>
-                {konumUlke === 'Türkiye' ? <select value={konumSehir} onChange={(e) => setKonumSehir(e.target.value)} style={localSelectStyle}><option value="" disabled>Şehir Seçiniz...</option>{CITIES.map(city => <option key={city} value={city}>{city}</option>)}</select> : <input value={konumSehir} onChange={(e) => setKonumSehir(e.target.value)} placeholder={konumUlke ? "Şehrinizi yazın..." : "Önce ülke seçiniz..."} style={localInputStyle} disabled={!konumUlke} />}
-              </div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label style={labelStyle}>Eğitim Seviyesi</label>
-                <select value={egitimSeviye} onChange={(e) => setEgitimSeviye(e.target.value)} style={localSelectStyle}><option value="" disabled>Seviye Seçiniz...</option>{EDUCATIONS.map(ed => <option key={ed} value={ed}>{ed}</option>)}</select>
-              </div>
-              <div><label style={labelStyle}>Üniversite / Okul Adı</label><input value={egitimOkul} onChange={(e) => setEgitimOkul(e.target.value)} placeholder="Örn: Gazi Üniversitesi" style={localInputStyle} /></div>
-            </div>
-          </div>
-          <div style={{ background: '#f8fafc', padding: '24px', borderRadius: '20px', border: '1px solid #f1f5f9' }}>
-            <div style={{ marginBottom: '20px' }}>
-              <label style={labelStyle}>Ana Diliniz</label>
-              <select value={anaDil} onChange={(e) => { setAnaDil(e.target.value); if (digerDiller.includes(e.target.value)) setDigerDiller(prev => prev.filter(d => d !== e.target.value)); }} style={localSelectStyle}><option value="">-- Ana Dil Seçimini Temizle --</option>{LANGUAGES.map(loc => <option key={loc} value={loc}>{loc}</option>)}</select>
-            </div>
-            <div>
-              <label style={{ ...labelStyle, marginBottom: '10px' }}>Bildiğiniz Diğer Diller <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 500 }}>(Birden fazla seçebilirsiniz)</span></label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                {LANGUAGES.filter(l => l !== anaDil).map(dil => {
-                  const isSelected = digerDiller.includes(dil);
-                  return (
-                    <button key={dil} type="button" onClick={() => handleDilToggle(dil)} style={{ padding: '8px 16px', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '8px', background: isSelected ? '#eef2ff' : '#ffffff', color: isSelected ? '#4f46e5' : '#475569', border: isSelected ? '1.5px solid #4f46e5' : '1px solid #cbd5e1' }}>
-                      <div style={{ width: '16px', height: '16px', borderRadius: '4px', border: isSelected ? 'none' : '1.5px solid #94a3b8', background: isSelected ? '#4f46e5' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{isSelected && <span style={{ color: 'white', fontSize: '10px', fontWeight: 800 }}>✓</span>}</div>
-                      {dil}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
-            <div><label style={labelStyle}>Saatlik Ücret (TL)</label><input value={price} type="number" onChange={(e) => setPrice(Number(e.target.value))} style={localInputStyle} /></div>
-            <div style={{ background: '#f8fafc', padding: '16px 20px', borderRadius: '16px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-              <label style={{ ...labelStyle, marginBottom: '4px', color: '#64748b' }}>Tamamlanan Toplam Ders</label>
-              <div style={{ fontSize: '24px', fontWeight: 900, color: '#10b981' }}>{stats?.completedLessons || 0} Ders</div>
-            </div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
-            <div><label style={labelStyle}>Hedeflenen Amaçlar <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 500 }}>(Virgülle ayırın)</span></label><input value={amac} onChange={(e) => setAmac(e.target.value)} placeholder="Örn: Sınav Hazırlığı, İş Türkçesi" style={localInputStyle} /></div>
-            <div><label style={labelStyle}>Odak Noktaları <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 500 }}>(Virgülle ayırın)</span></label><input value={odak} onChange={(e) => setOdak(e.target.value)} placeholder="Örn: Gramer, Telaffuz" style={localInputStyle} /></div>
-          </div>
-          <div><label style={labelStyle}>Tanıtım Videosu (YouTube Linki)</label><input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="Örn: https://www.youtube.com/watch?v=dQw4w9WgXcQ" style={localInputStyle} /></div>
-          <div><label style={labelStyle}>Hakkımda (Biyografi)</label><textarea value={bio} onChange={(e) => setBio(e.target.value)} style={{ ...localInputStyle, height: 140, resize: 'vertical' }} /></div>
-          <div><label style={labelStyle}>Öğretim Yaklaşımı & Metodoloji</label><textarea value={metodoloji} onChange={(e) => setMetodoloji(e.target.value)} placeholder="Derslerinizi hangi yaklaşımlarla işliyorsunuz?" style={{ ...localInputStyle, height: 140, resize: 'vertical' }} /></div>
-        </div>
-        <button onClick={handleSave} disabled={saving} style={{ marginTop: 40, width: "100%", padding: 18, borderRadius: '16px', border: "none", background: saving ? "#94a3b8" : "linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)", color: "white", fontWeight: 800, fontSize: '1.1rem', cursor: saving ? "default" : "pointer", transition: 'all 0.3s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, boxShadow: saving ? 'none' : '0 10px 20px -5px rgba(79, 70, 229, 0.4)' }}>
-          {saving ? "Kaydediliyor..." : <><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Değişiklikleri Kaydet ve Yayınla</>}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function Box({ title, value, icon, color, textColor }: any) {
-  return (
-    <div style={{ background: color || 'white', padding: '24px', borderRadius: '20px', border: color ? 'none' : '1px solid #e2e8f0', boxShadow: color ? 'none' : '0 4px 6px -1px rgb(0 0 0 / 0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <div><div style={{ fontSize: '14px', fontWeight: 600, color: textColor || '#64748b', marginBottom: '8px' }}>{title}</div><div style={{ fontSize: '28px', fontWeight: 900, color: textColor || '#0f172a', letterSpacing: '-0.5px' }}>{value}</div></div>{icon && <div style={{ opacity: 0.9 }}>{icon}</div>}
-    </div>
-  );
-}
-
-const grid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '24px' };
-const cardStyle = { background: 'white', padding: '32px', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.05)' };
-const cardTitleStyle = { fontSize: '18px', fontWeight: 800, color: '#0f172a', margin: 0 };
-const labelStyle = { fontSize: '14px', fontWeight: 700, color: '#0f172a', display: 'block' };

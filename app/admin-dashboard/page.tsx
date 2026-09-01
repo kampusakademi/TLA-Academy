@@ -55,6 +55,7 @@ export default function AdminDashboard() {
     { key: 'dashboard', label: 'Genel Bakış', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg> },
     { key: 'applications', label: 'Başvuru Yönetimi', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> },
     { key: 'users', label: 'Kullanıcı Yönetimi', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
+    { key: 'lessons', label: 'Ders Kayıtları', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg> },
     { key: 'blog', label: 'Blog & İçerik Yönetimi', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> },
     { key: 'settings', label: 'Sistem Ayarları', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> }
   ];
@@ -152,6 +153,7 @@ export default function AdminDashboard() {
               {tab === 'dashboard' && 'Genel İstatistikler'}
               {tab === 'users' && 'Kullanıcı Yönetimi'}
               {tab === 'applications' && 'Başvuru Yönetimi'}
+              {tab === 'lessons' && 'Ders Kayıtları & Loglar'}
               {tab === 'blog' && 'Blog & İçerik Yönetimi'}
               {tab === 'settings' && 'Sistem Ayarları'}
             </h1>
@@ -192,10 +194,247 @@ export default function AdminDashboard() {
           {tab === 'dashboard' && <DashboardOverview />}
           {tab === 'users' && <UserManagement />}
           {tab === 'applications' && <ApplicationsManagement />}
+          {tab === 'lessons' && <LessonsManagement />}
           {tab === 'blog' && <BlogManagement />}
           {tab === 'settings' && <SystemSettings />}
         </div>
       </main>
+    </div>
+  );
+}
+
+/* =========================================================
+   🚀 DERS YÖNETİMİ VE KAYITLAR BİLEŞENİ
+========================================================= */
+function LessonsManagement() {
+  const [lessons, setLessons] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Video Oynatıcı Modalı İçin
+  const [selectedVideos, setSelectedVideos] = useState<{ url: string, name: string }[] | null>(null);
+  const [activeVideoIndex, setActiveVideoIndex] = useState(0);
+
+  // 🚀 Log Görüntüleyici Modalı İçin
+  const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+  const [currentLogs, setCurrentLogs] = useState<any[]>([]);
+  const [logLoading, setLogLoading] = useState(false);
+  const [selectedLessonName, setSelectedLessonName] = useState("");
+
+  useEffect(() => {
+    loadLessons();
+  }, []);
+
+  async function loadLessons() {
+    setLoading(true);
+    const { data } = await supabase
+      .from('dersler')
+      .select('*')
+      .order('tarih_saat', { ascending: false });
+
+    if (data) setLessons(data);
+    setLoading(false);
+  }
+
+  async function handleWatch(kayitUrl: string) {
+    const paths = kayitUrl.split(',').map(p => p.trim()).filter(Boolean);
+    
+    // Private bucket'tan 1 saat geçerli link
+    const { data, error } = await supabase.storage.from('ders-kayitlari').createSignedUrls(paths, 3600);
+    
+    if (error || !data) {
+      alert("Kayıtlar getirilirken bir hata oluştu.");
+      return;
+    }
+    
+    const validUrls = data
+      .filter((d: any) => d.signedUrl) 
+      .map((d: any, i: number) => ({ url: d.signedUrl as string, name: `Kesit ${i + 1}` })); 
+      
+    setSelectedVideos(validUrls);
+    setActiveVideoIndex(0);
+  }
+
+  // 🚀 Ders Loglarını Getir
+  async function handleViewLogs(dersId: string, ogretmenAdi: string, ogrenciAdi: string) {
+    setIsLogModalOpen(true);
+    setLogLoading(true);
+    setSelectedLessonName(`${ogretmenAdi} & ${ogrenciAdi} Dersi`);
+    
+    const { data, error } = await supabase
+      .from('ders_loglari')
+      .select('*')
+      .eq('ders_id', dersId)
+      .order('created_at', { ascending: true });
+    
+    if (data) setCurrentLogs(data);
+    setLogLoading(false);
+  }
+
+  return (
+    <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <div>
+          <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', margin: 0 }}>Ders Geçmişi ve Kayıtlar</h2>
+          <p style={{ color: '#64748b', margin: '8px 0 0 0' }}>Derslerde kimin saat kaçta girdiği logları (Sistem Günlüğü) ve video kayıtlarını inceleyin.</p>
+        </div>
+      </div>
+
+      <div style={{ background: '#ffffff', borderRadius: '24px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+        {loading ? <div style={{ padding: '60px', textAlign: 'center' }}>Dersler yükleniyor...</div> : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
+            <thead>
+              <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                <th style={{ padding: '20px 24px', color: '#64748b', fontWeight: 600 }}>Öğretmen</th>
+                <th style={{ padding: '20px 24px', color: '#64748b', fontWeight: 600 }}>Öğrenci</th>
+                <th style={{ padding: '20px 24px', color: '#64748b', fontWeight: 600 }}>Tarih / Saat</th>
+                <th style={{ padding: '20px 24px', color: '#64748b', fontWeight: 600 }}>Durum</th>
+                <th style={{ padding: '20px 24px', textAlign: 'right', color: '#64748b', fontWeight: 600 }}>İşlemler</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lessons.map((lesson) => (
+                <tr key={lesson.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <td style={{ padding: '20px 24px', fontWeight: 700, color: '#0f172a' }}>{lesson.egitmen_adi || "Eğitmen"}</td>
+                  <td style={{ padding: '20px 24px', fontWeight: 600, color: '#475569' }}>{lesson.ogrenci_adi || "Öğrenci"}</td>
+                  <td style={{ padding: '20px 24px', color: '#64748b' }}>{new Date(lesson.tarih_saat).toLocaleString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                  <td style={{ padding: '20px 24px' }}>
+                    <span style={{ 
+                      background: lesson.durum === 'Tamamlanan' ? '#dcfce7' : (lesson.durum === 'Yaklaşan' ? '#eef2ff' : '#fef2f2'), 
+                      color: lesson.durum === 'Tamamlanan' ? '#16a34a' : (lesson.durum === 'Yaklaşan' ? '#4f46e5' : '#ef4444'), 
+                      padding: '6px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: 700 
+                    }}>
+                      {lesson.durum}
+                    </span>
+                  </td>
+                  <td style={{ padding: '20px 24px', textAlign: 'right' }}>
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                      
+                      {/* 🚀 LOG BUTONU */}
+                      <button 
+                        onClick={() => handleViewLogs(lesson.id, lesson.egitmen_adi, lesson.ogrenci_adi)}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#f8fafc', color: '#475569', border: '1px solid #cbd5e1', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '13px', transition: 'all 0.2s' }}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                        Loglar
+                      </button>
+
+                      {/* VİDEO İZLE BUTONU */}
+                      {lesson.kayit_url ? (
+                        <button 
+                          onClick={() => handleWatch(lesson.kayit_url)} 
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#10b981', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '13px', boxShadow: '0 2px 4px rgba(16,185,129,0.2)', transition: 'background 0.2s' }}
+                          onMouseEnter={e => e.currentTarget.style.backgroundColor = '#059669'}
+                          onMouseLeave={e => e.currentTarget.style.backgroundColor = '#10b981'}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                          Kaydı İzle
+                        </button>
+                      ) : (
+                        <span style={{ color: '#94a3b8', fontSize: '13px', fontWeight: 500, padding: '8px 0' }}>Kayıt Yok</span>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {lessons.length === 0 && (
+                <tr><td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>Sistemde kayıtlı ders bulunmuyor.</td></tr>
+              )}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* 🚀 SİSTEM GÜNLÜĞÜ (LOG) MODALI */}
+      {isLogModalOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: '20px' }}>
+          <div style={{ background: '#ffffff', width: '100%', maxWidth: '600px', borderRadius: '24px', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '80vh', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3)' }}>
+            
+            <div style={{ padding: '20px 24px', background: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>Sistem Günlüğü (Logs)</h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#64748b' }}>{selectedLessonName}</p>
+              </div>
+              <button onClick={() => setIsLogModalOpen(false)} style={{ border: 'none', background: '#e2e8f0', width: 36, height: 36, borderRadius: '50%', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                X
+              </button>
+            </div>
+            
+            <div style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>
+              {logLoading ? (
+                <div style={{ textAlign: 'center', color: '#64748b', padding: '40px' }}>Loglar çekiliyor...</div>
+              ) : currentLogs.length === 0 ? (
+                <div style={{ textAlign: 'center', color: '#94a3b8', padding: '40px', background: '#f1f5f9', borderRadius: '16px' }}>Bu ders için henüz bir sistem günlüğü (log) oluşturulmamış. İlgili kişiler odaya hiç girmemiş olabilir.</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {currentLogs.map((log) => (
+                    <div key={log.id} style={{ display: 'flex', gap: '16px' }}>
+                      <div style={{ width: '50px', color: '#94a3b8', fontSize: '0.85rem', fontWeight: 600, paddingTop: '12px', textAlign: 'right' }}>
+                        {new Date(log.created_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                      <div style={{ flex: 1, background: '#f8fafc', padding: '12px 16px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: log.kullanici_rolu === 'Öğretmen' ? '#4f46e5' : '#10b981' }}></div>
+                        <span style={{ fontWeight: 800, color: log.kullanici_rolu === 'Öğretmen' ? '#4f46e5' : '#10b981' }}>{log.kullanici_rolu}</span>
+                        <span style={{ color: '#475569', fontWeight: 500 }}>{log.aksiyon.toLowerCase() === 'odaya girdi' ? 'derse giriş yaptı.' : 'dersten ayrıldı.'}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+          </div>
+        </div>
+      )}
+
+      {/* VİDEO OYNATICI MODAL */}
+      {selectedVideos && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+          <div style={{ background: '#000000', width: '100%', maxWidth: '900px', borderRadius: '24px', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}>
+            
+            <div style={{ padding: '20px 24px', background: '#1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #334155' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14v-4z"/><rect x="3" y="6" width="12" height="12" rx="2" ry="2"/></svg>
+                Ders Kaydı Görüntüleyicisi
+              </h3>
+              <button onClick={() => setSelectedVideos(null)} style={{ border: 'none', background: 'rgba(255,255,255,0.1)', width: 36, height: 36, borderRadius: '50%', cursor: 'pointer', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                &times;
+              </button>
+            </div>
+            
+            <div style={{ width: '100%', background: '#000' }}>
+              <video 
+                key={selectedVideos[activeVideoIndex].url}
+                src={selectedVideos[activeVideoIndex].url} 
+                controls 
+                autoPlay 
+                style={{ width: '100%', maxHeight: '65vh', display: 'block', outline: 'none' }} 
+              />
+            </div>
+
+            {selectedVideos.length > 1 && (
+              <div style={{ padding: '16px 24px', background: '#1e293b', borderTop: '1px solid #334155', display: 'flex', alignItems: 'center', gap: '12px', overflowX: 'auto' }}>
+                <span style={{ color: '#94a3b8', fontSize: '13px', fontWeight: 600 }}>Parçalar (Kesintiler):</span>
+                {selectedVideos.map((vid, idx) => (
+                  <button 
+                    key={idx}
+                    onClick={() => setActiveVideoIndex(idx)}
+                    style={{
+                      padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '13px', border: 'none', transition: 'all 0.2s',
+                      background: activeVideoIndex === idx ? '#4f46e5' : 'rgba(255,255,255,0.1)',
+                      color: activeVideoIndex === idx ? 'white' : '#cbd5e1'
+                    }}
+                  >
+                    {vid.name}
+                  </button>
+                ))}
+              </div>
+            )}
+            
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -551,8 +790,6 @@ function ApplicationsManagement() {
         
         const { data: checkExist } = await supabase.from('egitmenler').select('id').eq('user_id', realUserId).maybeSingle();
         
-        // DİKKAT: diploma_url ve sertifika_url `egitmenler` tablosunda yok!
-        // Yalnızca tabloda var olan alanları gönderiyoruz.
         const egitmenData = { 
           user_id: realUserId, 
           tam_ad: basvuruObj.tam_ad || "İsimsiz", 

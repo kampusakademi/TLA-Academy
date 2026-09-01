@@ -1,179 +1,124 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { Language } from '@/lib/dictionary';
+import { useState } from 'react';
+// Kendi dil değiştirme context'inizi veya hook'unuzu buraya import edin (varsa)
 
 export default function LanguageToggle() {
-  const [lang, setLang] = useState<Language>('en');
-  const [open, setOpen] = useState(false);
+    const [isOpen, setIsOpen] = useState(false);
+    
+    // Geçici state. Bunu kendi projenizdeki aktif dil (örn: t.locale) ile değiştirin.
+    const [selectedLang, setSelectedLang] = useState('TR'); 
 
-  const menuRef = useRef<HTMLDivElement>(null);
+    const languages = [
+        { code: 'TR', label: 'Türkçe', flagUrl: 'https://flagcdn.com/w20/tr.png' },
+        { code: 'EN', label: 'English', flagUrl: 'https://flagcdn.com/w20/gb.png' }
+    ];
 
-  useEffect(() => {
-    const saved = localStorage.getItem('app_lang') as Language;
-
-    if (saved) {
-      setLang(saved);
-    }
-  }, []);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        menuRef.current &&
-        !menuRef.current.contains(event.target as Node)
-      ) {
-        setOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
-  const changeLanguage = (newLang: Language) => {
-    setLang(newLang);
-    localStorage.setItem('app_lang', newLang);
-
-    window.dispatchEvent(new Event('languagechange_event'));
-
-    setOpen(false);
-  };
-
-  return (
-    <div ref={menuRef} style={{ position: 'relative' }}>
-
-      <button
-        onClick={() => setOpen(!open)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          padding: '8px 14px',
-          borderRadius: '20px',
-          border: '1px solid #e2e8f0',
-          background: '#fff',
-          cursor: 'pointer',
-          fontWeight: 700,
-          fontSize: '0.85rem',
-        }}
-      >
-
-        {lang === 'en' ? (
-          <>
-            <img
-              src="https://flagcdn.com/w20/gb.png"
-              alt="English"
-              width={20}
-              height={15}
-            />
-            EN
-          </>
-        ) : (
-          <>
-            <img
-              src="https://flagcdn.com/w20/tr.png"
-              alt="Türkçe"
-              width={20}
-              height={15}
-            />
-            TR
-          </>
-        )}
-
-        {/* Sabit merkezde dönen ince ok */}
-        <span
-          style={{
-            width: '5px',
-            height: '5px',
-            borderRight: '1.1px solid #0a0000',
-            borderBottom: '1.1px solid #080101',
-            transform: open
-              ? 'rotate(225deg)'
-              : 'rotate(45deg)',
-            transition: 'transform 0.2s ease',
-            display: 'inline-block',
-            marginLeft: '4px',
-            marginTop: '0px',
-          }}
-        />
-
-      </button>
-
-
-      {open && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '45px',
-            right: 0,
-            background: '#fff',
-            border: '1px solid #e2e8f0',
-            borderRadius: '10px',
-            padding: '5px',
-            minWidth: '130px',
-            boxShadow: '0 5px 15px rgba(0,0,0,0.15)',
-            zIndex: 999,
-          }}
-        >
-
-          {lang !== 'en' && (
+    return (
+        <div style={{ position: 'relative', display: 'inline-block' }}>
             <button
-              onClick={() => changeLanguage('en')}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 10px',
-                border: 'none',
-                background: 'transparent',
-                cursor: 'pointer',
-                borderRadius: '8px',
-              }}
+                onClick={() => setIsOpen(!isOpen)}
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 12px',
+                    backgroundColor: isOpen ? '#f1f5f9' : 'transparent',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    color: '#334155',
+                    fontWeight: 600,
+                    fontSize: '0.9rem',
+                    transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => !isOpen && (e.currentTarget.style.backgroundColor = '#f8fafc')}
+                onMouseLeave={(e) => !isOpen && (e.currentTarget.style.backgroundColor = 'transparent')}
             >
-              <img
-                src="https://flagcdn.com/w20/gb.png"
-                alt="English"
-                width={20}
-                height={15}
-              />
-              English
+                <img 
+                    src={languages.find(l => l.code === selectedLang)?.flagUrl} 
+                    alt={selectedLang} 
+                    style={{ width: '20px', borderRadius: '2px', objectFit: 'cover' }} 
+                />
+                {selectedLang}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: 'transform 0.2s', transform: isOpen ? 'rotate(180deg)' : 'rotate(0)' }}><path d="m6 9 6 6 6-6"/></svg>
             </button>
-          )}
 
-
-          {lang !== 'tr' && (
-            <button
-              onClick={() => changeLanguage('tr')}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 10px',
-                border: 'none',
-                background: 'transparent',
-                cursor: 'pointer',
-                borderRadius: '8px',
-              }}
-            >
-              <img
-                src="https://flagcdn.com/w20/tr.png"
-                alt="Türkçe"
-                width={20}
-                height={15}
-              />
-              Türkçe
-            </button>
-          )}
-
+            {isOpen && (
+                <>
+                    <div onClick={() => setIsOpen(false)} style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 998 }} />
+                    
+                    <div style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 8px)',
+                        right: 0,
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '12px',
+                        boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)',
+                        zIndex: 999,
+                        minWidth: '140px',
+                        padding: '6px',
+                        animation: 'fadeIn 0.15s ease-out'
+                    }}>
+                        <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+                        {languages.map((lang) => {
+                            const isSelected = selectedLang === lang.code;
+                            return (
+                                <button
+                                    key={lang.code}
+                                    onClick={() => {
+                                        setSelectedLang(lang.code);
+                                        // 🚀 Dil değiştirme fonksiyonunuzu BURAYA ekleyin:
+                                        // changeLanguage(lang.code);
+                                        
+                                        setIsOpen(false);
+                                    }}
+                                    style={{
+                                        display: 'flex',
+                                        width: '100%',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        padding: '10px 12px',
+                                        border: 'none',
+                                        backgroundColor: isSelected ? '#f8fafc' : 'transparent',
+                                        color: isSelected ? '#0f172a' : '#475569',
+                                        borderRadius: '8px',
+                                        cursor: 'pointer',
+                                        fontWeight: isSelected ? 700 : 500,
+                                        fontSize: '0.9rem',
+                                        transition: 'background 0.2s',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (!isSelected) {
+                                            e.currentTarget.style.backgroundColor = '#f1f5f9';
+                                            e.currentTarget.style.color = '#0f172a';
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (!isSelected) {
+                                            e.currentTarget.style.backgroundColor = 'transparent';
+                                            e.currentTarget.style.color = '#475569';
+                                        }
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <img 
+                                            src={lang.flagUrl} 
+                                            alt={lang.code} 
+                                            style={{ width: '20px', borderRadius: '2px', objectFit: 'cover' }} 
+                                        />
+                                        {lang.label}
+                                    </div>
+                                    {isSelected && (
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </>
+            )}
         </div>
-      )}
-
-    </div>
-  );
+    );
 }

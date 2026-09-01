@@ -79,7 +79,7 @@ export default function TeacherProfilePage() {
         setTeacher(teacherData);
         const targetUserId = teacherData.user_id || teacherData.id;
 
-        // 🚀 KULLANICI GİRİŞ YAPMIŞSA FAVORİ DURUMUNU KONTROL ET
+        // KULLANICI GİRİŞ YAPMIŞSA FAVORİ DURUMUNU KONTROL ET
         if (user) {
           const { data: favData } = await supabase
             .from('favoriler')
@@ -146,7 +146,7 @@ export default function TeacherProfilePage() {
     }
   }
 
-  // 🚀 FAVORİYE EKLE / ÇIKAR VE BİLDİRİM (MESAJ) GÖNDERME FONKSİYONU
+  // 🚀 FAVORİYE EKLE / ÇIKAR VE TLA DESTEK EKİBİNDEN SİSTEM MESAJI
   async function handleFavoriteToggle() {
     if (!currentUserId) {
       alert("⚠️ Eğitmenleri favorilerinize eklemek için giriş yapmalısınız.");
@@ -158,7 +158,6 @@ export default function TeacherProfilePage() {
 
     try {
       if (isFavorited) {
-        // Favorilerden Çıkar
         await supabase
           .from('favoriler')
           .delete()
@@ -167,15 +166,12 @@ export default function TeacherProfilePage() {
         
         setIsFavorited(false);
       } else {
-        // Favorilere Ekle
         await supabase
           .from('favoriler')
           .insert([{ ogrenci_id: currentUserId, egitmen_id: targetUserId }]);
         
         setIsFavorited(true);
 
-        // 🚀 ÖĞRETMENE OTOMATİK MESAJ/BİLDİRİM GÖNDER
-        // Öğrencinin adını bulalım
         const { data: ogrenciData } = await supabase
           .from('ogrenciler')
           .select('tam_ad')
@@ -184,13 +180,15 @@ export default function TeacherProfilePage() {
 
         const ogrenciAdi = ogrenciData?.tam_ad || "Bir öğrenci";
 
-        // Öğretmenin mesaj kutusuna düşecek olan dikkat çekici sistem notu
-        const otomatikMesaj = `📌 Sistem Bildirimi: Merhaba! ${ogrenciAdi} adlı öğrenci profilinizi inceledi ve sizi Favorilerine ekledi. \n\nOna kısa bir "Merhaba, hedeflerinize nasıl yardımcı olabilirim?" mesajı göndererek ilk adımı atabilirsiniz.`;
+        // 🚀 YENİ SİSTEM MESAJI TASARIMI
+        // Öğretmen bu mesajı gördüğünde sanki platform ona haber veriyormuş hissiyatı yaşar.
+        // Ancak mesaja cevap yazdığı an, mesaj direkt öğrenciye iletilir.
+        const otomatikMesaj = `🏢 TLA Destek Ekibi:\n\nHarika bir haberimiz var! 🎉\n"${ogrenciAdi}" adlı öğrenci profilinizi inceledi ve sizi Favorilerine ekledi.\n\nBu sohbete yanıt yazarak doğrudan öğrenciyle iletişime geçebilir ve ilk adımı siz atabilirsiniz.`;
 
         await supabase
           .from('mesajlar')
           .insert([{
-            gonderen_id: currentUserId, // Öğrenciden gelmiş gibi görünür ki öğretmen direkt cevap yazabilsin
+            gonderen_id: currentUserId, // Supabase veritabanı hata vermesin (FK) diye ID öğrenciye aittir.
             alici_id: targetUserId,
             icerik: otomatikMesaj,
             okundu: false
@@ -260,6 +258,12 @@ export default function TeacherProfilePage() {
 
     if (slotDateTime < now) {
         return { disabled: true, reason: 'Geçti' };
+    }
+
+    const minimumIzinVerilenZaman = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+    
+    if (slotDateTime < minimumIzinVerilenZaman) {
+        return { disabled: true, reason: 'Çok Yakın' }; 
     }
 
     const dayMap = { 0: 'Pazar', 1: 'Pazartesi', 2: 'Salı', 3: 'Çarşamba', 4: 'Perşembe', 5: 'Cuma', 6: 'Cumartesi' };
@@ -399,7 +403,6 @@ export default function TeacherProfilePage() {
     return (now - lastSeen) < 15 * 60 * 1000;
   };
 
-  // 🚀 DİNAMİK YANIT SÜRESİ HESAPLAYICISI 
   const getDynamicResponseTime = (sonGorulmeTarihi: string | null) => {
     if (!sonGorulmeTarihi) return "⏱️ Genellikle birkaç saat içinde yanıt verir";
     const lastSeen = new Date(sonGorulmeTarihi).getTime();
@@ -417,12 +420,9 @@ export default function TeacherProfilePage() {
 
   const embedVideoUrl = getYouTubeEmbedUrl(teacher?.video_url);
   const isTeacherOnline = isOnline(teacher?.son_gorulme);
-
-  // Yanıt süresini hesapla
   const yanitSuresiMetni = getDynamicResponseTime(teacher?.son_gorulme);
   const isCevrimici = yanitSuresiMetni.includes("Şu an aktif");
 
-  // 🚀 AKILLI DİL AYIKLAYICI (Köşeli parantezleri temizler)
   let dillerArray: string[] = [];
   if (teacher?.diller) {
     try {
@@ -475,7 +475,6 @@ export default function TeacherProfilePage() {
   const dinamikOrtalama = gecerliPuanlar.length > 0
     ? (gecerliPuanlar.reduce((acc, curr) => acc + Number(curr.puan), 0) / gecerliPuanlar.length).toFixed(1)
     : (teacher?.ortalama_puan ? Number(teacher.ortalama_puan).toFixed(1) : null);
-  const doluYildizSayisi = dinamikOrtalama ? Math.round(Number(dinamikOrtalama)) : 0;
 
   const avatarGradients = [
     'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)',
@@ -489,7 +488,6 @@ export default function TeacherProfilePage() {
   return (
     <div style={{ fontFamily: '"Inter", system-ui, sans-serif', color: '#0f172a', backgroundColor: '#f8fafc', minHeight: '100vh', paddingBottom: '100px' }}>
       
-      {/* Glassmorphism Navigasyon */}
       <nav style={{ padding: '16px 8%', backgroundColor: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(226, 232, 240, 0.8)', display: 'flex', alignItems: 'center', position: 'sticky', top: 0, zIndex: 50 }}>
         <button onClick={() => router.back()} style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, color: '#475569', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '6px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#0f172a'} onMouseLeave={(e) => e.currentTarget.style.color = '#475569'}>
           <span style={{ fontSize: '1.2rem' }}>←</span> Geri dön
@@ -501,7 +499,6 @@ export default function TeacherProfilePage() {
         {/* SOL TARAF */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
           
-          {/* Profil Üst Kart */}
           <div style={{ backgroundColor: '#ffffff', borderRadius: '24px', overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.06)' }}>
             <div style={{ height: '140px', background: 'linear-gradient(135deg, #e0e7ff 0%, #ede9fe 50%, #f3e8ff 100%)' }}></div>
             
@@ -596,7 +593,9 @@ export default function TeacherProfilePage() {
               <iframe src={embedVideoUrl || ''} style={{ width: '100%', height: '100%', border: 'none' }} allowFullScreen />
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#64748b' }}>
-                <div style={{ width: '64px', height: '64px', background: '#1e293b', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', marginBottom: '16px' }}>🎥</div>
+                <div style={{ width: '64px', height: '64px', background: '#1e293b', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', color: '#818cf8' }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.934a.5.5 0 0 0-.777-.416L16 11"/><rect x="2" y="6" width="14" height="12" rx="2" ry="2"/></svg>
+                </div>
                 <span style={{ fontWeight: 600 }}>Tanıtım videosu bulunmuyor</span>
               </div>
             )}
@@ -729,7 +728,8 @@ export default function TeacherProfilePage() {
                     <button 
                       key={hour} 
                       disabled={status.disabled} 
-                      onClick={() => setSelectedHour(hour)} 
+                      onClick={() => setSelectedHour(hour)}
+                      title={status.reason ? `${status.reason}` : ''}
                       style={{
                         padding: '12px 0', borderRadius: '12px', fontSize: '0.95rem',
                         cursor: status.disabled ? 'not-allowed' : 'pointer',
@@ -737,7 +737,8 @@ export default function TeacherProfilePage() {
                         border: isSelected ? '1px solid #4f46e5' : (status.disabled ? '1px dashed #cbd5e1' : '1px solid #cbd5e1'),
                         color: isSelected ? 'white' : (status.disabled ? '#94a3b8' : '#0f172a'),
                         fontWeight: 700,
-                        transition: 'all 0.15s'
+                        transition: 'all 0.15s',
+                        opacity: status.disabled ? 0.6 : 1
                       }}>
                       {hour}
                     </button>
@@ -772,7 +773,6 @@ export default function TeacherProfilePage() {
               )}
             </button>
 
-            {/* 🚀 FAVORİ (KALP) VE MESAJ BUTONLARI YAN YANA */}
             <div style={{ display: 'flex', gap: '12px' }}>
               <button 
                 onClick={() => setShowMsgModal(true)}
