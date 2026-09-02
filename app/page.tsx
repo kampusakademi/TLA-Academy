@@ -347,8 +347,21 @@ export default function HomePage() {
       </nav>
 
       {/* 2. HERO SECTION */}
-      <header style={{ padding: '60px 8%', backgroundColor: '#4f46e5', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '40px', minHeight: '480px', position: 'relative' }}>
-        <div style={{ flex: '1 1 450px', maxWidth: '580px', zIndex: 10 }}>
+      <header style={{ padding: '60px 8%', backgroundColor: '#4f46e5', color: '#ffffff', display: 'flex', alignItems: 'center', flexWrap: 'wrap', minHeight: '520px', position: 'relative', overflow: 'hidden' }}>
+        
+        {/* ARKA PLAN GÖRSELİ (Daha dar alan, daha küçük görünüm) */}
+        <div style={{ position: 'absolute', top: 0, right: 0, width: '55%', height: '100%', zIndex: 0 }}>
+          <img 
+            src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" 
+            alt="Online Language Learning" 
+            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.5, objectPosition: 'center' }} 
+          />
+          {/* Mor renk geçişi maskesi */}
+          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(to right, #4f46e5 0%, rgba(79, 70, 229, 0.4) 40%, transparent 100%)' }}></div>
+        </div>
+
+        {/* ÖN PLANDAKİ YAZILAR VE BUTONLAR */}
+        <div style={{ position: 'relative', flex: '1 1 100%', maxWidth: '650px', zIndex: 10 }}>
           <h2 style={{ fontSize: '3.5rem', fontWeight: 900, lineHeight: 1.1, color: '#ffffff', marginBottom: '20px', letterSpacing: '-1.5px' }}>{t.home.heroTitle1} <br/><span style={{ color: '#4ade80' }}>{t.home.heroTitle2}</span></h2>
           <p style={{ fontSize: '1.15rem', color: '#e0e7ff', marginBottom: '32px', lineHeight: 1.5, fontWeight: 500 }}>{t.home.heroDesc}</p>
           <div>
@@ -360,13 +373,6 @@ export default function HomePage() {
             <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '18px', height: '18px', backgroundColor: '#ffffff', color: '#4f46e5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px' }}>✓</div> {t.home.feature1}</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '18px', height: '18px', backgroundColor: '#ffffff', color: '#4f46e5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px' }}>✓</div> {t.home.feature2}</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '18px', height: '18px', backgroundColor: '#ffffff', color: '#4f46e5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px' }}>✓</div> {t.home.feature3}</span>
-          </div>
-        </div>
-        <div style={{ flex: '1 1 350px', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', zIndex: 10 }}>
-          <div style={{ position: 'relative', width: '100%', maxWidth: '480px', height: '320px', marginLeft: '30px', marginBottom: '30px' }}>
-            <div style={{ position: 'absolute', left: '-30px', top: '30px', width: '100%', height: '100%', backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: '24px', backdropFilter: 'blur(4px)' }}></div>
-            <div style={{ position: 'absolute', left: '-15px', top: '15px', width: '100%', height: '100%', backgroundColor: 'rgba(255, 255, 255, 0.2)', borderRadius: '24px', backdropFilter: 'blur(4px)' }}></div>
-            <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Online Language Learning" style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'cover', borderRadius: '24px', zIndex: 10, boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)' }} />
           </div>
         </div>
       </header>

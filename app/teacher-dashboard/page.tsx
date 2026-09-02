@@ -1032,11 +1032,6 @@ function Settings({ profile, stats, userId, onProfileUpdate }: any) {
   const CITIES = ['Adana', 'Ankara', 'Antalya', 'Bursa', 'Diyarbakır', 'Erzurum', 'Eskişehir', 'Gaziantep', 'İstanbul', 'İzmir', 'Kayseri', 'Kocaeli', 'Konya', 'Mersin', 'Sakarya', 'Samsun', 'Şanlıurfa', 'Trabzon', 'Van', 'Diğer'];
   const EDUCATIONS = ['Lise', 'Ön Lisans', 'Lisans', 'Yüksek Lisans', 'Doktora'];
   const LANGUAGES = ['Türkçe', 'İngilizce', 'Almanca', 'Fransızca', 'İspanyolca', 'Arapça', 'Rusça', 'Çince'];
-  
-  const GOALS = ['Kariyer ve İş', 'Sınav Hazırlığı', 'Çocuklar İçin Türkçe', 'Kültür ve Seyahat', 'Günlük Pratik', 'Akademik Türkçe'];
-  const DURATIONS = ['1-4 Hafta', '1-3 Ay', '3-6 Ay', 'Uzun Dönem', 'Tek Seferlik Hızlı Pratik'];
-  const FOCUS_AREAS = ['Gramer', 'Konuşma ve Telaffuz', 'Yazma ve Okuma', 'İş Türkçesi', 'TÖMER Hazırlık', 'Yeni Başlayanlar (A1-A2)'];
-  const LEVELS = ['Hiç Bilmeyenler (A0)', 'Başlangıç (A1-A2)', 'Orta (B1-B2)', 'İleri (C1-C2)', 'Ana Dili Seviyesinde'];
 
   const [name, setName] = useState("");
   const [bio, setBio] = useState("");
@@ -1053,10 +1048,10 @@ function Settings({ profile, stats, userId, onProfileUpdate }: any) {
   const [anaDil, setAnaDil] = useState("");
   
   const [digerDiller, setDigerDiller] = useState<string[]>([]);
-  const [amac, setAmac] = useState<string[]>([]);
-  const [sure, setSure] = useState<string[]>([]);
-  const [odak, setOdak] = useState<string[]>([]);
-  const [seviye, setSeviye] = useState<string[]>([]);
+  
+  // YENİ: Dinamik Uzmanlık Alanları
+  const [uzmanlikGirdisi, setUzmanlikGirdisi] = useState("");
+  const [uzmanliklar, setUzmanliklar] = useState<string[]>([]);
   
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -1088,15 +1083,27 @@ function Settings({ profile, stats, userId, onProfileUpdate }: any) {
       setAnaDil(pDiller.ana || "Türkçe");
       setDigerDiller(pDiller.diger);
 
-      setAmac(parseMulti(profile.amac));
-      setSure(parseMulti(profile.sure));
-      setOdak(parseMulti(profile.odak));
-      setSeviye(parseMulti(profile.seviye));
+      // Sadece 'amac' sütununu tek bir uzmanlık listesi olarak kullanıyoruz
+      setUzmanliklar(parseMulti(profile.amac));
     }
   }, [profile]);
 
   const toggleArrayItem = (setter: React.Dispatch<React.SetStateAction<string[]>>, item: string) => {
     setter(prev => prev.includes(item) ? prev.filter(i => i !== item) : [...prev, item]);
+  };
+
+  // Uzmanlık Ekleme Fonksiyonu
+  const uzmanlikEkle = (e?: React.MouseEvent | React.KeyboardEvent) => {
+      if (e) e.preventDefault();
+      const metin = uzmanlikGirdisi.trim();
+      if (metin !== '' && !uzmanliklar.includes(metin)) {
+          setUzmanliklar([...uzmanliklar, metin]);
+          setUzmanlikGirdisi('');
+      }
+  };
+
+  const uzmanlikSil = (silinecekAlan: string) => {
+      setUzmanliklar(uzmanliklar.filter(alan => alan !== silinecekAlan));
   };
 
   const OptionCheckbox = ({ label, selectedList, setter }: { label: string, selectedList: string[], setter: any }) => {
@@ -1134,10 +1141,7 @@ function Settings({ profile, stats, userId, onProfileUpdate }: any) {
         metodoloji: metodoloji, 
         avatar_url: avatarUrl, 
         video_url: videoUrl, 
-        amac: amac.join(', '), 
-        odak: odak.join(', '), 
-        sure: sure.join(', '), 
-        seviye: seviye.join(', ')
+        amac: uzmanliklar.join(', ') // Tüm etiketleri veritabanındaki 'amac' sütununa kaydediyoruz
       };
       
       const { error } = await supabase.from('egitmenler').update(updateData).eq('user_id', userId);
@@ -1216,32 +1220,58 @@ function Settings({ profile, stats, userId, onProfileUpdate }: any) {
             </div>
           </div>
 
-          <div style={{ background: '#fffbeb', padding: '24px', borderRadius: '20px', border: '1px solid #fef3c7', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#92400e', fontWeight: 800 }}>Uzmanlık ve Tercihler</h3>
-            <div>
-              <label style={{ ...labelStyle, marginBottom: '10px' }}>Hedef Kitle (Amaç)</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                {GOALS.map(g => <OptionCheckbox key={g} label={g} selectedList={amac} setter={setAmac} />)}
+          {/* DİNAMİK UZMANLIK ALANI BÖLÜMÜ */}
+          <div style={{ backgroundColor: '#fffbeb', padding: '24px', borderRadius: '16px', border: '1px solid #fde68a', marginTop: '8px' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#92400e', margin: '0 0 16px 0' }}>Uzmanlık Alanları & Etiketler</h3>
+              <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#b45309' }}>Öğrencilerin sizi daha kolay bulması için uzmanlık alanlarınızı ekleyin. (Örn: Çocuklar için Türkçe, Diksiyon, İş Türkçesi)</p>
+              
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+                  <input 
+                      type="text" 
+                      value={uzmanlikGirdisi} 
+                      onChange={(e) => setUzmanlikGirdisi(e.target.value)} 
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          uzmanlikEkle();
+                        }
+                      }}
+                      placeholder="Buraya yazın..." 
+                      style={{ flex: 1, padding: '12px 16px', borderRadius: '10px', border: '1px solid #d1d5db', outline: 'none', fontSize: '0.95rem', backgroundColor: '#ffffff' }} 
+                  />
+                  <button 
+                      type="button"
+                      onClick={uzmanlikEkle} 
+                      style={{ padding: '0 28px', backgroundColor: '#d97706', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 700, cursor: 'pointer', transition: 'background-color 0.2s' }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#b45309'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#d97706'}
+                  >
+                      Ekle
+                  </button>
               </div>
-            </div>
-            <div>
-              <label style={{ ...labelStyle, marginBottom: '10px' }}>Program Süresi</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                {DURATIONS.map(d => <OptionCheckbox key={d} label={d} selectedList={sure} setter={setSure} />)}
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', minHeight: '32px' }}>
+                  {uzmanliklar.map((alan, index) => (
+                      <span 
+                          key={index} 
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 14px', backgroundColor: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 700 }}
+                      >
+                          {alan}
+                          <button 
+                              type="button"
+                              onClick={() => uzmanlikSil(alan)} 
+                              style={{ background: 'none', border: 'none', color: '#b45309', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1rem' }}
+                          >
+                              ×
+                          </button>
+                      </span>
+                  ))}
+                  {uzmanliklar.length === 0 && (
+                      <span style={{ color: '#9ca3af', fontSize: '0.9rem', fontStyle: 'italic', display: 'flex', alignItems: 'center' }}>
+                          Henüz bir uzmanlık alanı eklemediniz.
+                      </span>
+                  )}
               </div>
-            </div>
-            <div>
-              <label style={{ ...labelStyle, marginBottom: '10px' }}>Öğrenci Seviyesi</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                {LEVELS.map(l => <OptionCheckbox key={l} label={l} selectedList={seviye} setter={setSeviye} />)}
-              </div>
-            </div>
-            <div>
-              <label style={{ ...labelStyle, marginBottom: '10px' }}>Odak Noktaları</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                {FOCUS_AREAS.map(f => <OptionCheckbox key={f} label={f} selectedList={odak} setter={setOdak} />)}
-              </div>
-            </div>
           </div>
 
           <div><label style={labelStyle}>Tanıtım Videosu (YouTube Linki)</label><input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="Örn: https://www.youtube.com/watch?v=dQw4w9WgXcQ" style={localInputStyle} /></div>

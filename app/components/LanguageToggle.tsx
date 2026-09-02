@@ -1,13 +1,16 @@
 'use client';
 
-import { useState } from 'react';
-// Kendi dil değiştirme context'inizi veya hook'unuzu buraya import edin (varsa)
+import { useState, useEffect } from 'react';
 
 export default function LanguageToggle() {
     const [isOpen, setIsOpen] = useState(false);
-    
-    // Geçici state. Bunu kendi projenizdeki aktif dil (örn: t.locale) ile değiştirin.
     const [selectedLang, setSelectedLang] = useState('TR'); 
+
+    // Sayfa açıldığında hafızadaki dili oku ve butona yansıt
+    useEffect(() => {
+        const savedLang = localStorage.getItem('app_lang') || 'en';
+        setSelectedLang(savedLang.toUpperCase());
+    }, []);
 
     const languages = [
         { code: 'TR', label: 'Türkçe', flagUrl: 'https://flagcdn.com/w20/tr.png' },
@@ -61,7 +64,6 @@ export default function LanguageToggle() {
                         padding: '6px',
                         animation: 'fadeIn 0.15s ease-out'
                     }}>
-                        <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }`}</style>
                         {languages.map((lang) => {
                             const isSelected = selectedLang === lang.code;
                             return (
@@ -69,8 +71,13 @@ export default function LanguageToggle() {
                                     key={lang.code}
                                     onClick={() => {
                                         setSelectedLang(lang.code);
-                                        // 🚀 Dil değiştirme fonksiyonunuzu BURAYA ekleyin:
-                                        // changeLanguage(lang.code);
+                                        const newLocale = lang.code.toLowerCase();
+                                        
+                                        // 1. Yeni dili hafızaya kaydet
+                                        localStorage.setItem('app_lang', newLocale);
+                                        
+                                        // 2. useTranslation dosyandaki event'i tetikle
+                                        window.dispatchEvent(new Event('languagechange_event'));
                                         
                                         setIsOpen(false);
                                     }}
@@ -87,32 +94,13 @@ export default function LanguageToggle() {
                                         cursor: 'pointer',
                                         fontWeight: isSelected ? 700 : 500,
                                         fontSize: '0.9rem',
-                                        transition: 'background 0.2s',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (!isSelected) {
-                                            e.currentTarget.style.backgroundColor = '#f1f5f9';
-                                            e.currentTarget.style.color = '#0f172a';
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (!isSelected) {
-                                            e.currentTarget.style.backgroundColor = 'transparent';
-                                            e.currentTarget.style.color = '#475569';
-                                        }
                                     }}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <img 
-                                            src={lang.flagUrl} 
-                                            alt={lang.code} 
-                                            style={{ width: '20px', borderRadius: '2px', objectFit: 'cover' }} 
-                                        />
+                                        <img src={lang.flagUrl} alt={lang.code} style={{ width: '20px', borderRadius: '2px', objectFit: 'cover' }} />
                                         {lang.label}
                                     </div>
-                                    {isSelected && (
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                    )}
+                                    {isSelected && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>}
                                 </button>
                             );
                         })}
