@@ -29,15 +29,38 @@ export async function middleware(request: NextRequest) {
   );
 
   const { data: { user } } = await supabase.auth.getUser();
+  const pathname = request.nextUrl.pathname;
 
-  if (!user && (request.nextUrl.pathname.startsWith('/dashboard') || 
-                request.nextUrl.pathname.startsWith('/teacher-dashboard'))) {
+  // 1. Gidilmek istenen yolları (rotaları) tanımlıyoruz
+  const isTeacherRoute = pathname.startsWith('/teacher-dashboard');
+  const isAdminRoute = pathname.startsWith('/admin-dashboard');
+  const isStudentRoute = pathname.startsWith('/dashboard'); // Öğrenci paneli
+
+  // 2. KULLANICI HİÇ GİRİŞ YAPMAMIŞSA
+  if (!user && (isTeacherRoute || isAdminRoute || isStudentRoute)) {
+    // Korumalı bir yere girmeye çalışıyorsa anında ana sayfaya at
     return NextResponse.redirect(new URL('/', request.url));
+  }
+
+  // 3. KULLANICI GİRİŞ YAPMIŞSA (ROL KONTROLÜ)
+  if (user) {
+    const userRole = user.user_metadata?.role;
+
+    // A. Öğrenci, Öğretmen paneline girmeye çalışıyorsa
+    if (isTeacherRoute && userRole !== 'ogretmen' && userRole !== 'admin') {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+
+    // B. Admin olmayan biri Admin paneline girmeye çalışıyorsa
+    if (isAdminRoute && userRole !== 'admin') {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
   }
 
   return response;
 }
 
+// Güvenlik görevlisinin HANGİ DOSYALAR HARİÇ çalışacağını belirliyoruz
 export const config = {
   matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 };
