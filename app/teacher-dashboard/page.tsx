@@ -1023,7 +1023,21 @@ function Earnings({ profile, stats }: any) {
   );
 }
 
-/* ---------------- 8. SETTINGS COMPONENT ---------------- */
+/* ---------------- 8. SETTINGS COMPONENT VE YARDIMCI BİLEŞENLER ---------------- */
+
+// Checkbox bileşenini ana fonksiyonun dışına çıkardık (Performans ve TS hatalarını önlemek için)
+const OptionCheckbox = ({ label, selectedList, setter }: { label: string, selectedList: string[], setter: any }) => {
+  const isSelected = selectedList.includes(label);
+  return (
+    <button type="button" onClick={() => setter((prev: string[]) => prev.includes(label) ? prev.filter(i => i !== label) : [...prev, label])} style={{ padding: '8px 14px', borderRadius: '10px', fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s ease-in-out', backgroundColor: isSelected ? '#eef2ff' : '#ffffff', color: isSelected ? '#4f46e5' : '#475569', border: isSelected ? '1.5px solid #4f46e5' : '1px solid #cbd5e1', boxShadow: isSelected ? '0 2px 6px rgba(79, 70, 229, 0.12)' : '0 1px 2px rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', gap: '8px', boxSizing: 'border-box' }}>
+      <div style={{ width: '16px', height: '16px', borderRadius: '4px', border: isSelected ? 'none' : '1.5px solid #94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isSelected ? '#4f46e5' : 'transparent', flexShrink: 0 }}>
+        {isSelected && <span style={{ color: 'white', fontSize: '10px', fontWeight: 800 }}>✓</span>}
+      </div>
+      <span>{label}</span>
+    </button>
+  );
+};
+
 function Settings({ profile, stats, userId, onProfileUpdate }: any) {
   const localInputStyle = { width: "100%", padding: '14px 16px', border: "1px solid #cbd5e1", borderRadius: '12px', outline: "none", fontSize: '15px', color: '#0f172a', background: '#ffffff', boxSizing: 'border-box' as const, transition: 'all 0.2s', marginTop: '6px', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)' };
   const localSelectStyle = { ...localInputStyle, appearance: 'none' as const, backgroundImage: 'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2364748b%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 16px top 50%', backgroundSize: '12px auto', paddingRight: '40px', cursor: 'pointer' };
@@ -1049,7 +1063,6 @@ function Settings({ profile, stats, userId, onProfileUpdate }: any) {
   
   const [digerDiller, setDigerDiller] = useState<string[]>([]);
   
-  // YENİ: Dinamik Uzmanlık Alanları
   const [uzmanlikGirdisi, setUzmanlikGirdisi] = useState("");
   const [uzmanliklar, setUzmanliklar] = useState<string[]>([]);
   
@@ -1060,6 +1073,14 @@ function Settings({ profile, stats, userId, onProfileUpdate }: any) {
   const safeCities = Array.from(new Set([...CITIES, konumSehir])).filter(Boolean);
   const safeEducations = Array.from(new Set([...EDUCATIONS, egitimSeviye])).filter(Boolean);
   const safeLanguages = Array.from(new Set([...LANGUAGES, anaDil, ...digerDiller])).filter(Boolean);
+
+  // Veritabanından gelen veriyi güvenle diziye çeviren yardımcı fonksiyon
+  const safeSplit = (val: any) => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val;
+    if (typeof val === 'string') return val.split(',');
+    return [];
+  };
 
   useEffect(() => {
     if (profile) {
@@ -1083,16 +1104,19 @@ function Settings({ profile, stats, userId, onProfileUpdate }: any) {
       setAnaDil(pDiller.ana || "Türkçe");
       setDigerDiller(pDiller.diger);
 
-      // Sadece 'amac' sütununu tek bir uzmanlık listesi olarak kullanıyoruz
-      setUzmanliklar(parseMulti(profile.amac));
+      // 🚀 Başvurudan gelen tüm dağınık etiketleri güvenle birleştiriyoruz
+      const tumUzmanlikEtiketleri = [
+        ...safeSplit(profile.amac),
+        ...safeSplit(profile.odak),
+        ...safeSplit(profile.seviye),
+        ...safeSplit(profile.sure)
+      ].map((item: string) => item.trim()).filter(Boolean);
+
+      const benzersizEtiketler = Array.from(new Set(tumUzmanlikEtiketleri));
+      setUzmanliklar(benzersizEtiketler);
     }
   }, [profile]);
 
-  const toggleArrayItem = (setter: React.Dispatch<React.SetStateAction<string[]>>, item: string) => {
-    setter(prev => prev.includes(item) ? prev.filter(i => i !== item) : [...prev, item]);
-  };
-
-  // Uzmanlık Ekleme Fonksiyonu
   const uzmanlikEkle = (e?: React.MouseEvent | React.KeyboardEvent) => {
       if (e) e.preventDefault();
       const metin = uzmanlikGirdisi.trim();
@@ -1104,18 +1128,6 @@ function Settings({ profile, stats, userId, onProfileUpdate }: any) {
 
   const uzmanlikSil = (silinecekAlan: string) => {
       setUzmanliklar(uzmanliklar.filter(alan => alan !== silinecekAlan));
-  };
-
-  const OptionCheckbox = ({ label, selectedList, setter }: { label: string, selectedList: string[], setter: any }) => {
-    const isSelected = selectedList.includes(label);
-    return (
-      <button type="button" onClick={() => toggleArrayItem(setter, label)} style={{ padding: '8px 14px', borderRadius: '10px', fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s ease-in-out', backgroundColor: isSelected ? '#eef2ff' : '#ffffff', color: isSelected ? '#4f46e5' : '#475569', border: isSelected ? '1.5px solid #4f46e5' : '1px solid #cbd5e1', boxShadow: isSelected ? '0 2px 6px rgba(79, 70, 229, 0.12)' : '0 1px 2px rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', gap: '8px', boxSizing: 'border-box' }}>
-        <div style={{ width: '16px', height: '16px', borderRadius: '4px', border: isSelected ? 'none' : '1.5px solid #94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isSelected ? '#4f46e5' : 'transparent', flexShrink: 0 }}>
-          {isSelected && <span style={{ color: 'white', fontSize: '10px', fontWeight: 800 }}>✓</span>}
-        </div>
-        <span>{label}</span>
-      </button>
-    );
   };
   
   async function handleAvatarUpload(event: any) {
@@ -1141,7 +1153,10 @@ function Settings({ profile, stats, userId, onProfileUpdate }: any) {
         metodoloji: metodoloji, 
         avatar_url: avatarUrl, 
         video_url: videoUrl, 
-        amac: uzmanliklar.join(', ') // Tüm etiketleri veritabanındaki 'amac' sütununa kaydediyoruz
+        amac: uzmanliklar.join(', '), 
+        odak: null, 
+        seviye: null, 
+        sure: null 
       };
       
       const { error } = await supabase.from('egitmenler').update(updateData).eq('user_id', userId);
@@ -1220,7 +1235,6 @@ function Settings({ profile, stats, userId, onProfileUpdate }: any) {
             </div>
           </div>
 
-          {/* DİNAMİK UZMANLIK ALANI BÖLÜMÜ */}
           <div style={{ backgroundColor: '#fffbeb', padding: '24px', borderRadius: '16px', border: '1px solid #fde68a', marginTop: '8px' }}>
               <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#92400e', margin: '0 0 16px 0' }}>Uzmanlık Alanları & Etiketler</h3>
               <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#b45309' }}>Öğrencilerin sizi daha kolay bulması için uzmanlık alanlarınızı ekleyin. (Örn: Çocuklar için Türkçe, Diksiyon, İş Türkçesi)</p>
@@ -1280,7 +1294,12 @@ function Settings({ profile, stats, userId, onProfileUpdate }: any) {
         </div>
         
         <button onClick={handleSave} disabled={saving} style={{ marginTop: 40, width: "100%", padding: 18, borderRadius: '16px', border: "none", background: saving ? "#94a3b8" : "linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)", color: "white", fontWeight: 800, fontSize: '1.1rem', cursor: saving ? "default" : "pointer", transition: 'all 0.3s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, boxShadow: saving ? 'none' : '0 10px 20px -5px rgba(79, 70, 229, 0.4)' }}>
-          {saving ? "Kaydediliyor..." : <><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Değişiklikleri Kaydet ve Yayınla</>}
+          {saving ? "Kaydediliyor..." : (
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+               Değişiklikleri Kaydet ve Yayınla
+            </span>
+          )}
         </button>
       </div>
     </div>

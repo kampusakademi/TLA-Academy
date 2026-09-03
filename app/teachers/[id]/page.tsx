@@ -181,14 +181,12 @@ export default function TeacherProfilePage() {
         const ogrenciAdi = ogrenciData?.tam_ad || "Bir öğrenci";
 
         // 🚀 YENİ SİSTEM MESAJI TASARIMI
-        // Öğretmen bu mesajı gördüğünde sanki platform ona haber veriyormuş hissiyatı yaşar.
-        // Ancak mesaja cevap yazdığı an, mesaj direkt öğrenciye iletilir.
         const otomatikMesaj = `🏢 TLA Destek Ekibi:\n\nHarika bir haberimiz var! 🎉\n"${ogrenciAdi}" adlı öğrenci profilinizi inceledi ve sizi Favorilerine ekledi.\n\nBu sohbete yanıt yazarak doğrudan öğrenciyle iletişime geçebilir ve ilk adımı siz atabilirsiniz.`;
 
         await supabase
           .from('mesajlar')
           .insert([{
-            gonderen_id: currentUserId, // Supabase veritabanı hata vermesin (FK) diye ID öğrenciye aittir.
+            gonderen_id: currentUserId,
             alici_id: targetUserId,
             icerik: otomatikMesaj,
             okundu: false
@@ -485,6 +483,15 @@ export default function TeacherProfilePage() {
   ];
   const avatarTextColors = ['#3730a3', '#831843', '#14532d', '#713f12', '#1e3a8a'];
 
+  const tumUzmanlikEtiketleri = [
+    ...(teacher?.amac ? teacher.amac.split(',') : []),
+    ...(teacher?.odak ? teacher.odak.split(',') : []),
+    ...(teacher?.seviye ? teacher.seviye.split(',') : []),
+    ...(teacher?.sure ? teacher.sure.split(',') : [])
+  ].map(item => item.trim()).filter(Boolean);
+
+  const benzersizEtiketler = Array.from(new Set(tumUzmanlikEtiketleri));
+
   return (
     <div style={{ fontFamily: '"Inter", system-ui, sans-serif', color: '#0f172a', backgroundColor: '#f8fafc', minHeight: '100vh', paddingBottom: '100px' }}>
       
@@ -601,22 +608,21 @@ export default function TeacherProfilePage() {
             )}
           </div>
 
-          <div style={{ backgroundColor: '#ffffff', padding: '40px', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', gap: '40px' }}>
+          {/* UZMANLIK, BİYOGRAFİ VE METODOLOJİ - TEK KARTTA BİRLEŞTİRİLDİ */}
+          <div style={{ backgroundColor: '#ffffff', padding: '40px', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', gap: '40px', marginBottom: '40px' }}>
             
+            {/* 1. UZMANLIK VE ODAK ALANLARI */}
             <div>
               <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '44px', height: '44px', background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0f172a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+                <div style={{ width: '44px', height: '44px', background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0f172a" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
                 </div>
                 Uzmanlık ve Odak Alanları
               </h2>
-              {(teacher?.amac || teacher?.odak) ? (
+              {benzersizEtiketler.length > 0 ? (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                  {teacher?.amac && teacher.amac.split(',').map((item: string, idx: number) => (
-                    item.trim() && <span key={`amac-${idx}`} style={{ padding: '8px 18px', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#334155', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 600 }}>{item.trim()}</span>
-                  ))}
-                  {teacher?.odak && teacher.odak.split(',').map((item: string, idx: number) => (
-                    item.trim() && <span key={`odak-${idx}`} style={{ padding: '8px 18px', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#334155', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 600 }}>{item.trim()}</span>
+                  {benzersizEtiketler.map((item: string, idx: number) => (
+                    <span key={`tag-${idx}`} style={{ padding: '8px 18px', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#334155', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 600 }}>{item}</span>
                   ))}
                 </div>
               ) : (
@@ -626,25 +632,31 @@ export default function TeacherProfilePage() {
 
             <div style={{ height: '1px', background: '#f1f5f9' }}></div>
 
+            {/* 2. EĞİTMEN HAKKINDA */}
             <div>
               <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '44px', height: '44px', background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>💡</div>
-                Öğretim Yaklaşımı
+                <div style={{ width: '44px', height: '44px', background: 'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </div>
+                Eğitmen Hakkında
               </h2>
               <p style={{ lineHeight: 1.8, color: '#475569', fontSize: '1.05rem', whiteSpace: 'pre-line', margin: 0 }}>
-                {teacher?.ogretim_yaklasimi || teacher?.metodoloji || "Eğitmen henüz öğretim yaklaşımı bilgisi eklememiş."}
+                {teacher?.biyografi || "Eğitmen henüz bir biyografi eklememiş."}
               </p>
             </div>
 
             <div style={{ height: '1px', background: '#f1f5f9' }}></div>
 
+            {/* 3. ÖĞRETİM YAKLAŞIMI */}
             <div>
               <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '44px', height: '44px', background: 'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>👤</div>
-                Eğitmen Hakkında
+                <div style={{ width: '44px', height: '44px', background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.9 1.2 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
+                </div>
+                Öğretim Yaklaşımı
               </h2>
               <p style={{ lineHeight: 1.8, color: '#475569', fontSize: '1.05rem', whiteSpace: 'pre-line', margin: 0 }}>
-                {teacher?.biyografi || "Eğitmen henüz bir biyografi eklememiş."}
+                {teacher?.ogretim_yaklasimi || teacher?.metodoloji || "Eğitmen henüz öğretim yaklaşımı bilgisi eklememiş."}
               </p>
             </div>
 
