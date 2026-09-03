@@ -244,6 +244,16 @@ export default function HomePage() {
     }
   ];
 
+  // 1. DOĞRU YER: SUPABASE ŞİFRE SIFIRLAMA YAKALAYICISI BURADA OLMALI
+  useEffect(() => {
+    const hash = window.location.hash;
+    // Eğer URL'de şifre sıfırlama kodu varsa, kullanıcıyı zorla şifre yenileme sayfasına yolla
+    if (hash && hash.includes('type=recovery')) {
+      window.location.href = `/sifre-yenile${hash}`;
+    }
+  }, []);
+
+  // 2. EĞİTMENLERİ ÇEKEN KOD
   useEffect(() => {
     async function fetchData() {
       const { data: teacherData, error: teacherError } = await supabase.from('egitmenler').select('*');
@@ -253,14 +263,6 @@ export default function HomePage() {
           const d = item.durum ? item.durum.toLowerCase() : 'aktif';
           return d !== 'beklemede' && d !== 'iptal' && d !== 'pasif';
         });
-        // SUPABASE ŞİFRE SIFIRLAMA YÖNLENDİRİCİSİ (page.tsx içine eklenecek)
-  useEffect(() => {
-    const hash = window.location.hash;
-    // Eğer URL'de şifre sıfırlama kodu varsa, kullanıcıyı zorla şifre yenileme sayfasına yolla
-    if (hash && hash.includes('type=recovery')) {
-      window.location.href = `/sifre-yenile${hash}`;
-    }
-  }, []);
 
         const teachersWithStats = await Promise.all(
           aktifEgitmenler.map(async (item) => {
