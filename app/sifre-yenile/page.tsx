@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -11,6 +11,16 @@ export default function ResetPassword() {
   const [isError, setIsError] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Supabase'in URL'deki güvenlik kodunu (hash) okuyup oturum açmasını bekle
+  useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        console.log('Şifre sıfırlama moduna geçildi.');
+      }
+    });
+    return () => { authListener.subscription.unsubscribe(); };
+  }, []);
+
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -18,7 +28,6 @@ export default function ResetPassword() {
     setIsError(false);
 
     try {
-      // Supabase'de kullanıcının şifresini güncelle
       const { error } = await supabase.auth.updateUser({
         password: newPassword
       });
@@ -27,7 +36,6 @@ export default function ResetPassword() {
 
       setMessage('Şifreniz başarıyla güncellendi! Ana sayfaya yönlendiriliyorsunuz...');
       
-      // Başarılı olursa 3 saniye sonra ana sayfaya (girişe) yolla
       setTimeout(() => {
         router.push('/');
       }, 3000);
