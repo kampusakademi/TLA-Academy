@@ -87,13 +87,8 @@ export default function StudentDashboard() {
   const [userName, setUserName] = useState('Öğrenci');
   const [loading, setLoading] = useState(true);
 
-  // Profil Kutucuğu State'i
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-
-  // Aktif Sekme
   const [activeTab, setActiveTab] = useState<string>('dashboard');
-
-  // 🚀 BİLDİRİM SAYACI
   const [unreadMsgCount, setUnreadMsgCount] = useState(0);
 
   const [stats, setStats] = useState({ seviye: '-', durum: '-', created_at: '' });
@@ -107,16 +102,6 @@ export default function StudentDashboard() {
   const [secilenPuan, setSecilenPuan] = useState(0);
   const [yazilanYorum, setYazilanYorum] = useState("");
   const [ratingLoading, setRatingLoading] = useState(false);
-
-  // 🚀 Öğrenci onay mekanizması için Local Storage bazlı State
-  const [onayliDersler, setOnayliDersler] = useState<string[]>([]);
-
-  useEffect(() => {
-    const saved = localStorage.getItem('onayli_dersler');
-    if (saved) {
-      setOnayliDersler(JSON.parse(saved));
-    }
-  }, []);
 
   const loadDashboardData = async () => {
     try {
@@ -170,23 +155,9 @@ export default function StudentDashboard() {
         .order('tarih_saat', { ascending: true });
 
       if (allLessons) {
-        // Yerel state güncellenmemiş olabilir diye direkt localStorage'dan da çekiyoruz.
-        const savedStr = localStorage.getItem('onayli_dersler');
-        const localOnayli = savedStr ? JSON.parse(savedStr) : onayliDersler;
-
-        const guncelYaklasanlar = allLessons.filter(ders => {
-          if (ders.durum === 'Yaklaşan') return true;
-          // 🚀 ÖĞRETMEN ERKEN BİTİRDİYSE: Öğrenci henüz onaylamadıysa ve puanlamadıysa onaylamak üzere bu ekranda kalır.
-          if (ders.durum === 'Tamamlanan' && !ders.puan && !localOnayli.includes(ders.id)) return true;
-          return false;
-        });
-
-        const guncelGecmis = allLessons.filter(ders => {
-          if (ders.durum === 'Yaklaşan') return false;
-          // Eğer onay bekliyorsa, geçmişe düşürme.
-          if (ders.durum === 'Tamamlanan' && !ders.puan && !localOnayli.includes(ders.id)) return false;
-          return true;
-        }).reverse(); 
+        // Yaklaşan olanlar Ana Ekranda. Diğerleri Geçmiş Derslere.
+        const guncelYaklasanlar = allLessons.filter(ders => ders.durum === 'Yaklaşan');
+        const guncelGecmis = allLessons.filter(ders => ders.durum !== 'Yaklaşan').reverse(); 
 
         setUpcomingLessons(guncelYaklasanlar);
         setPastLessons(guncelGecmis);
@@ -251,16 +222,14 @@ export default function StudentDashboard() {
       }
       
       if (yeniDurum === 'Tamamlanan') {
-        // Öğrenci onayladığı an, dersi onaylılar listesine alıp puanlama ekranını açıyoruz.
-        const newOnayli = [...onayliDersler, dersId];
-        setOnayliDersler(newOnayli);
-        localStorage.setItem('onayli_dersler', JSON.stringify(newOnayli));
+        // Öğrenci "Evet, Katıldı" dediği an modal anında ekrana gelir.
         setDegerlendirmeModali(dersId);
       } else {
         alert('⚠️ Bildiriminiz yönetime ve eğitmene iletildi.');
       }
       
-      loadDashboardData(); // Arayüzü yenile
+      // Ders Geçmiş Derslere düşer, böylece bir daha sorulmaz.
+      loadDashboardData(); 
     } catch (error: any) {
       alert("Bir hata oluştu: " + error.message);
     }
@@ -322,7 +291,8 @@ export default function StudentDashboard() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.push('/');
+    router.refresh();
+    window.location.replace('/');
   };
 
   const handleSubmitRating = async (dersId: string) => {
@@ -336,11 +306,10 @@ export default function StudentDashboard() {
       });
       if (response.ok) {
         alert("Değerlendirmeniz başarıyla kaydedildi!");
-        setPastLessons(pastLessons.map(d => d.id === dersId ? { ...d, puan: secilenPuan, yorum: yazilanYorum } : d));
         setDegerlendirmeModali(null);
         setSecilenPuan(0);
         setYazilanYorum("");
-        loadDashboardData(); // Tüm listeleri temizle ve güncelle
+        loadDashboardData(); 
       } else {
         alert("Değerlendirme kaydedilirken bir hata oluştu.");
       }
@@ -541,23 +510,71 @@ export default function StudentDashboard() {
 
         <div style={{ flex: 1, padding: activeTab === 'messages' ? '0' : '40px 60px', overflowY: 'auto' }}>
           
-          {/* SEKME 1: ANA GÖRÜNÜM */}
+          {/* SEKME 1: ANA GÖRÜNÜM (OYUNLAŞTIRMA EKLENDİ) */}
           {activeTab === 'dashboard' && (
             <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '40px' }}>
-                <div style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
-                  <div style={{ color: '#64748b', fontWeight: 600, marginBottom: '8px', fontSize: '0.95rem' }}>Dil Seviyesi</div>
-                  <div style={{ fontSize: '2rem', fontWeight: 800, color: '#0f172a' }}>{stats.seviye}</div>
-                </div>
-                <div style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
-                  <div style={{ color: '#64748b', fontWeight: 600, marginBottom: '8px', fontSize: '0.95rem' }}>Hesap Durumu</div>
-                  <div style={{ fontSize: '2rem', fontWeight: 800, color: '#0f172a' }}>{stats.durum}</div>
-                </div>
-                <div style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
-                  <div style={{ color: '#64748b', fontWeight: 600, marginBottom: '8px', fontSize: '0.95rem' }}>Kayıt Tarihi</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a' }}>{new Date(stats.created_at).toLocaleDateString('tr-TR')}</div>
-                </div>
-              </div>
+              
+              {/* 🚀 DİNAMİK OYUNLAŞTIRMA VE MOTİVASYON KARTLARI */}
+              {(() => {
+                const tamamlananDersSayisi = pastLessons.filter(d => d.durum === 'Tamamlanan').length;
+                
+                let unvan = "Taze Başlangıç 🌱";
+                if (tamamlananDersSayisi >= 5 && tamamlananDersSayisi < 15) unvan = "İstikrarlı Öğrenci 🚀";
+                else if (tamamlananDersSayisi >= 15 && tamamlananDersSayisi < 30) unvan = "Türkçe Tutkunu 🏅";
+                else if (tamamlananDersSayisi >= 30) unvan = "Türkçe Ustası 👑";
+
+                const siradakiHedef = tamamlananDersSayisi < 5 ? 5 : (tamamlananDersSayisi < 15 ? 15 : (tamamlananDersSayisi < 30 ? 30 : 50));
+                const kalanDers = siradakiHedef - tamamlananDersSayisi;
+                const ilerlemeYuzdesi = (tamamlananDersSayisi / siradakiHedef) * 100;
+
+                return (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', marginBottom: '40px' }}>
+                    
+                    {/* 1. Rozet / Unvan */}
+                    <div style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)', display: 'flex', alignItems: 'center', gap: '20px', transition: 'transform 0.2s' }} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-4px)'} onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
+                      <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#fffbeb', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.2rem', flexShrink: 0, boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)' }}>
+                        {tamamlananDersSayisi >= 30 ? '👑' : (tamamlananDersSayisi >= 15 ? '🏅' : (tamamlananDersSayisi >= 5 ? '🚀' : '🌱'))}
+                      </div>
+                      <div>
+                        <div style={{ color: '#64748b', fontWeight: 600, marginBottom: '4px', fontSize: '0.95rem' }}>Öğrenci Unvanı</div>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>{unvan}</div>
+                      </div>
+                    </div>
+
+                    {/* 2. Toplam Katılım ve İlerleme */}
+                    <div style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)', display: 'flex', alignItems: 'center', gap: '20px', transition: 'transform 0.2s' }} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-4px)'} onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
+                      <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#eef2ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '8px' }}>
+                          <div>
+                            <div style={{ color: '#64748b', fontWeight: 600, marginBottom: '2px', fontSize: '0.95rem' }}>Eğitim Süresi</div>
+                            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>{tamamlananDersSayisi} Saat</div>
+                          </div>
+                          <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#4f46e5' }}>%{Math.round(ilerlemeYuzdesi)}</div>
+                        </div>
+                        <div style={{ width: '100%', height: '8px', backgroundColor: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ width: `${ilerlemeYuzdesi}%`, height: '100%', backgroundColor: '#4f46e5', borderRadius: '4px', transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)' }}></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 3. Sıradaki Hedef */}
+                    <div style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)', display: 'flex', alignItems: 'center', gap: '20px', transition: 'transform 0.2s' }} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-4px)'} onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
+                      <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#f0fdf4', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                      </div>
+                      <div>
+                        <div style={{ color: '#64748b', fontWeight: 600, marginBottom: '4px', fontSize: '0.95rem' }}>Sıradaki Hedef</div>
+                        <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', lineHeight: 1.4 }}>
+                          {siradakiHedef} derse ulaşmaya <br/><span style={{ color: '#16a34a' }}>sadece {kalanDers} ders</span> kaldı!
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div style={{ backgroundColor: '#ffffff', padding: '32px', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.02)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
@@ -576,8 +593,8 @@ export default function StudentDashboard() {
                       const egitmenId = ders.egitmenler?.user_id || ders.egitmenler?.id || ders.user_id;
                       const suAn = new Date();
                       const dersZamani = new Date(ders.tarih_saat);
-                      // Ders saati üzerinden 50 dk geçtiyse VEYA öğretmen "Tamamlandı" işaretlediyse onay ekranı çıksın
-                      const dersBittiMi = suAn > new Date(dersZamani.getTime() + 50 * 60000) || ders.durum === 'Tamamlanan';
+                      // Sadece Yaklaşan olan ve saati geçmiş derslerde onay sor
+                      const zamanGectiMi = suAn > new Date(dersZamani.getTime() + 50 * 60000);
 
                       return (
                         <div key={idx} style={{ border: '1px solid #e2e8f0', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', backgroundColor: '#f8fafc', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
@@ -606,15 +623,15 @@ export default function StudentDashboard() {
                                 {new Date(ders.tarih_saat).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
                               </div>
                               
-                              {/* 🚀 15 DK KURALLI ÖĞRENCİ BUTONU (Eğer onay süreci başlamadıysa) */}
-                              {!dersBittiMi && (
+                              {/* SADECE YAKLAŞAN VE ZAMANI GEÇMEMİŞSE DERS BUTONU */}
+                              {ders.durum === 'Yaklaşan' && !zamanGectiMi && (
                                 <OgrenciCanliDersButonu dersId={ders.id} tarihSaat={ders.tarih_saat} />
                               )}
                             </div>
                           </div>
 
-                          {/* 🚀 DERS DURUM ONAYI / DEĞERLENDİRME ALANI (Ders bittiyse veya öğretmen onayladıysa) */}
-                          {dersBittiMi ? (
+                          {/* 🚀 DERS DURUM ONAYI ALANI (Ders süresi bittiyse ve DERS HALA YAKLAŞAN STATÜSÜNDEYSE) */}
+                          {zamanGectiMi && ders.durum === 'Yaklaşan' ? (
                             <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
                               <p style={{ margin: '0 0 12px 0', fontSize: '0.95rem', color: '#0f172a', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <span style={{ fontSize: '1.2rem' }}>🔔</span> Öğretmen derse katıldı mı?
@@ -784,7 +801,7 @@ export default function StudentDashboard() {
                           )}
                         </div>
 
-                        {/* Değerlendirme Butonu */}
+                        {/* Puan henüz verilmediyse Değerlendir butonu çıkar */}
                         {!ders.puan && !ders.durum.includes('İptal') && ders.durum !== 'Öğretmen Gelmedi' && (
                           <button 
                             onClick={() => setDegerlendirmeModali(ders.id)}

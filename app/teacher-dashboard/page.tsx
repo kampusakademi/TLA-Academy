@@ -129,6 +129,7 @@ function parseMulti(val: any): string[] {
 }
 
 export default function TeacherDashboard() {
+  const router = useRouter(); // 🚀 EKLENDİ: Sayfa yönlendirmeleri için
   const [tab, setTab] = useState('dashboard');
   const [userId, setUserId] = useState('');
   
@@ -226,7 +227,12 @@ export default function TeacherDashboard() {
   async function handleCompleteLesson(dersId: string) { try { await supabase.from('dersler').update({ durum: 'Tamamlanan' }).eq('id', dersId); loadDashboardStats(); loadUpcomingLessons(); } catch (err: any) { alert("Hata: " + err.message); } }
   async function handleCancelLesson(dersId: string) { if (!confirm("Emin misiniz?")) return; try { await supabase.from('dersler').update({ durum: 'İptal Edilen' }).eq('id', dersId); loadDashboardStats(); loadUpcomingLessons(); } catch (err: any) { alert("Hata: " + err.message); } }
   
-  const handleLogout = async () => { await supabase.auth.signOut(); window.location.href = "/"; };
+  // 🚀 GÜNCELLENDİ: Güvenli Çıkış ve Önbellek Temizliği
+  const handleLogout = async () => { 
+    await supabase.auth.signOut(); 
+    router.refresh(); 
+    window.location.replace("/"); 
+  };
 
   const menu = [
     { key: 'dashboard', label: 'Genel Bakış', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg> },
@@ -945,7 +951,7 @@ function Messages({ userId, onMessageRead }: any) {
               </div>
               <div style={{ position: 'relative' }}>
                 <button onClick={() => setShowChatMenu(!showChatMenu)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', color: '#64748b', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f1f5f9'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
                 </button>
                 {showChatMenu && (
                   <>
