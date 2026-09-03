@@ -29,31 +29,10 @@ export async function middleware(request: NextRequest) {
   );
 
   const { data: { user } } = await supabase.auth.getUser();
-  const pathname = request.nextUrl.pathname;
 
-  const isTeacherRoute = pathname.startsWith('/teacher-dashboard');
-  const isAdminRoute = pathname.startsWith('/admin-dashboard');
-  const isStudentRoute = pathname.startsWith('/dashboard');
-
-  // 1. KULLANICI HİÇ GİRİŞ YAPMAMIŞSA
-  // (Öğretmen ve Admin sayfalarının kendi içinde giriş ekranları olduğu için !user kontrolünden çıkarıldı)
-  if (!user && isStudentRoute) {
+  if (!user && (request.nextUrl.pathname.startsWith('/dashboard') || 
+                request.nextUrl.pathname.startsWith('/teacher-dashboard'))) {
     return NextResponse.redirect(new URL('/', request.url));
-  }
-
-  // 2. KULLANICI GİRİŞ YAPMIŞSA (ROL KONTROLÜ)
-  if (user) {
-    const userRole = user.user_metadata?.role;
-
-    // A. Giriş yapmış biri Öğretmen paneline gidiyor ama rolü ogretmen veya admin değilse
-    if (isTeacherRoute && userRole && userRole !== 'ogretmen' && userRole !== 'admin') {
-      return NextResponse.redirect(new URL('/', request.url));
-    }
-
-    // B. Giriş yapmış biri Admin paneline gidiyor ama rolü admin değilse
-    if (isAdminRoute && userRole && userRole !== 'admin') {
-      return NextResponse.redirect(new URL('/', request.url));
-    }
   }
 
   return response;
