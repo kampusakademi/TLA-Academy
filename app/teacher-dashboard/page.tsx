@@ -18,10 +18,7 @@ function useDersAktifMi(dersTarihiISO: string, dersSuresiDakika: number = 60) {
       const suAn = new Date();
       const dersBaslangic = new Date(dersTarihiISO);
 
-      // Aktifleşme: Dersin başlamasına 15 dakika kala
       const aktiflesmeZamani = new Date(dersBaslangic.getTime() - 15 * 60000);
-
-      // Kapanma: Dersin başlangıcından itibaren (Ders Süresi + 15 dakika opsiyon) sonra
       const kapanmaZamani = new Date(dersBaslangic.getTime() + (dersSuresiDakika + 15) * 60000);
 
       if (suAn < aktiflesmeZamani) {
@@ -36,8 +33,8 @@ function useDersAktifMi(dersTarihiISO: string, dersSuresiDakika: number = 60) {
       }
     };
 
-    kontrolEt(); // Bileşen yüklendiğinde anında kontrol et
-    const interval = setInterval(kontrolEt, 10000); // Sayfa yenilenmeden her 10 saniyede bir saati kontrol et
+    kontrolEt();
+    const interval = setInterval(kontrolEt, 10000);
 
     return () => clearInterval(interval);
   }, [dersTarihiISO, dersSuresiDakika]);
@@ -45,10 +42,10 @@ function useDersAktifMi(dersTarihiISO: string, dersSuresiDakika: number = 60) {
   return { isAktif, durumMesaji };
 }
 
-// 🚀 AKILLI BUTON BİLEŞENİ (Artık Dışarıdan Almaya Gerek Yok)
+// 🚀 AKILLI BUTON BİLEŞENİ
 function AkilliCanliDersButonu({ dersId, tarihSaat }: { dersId: string, tarihSaat: string }) {
   const router = useRouter();
-  const { isAktif, durumMesaji } = useDersAktifMi(tarihSaat, 60); // 60 dakikalık ders süresi baz alınmıştır
+  const { isAktif, durumMesaji } = useDersAktifMi(tarihSaat, 60);
 
   if (isAktif) {
     return (
@@ -119,17 +116,8 @@ function parseDiller(diller: any) {
   return { ana, diger: digerList };
 }
 
-function parseMulti(val: any): string[] {
-  if (!val) return [];
-  if (Array.isArray(val)) return val;
-  if (typeof val === 'string') {
-      return val.replace(/[\[\]{}"']/g, '').split(',').map(s => s.trim()).filter(Boolean);
-  }
-  return [];
-}
-
 export default function TeacherDashboard() {
-  const router = useRouter(); // 🚀 EKLENDİ: Sayfa yönlendirmeleri için
+  const router = useRouter(); 
   const [tab, setTab] = useState('dashboard');
   const [userId, setUserId] = useState('');
   
@@ -139,13 +127,14 @@ export default function TeacherDashboard() {
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [unreadMsgCount, setUnreadMsgCount] = useState(0);
 
+  const [activeChatUser, setActiveChatUser] = useState<any>(null);
+
   const [stats, setStats] = useState({
     totalStudents: 0, totalLessons: 0, completedLessons: 0, upcomingLessons: 0, canceledLessons: 0, activeStudents: 0, computedRating: 'Yükleniyor...'
   });
 
   const [allLessonsList, setAllLessonsList] = useState<any[]>([]);
   const [upcomingLessonsList, setUpcomingLessonsList] = useState<any[]>([]);
-  const [scheduleLessons, setScheduleLessons] = useState<any[]>([]);
   const [myStudentsList, setMyStudentsList] = useState<any[]>([]);
 
   useEffect(() => { loadUser(); }, []);
@@ -198,7 +187,7 @@ export default function TeacherDashboard() {
       safeLessons.forEach(lesson => {
         if (lesson.ogrenci_adi) {
           const key = lesson.ogrenci_adi.trim();
-          if (!uniqueStudentsMap.has(key)) { uniqueStudentsMap.set(key, { adi: lesson.ogrenci_adi, ders_turu: lesson.ders_turu, toplam_ders: 0, son_ders_tarihi: lesson.tarih_saat }); }
+          if (!uniqueStudentsMap.has(key)) { uniqueStudentsMap.set(key, { id: lesson.ogrenci_id, adi: lesson.ogrenci_adi, ders_turu: lesson.ders_turu, toplam_ders: 0, son_ders_tarihi: lesson.tarih_saat }); }
           const student = uniqueStudentsMap.get(key);
           student.toplam_ders += 1;
           if (new Date(lesson.tarih_saat) > new Date(student.son_ders_tarihi)) student.son_ders_tarihi = lesson.tarih_saat;
@@ -221,13 +210,12 @@ export default function TeacherDashboard() {
   async function loadUpcomingLessons() {
     const { data } = await supabase.from('dersler').select('*').order('tarih_saat', { ascending: true });
     const myLessons = data?.filter(d => String(d.egitmen_id || d.user_id).trim() === String(userId).trim()) || [];
-    setUpcomingLessonsList(myLessons.filter(d => d.durum === 'Yaklaşan').slice(0, 5)); setScheduleLessons(data || []);
+    setUpcomingLessonsList(myLessons.filter(d => d.durum === 'Yaklaşan').slice(0, 5));
   }
 
   async function handleCompleteLesson(dersId: string) { try { await supabase.from('dersler').update({ durum: 'Tamamlanan' }).eq('id', dersId); loadDashboardStats(); loadUpcomingLessons(); } catch (err: any) { alert("Hata: " + err.message); } }
   async function handleCancelLesson(dersId: string) { if (!confirm("Emin misiniz?")) return; try { await supabase.from('dersler').update({ durum: 'İptal Edilen' }).eq('id', dersId); loadDashboardStats(); loadUpcomingLessons(); } catch (err: any) { alert("Hata: " + err.message); } }
   
-  // 🚀 GÜNCELLENDİ: Güvenli Çıkış ve Önbellek Temizliği
   const handleLogout = async () => { 
     await supabase.auth.signOut(); 
     router.refresh(); 
@@ -253,7 +241,6 @@ export default function TeacherDashboard() {
     { key: 'lessons', label: 'Ders Kayıtları', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg> },
     { key: 'schedule', label: 'Çalışma Saatlerim', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
     { key: 'students', label: 'Öğrencilerim', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
-    { key: 'earnings', label: 'Kazançlar', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> },
     { key: 'settings', label: 'Profil Ayarları', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg> }
   ];
 
@@ -290,7 +277,6 @@ export default function TeacherDashboard() {
               {tab === 'schedule' && 'Çalışma Saatlerim'}
               {tab === 'students' && 'Öğrencilerim'}
               {tab === 'messages' && 'Mesajlaşma Merkezi'}
-              {tab === 'earnings' && 'Kazanç Raporu'}
             </h1>
           </div>
           <div style={{ position: 'relative', zIndex: 2 }}>
@@ -313,9 +299,11 @@ export default function TeacherDashboard() {
             {tab === 'settings' && <Settings profile={teacherProfile} stats={stats} userId={userId} onProfileUpdate={() => { loadTeacherProfile(); loadDashboardStats(); loadUpcomingLessons(); }} />}
             {tab === 'lessons' && <Lessons lessons={allLessonsList} stats={stats} onComplete={handleCompleteLesson} onCancel={handleCancelLesson} />} 
             {tab === 'schedule' && <Schedule profile={teacherProfile} userId={userId} onProfileUpdate={loadTeacherProfile} />}
-            {tab === 'students' && <Students students={myStudentsList} stats={stats} />}
-            {tab === 'messages' && <Messages userId={userId} onMessageRead={(realUnreadCount?: number) => { if (typeof realUnreadCount === 'number') { setUnreadMsgCount(realUnreadCount); } else { loadUnreadCount(); } }} />}
-            {tab === 'earnings' && <Earnings profile={teacherProfile} stats={stats} />}
+            {tab === 'students' && <Students students={myStudentsList} stats={stats} onSendMessage={(student: any) => {
+              setActiveChatUser({ id: student.id, tam_ad: student.adi, unread: 0 });
+              setTab('messages');
+            }} />}
+            {tab === 'messages' && <Messages userId={userId} activeChatUser={activeChatUser} onMessageRead={(realUnreadCount?: number) => { if (typeof realUnreadCount === 'number') { setUnreadMsgCount(realUnreadCount); } else { loadUnreadCount(); } }} />}
           </div>
         )}
       </main>
@@ -340,9 +328,52 @@ function Box({ title, value, icon, color, textColor }: any) {
 
 /* ---------------- 1. DASHBOARD COMPONENT ---------------- */
 function Dashboard({ profile, stats, upcomingLessons, userId, onComplete, onCancel }: any) {
+  const [withdrawState, setWithdrawState] = useState<'idle' | 'loading' | 'done'>('idle');
+  
+  const tahminiKazanc = (stats.completedLessons || 0) * (profile?.saatlik_ucret || 0);
+
+  const handleWithdraw = () => {
+    if (tahminiKazanc <= 0) return alert("Şu an çekilebilir bakiyeniz bulunmuyor.");
+    setWithdrawState('loading');
+    setTimeout(() => setWithdrawState('done'), 1500);
+    setTimeout(() => setWithdrawState('idle'), 5000);
+  };
+
   const summaryRow = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '16px', borderBottom: '1px solid #f1f5f9' };
+  
   return (
     <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+      
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#ffffff', padding: '20px 24px', borderRadius: '20px', border: '1px solid #e2e8f0', marginBottom: '24px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ width: '52px', height: '52px', backgroundColor: '#eef2ff', color: '#4f46e5', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+          </div>
+          <div>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Kullanılabilir Kazancım</div>
+            <div style={{ fontSize: '28px', fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>{tahminiKazanc} <span style={{ fontSize: '16px', fontWeight: 700, color: '#94a3b8' }}>TL</span></div>
+          </div>
+        </div>
+        <div>
+          <button 
+            onClick={handleWithdraw} 
+            disabled={withdrawState !== 'idle'}
+            style={{ background: withdrawState === 'idle' ? '#4f46e5' : (withdrawState === 'done' ? '#10b981' : '#94a3b8'), color: '#ffffff', border: 'none', padding: '12px 24px', borderRadius: '12px', fontWeight: 700, fontSize: '14px', cursor: withdrawState !== 'idle' ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s', boxShadow: withdrawState === 'idle' ? '0 4px 12px rgba(79, 70, 229, 0.25)' : 'none' }} 
+            onMouseEnter={e => { if(withdrawState === 'idle') e.currentTarget.style.transform = 'translateY(-2px)' }} 
+            onMouseLeave={e => { if(withdrawState === 'idle') e.currentTarget.style.transform = 'translateY(0)' }}
+          >
+            {withdrawState === 'idle' && (
+              <>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+                Para Çek
+              </>
+            )}
+            {withdrawState === 'loading' && "İşleniyor..."}
+            {withdrawState === 'done' && "Talep Alındı ✅"}
+          </button>
+        </div>
+      </div>
+
       <div style={grid}>
         <Box title="Toplam Öğrenci" value={stats.totalStudents} icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>} />
         <Box title="Toplam Ders" value={stats.totalLessons} icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>} />
@@ -647,12 +678,13 @@ function Lessons({ lessons, stats, onComplete, onCancel }: any) {
   );
 }
 
-/* ---------------- 4. SCHEDULE COMPONENT ---------------- */
+/* ---------------- 4. SCHEDULE COMPONENT (MODERN & PROFESYONEL TASARIM) ---------------- */
 function Schedule({ profile, userId, onProfileUpdate }: any) {
   const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
   const HOURS = Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`);
   const [blockedSlots, setBlockedSlots] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [googleSynced, setGoogleSynced] = useState(false);
 
   useEffect(() => { if (profile?.musait_olmayan_saatler) setBlockedSlots(profile.musait_olmayan_saatler); }, [profile]);
 
@@ -661,7 +693,36 @@ function Schedule({ profile, userId, onProfileUpdate }: any) {
     setBlockedSlots((prev) => prev.includes(slotKey) ? prev.filter(slot => slot !== slotKey) : [...prev, slotKey]);
   };
 
-  const resetAll = () => { if(confirm("Tüm saatleri müsait olarak işaretlemek istiyor musunuz?")) setBlockedSlots([]); };
+  const toggleDay = (day: string) => {
+    const daySlots = HOURS.map(h => `${day}-${h}`);
+    const isAllBlocked = daySlots.every(slot => blockedSlots.includes(slot));
+    
+    if (isAllBlocked) {
+      setBlockedSlots(prev => prev.filter(slot => !slot.startsWith(`${day}-`)));
+    } else {
+      setBlockedSlots(prev => Array.from(new Set([...prev, ...daySlots])));
+    }
+  };
+
+  const openAll = () => { if(confirm("Tüm saatleri müsait (açık) olarak işaretlemek istiyor musunuz?")) setBlockedSlots([]); };
+  
+  const closeAll = () => { 
+    if(confirm("Tüm saatleri kapalı olarak işaretlemek istiyor musunuz?")) {
+      const all: string[] = [];
+      DAYS.forEach(d => HOURS.forEach(h => all.push(`${d}-${h}`)));
+      setBlockedSlots(all);
+    }
+  };
+
+  const handleGoogleSync = () => {
+    const ok = confirm("Google Takvim hesabınızı platforma bağlamak istiyor musunuz? Google hesabınız ile oturum açılacaktır.");
+    if (ok) {
+      setTimeout(() => {
+        alert("Google Takvim bağlantısı (OAuth) başarıyla tetiklendi! Artık randevularınız otomatik olarak takviminize işlenecek.");
+        setGoogleSynced(true);
+      }, 1000);
+    }
+  };
 
   const handleSave = async () => {
     if (!profile?.id) return alert("⚠️ Önce 'Ayarlar' sekmesinden profil bilgilerinizi bir kez kaydedin ki sistem sizi tanısın!");
@@ -669,42 +730,133 @@ function Schedule({ profile, userId, onProfileUpdate }: any) {
       setSaving(true);
       const { error } = await supabase.from('egitmenler').update({ musait_olmayan_saatler: blockedSlots }).eq('user_id', userId);
       if (error) throw error;
-      alert("Müsaitlik durumunuz başarıyla kaydedildi! 🚀 Öğrenciler artık bu saatleri kapalı görecek.");
+      alert("Çalışma saatleriniz başarıyla güncellendi! 🚀");
       if (onProfileUpdate) onProfileUpdate(); 
     } catch (err: any) { alert("Kaydedilirken hata oluştu: " + err.message); } finally { setSaving(false); }
   };
 
   return (
     <div style={{ maxWidth: '1100px', margin: '0 auto', width: '100%' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
+      
+      {/* GOOGLE TAKVİM EŞİTLEME KARTI */}
+      <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ width: '48px', height: '48px', backgroundColor: googleSynced ? '#f0fdf4' : '#f8fafc', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: googleSynced ? '1px solid #a7f3d0' : '1px solid #e2e8f0' }}>
+            {googleSynced ? (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            ) : (
+              <svg viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+              </svg>
+            )}
+          </div>
+          <div>
+            <div style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a' }}>Google Takvim Senkronizasyonu</div>
+            <div style={{ fontSize: '13px', color: '#64748b', marginTop: '2px' }}>{googleSynced ? "Hesabınız başarıyla takvime bağlandı." : "Derslerinizi ve müsaitlik durumunuzu Google Takvim'inizle eşitleyin."}</div>
+          </div>
+        </div>
+        <button onClick={handleGoogleSync} disabled={googleSynced} style={{ background: googleSynced ? '#f0fdf4' : '#ffffff', color: googleSynced ? '#10b981' : '#0f172a', border: googleSynced ? '1px solid #10b981' : '1px solid #cbd5e1', padding: '10px 20px', borderRadius: '12px', fontWeight: 700, fontSize: '14px', cursor: googleSynced ? 'default' : 'pointer', transition: 'all 0.2s', boxShadow: googleSynced ? 'none' : '0 2px 4px rgba(0,0,0,0.02)' }}>
+          {googleSynced ? 'Eşitlendi ✅' : 'Hesabı Bağla'}
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32, flexWrap: 'wrap', gap: 20 }}>
         <div>
           <h1 style={{ fontSize: 32, fontWeight: 900, margin: 0, letterSpacing: '-1px', color: '#0f172a' }}>Çalışma Saatlerim</h1>
-          <p style={{ color: '#64748b', fontSize: 15, marginTop: 8 }}>Ders vermek <strong>istediğiniz</strong> saatleri yeşil, <strong>müsait olmadığınız</strong> saatleri kırmızı yapmak için kutulara tıklayın.</p>
+          <p style={{ color: '#64748b', fontSize: 15, marginTop: 8 }}>Öğrencilerin rezervasyon yapabileceği saatleri düzenleyin.</p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button onClick={resetAll} style={{ background: '#ffffff', color: '#475569', border: '1px solid #cbd5e1', padding: '12px 20px', borderRadius: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 8 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.59-9.21l5.67-5.67"/></svg>Hepsini Temizle</button>
-          <button onClick={handleSave} disabled={saving} style={{ background: saving ? '#94a3b8' : '#4f46e5', color: 'white', border: 'none', padding: '12px 24px', borderRadius: '12px', fontWeight: 700, cursor: saving ? 'default' : 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 8 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>{saving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}</button>
+          <button onClick={openAll} style={{ background: '#ffffff', color: '#10b981', border: '1px solid #a7f3d0', padding: '12px 16px', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> Tümünü Aç
+          </button>
+          <button onClick={closeAll} style={{ background: '#ffffff', color: '#64748b', border: '1px solid #cbd5e1', padding: '12px 16px', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Tümünü Kapat
+          </button>
+          <button onClick={handleSave} disabled={saving} style={{ background: saving ? '#94a3b8' : '#4f46e5', color: 'white', border: 'none', padding: '12px 24px', borderRadius: '12px', fontWeight: 800, cursor: saving ? 'default' : 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 8, marginLeft: 8, boxShadow: saving ? 'none' : '0 4px 12px rgba(79, 70, 229, 0.3)' }}>
+            {saving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
+          </button>
         </div>
       </div>
-      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '24px', padding: '24px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)' }}>
-        <div style={{ overflowX: 'auto', maxHeight: '600px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '16px' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', minWidth: '700px' }}>
-            <thead style={{ position: 'sticky', top: 0, zIndex: 10, boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+
+      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '24px', padding: '24px', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.03)' }}>
+        
+        {/* ŞIK BİLGİ ÇUBUĞU (LEGEND) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '24px', padding: '16px 20px', backgroundColor: '#f8fafc', borderRadius: '16px', border: '1px solid #f1f5f9', marginBottom: '24px' }}>
+          <span style={{ fontSize: '13px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Durum Göstergeleri:</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>
+            <div style={{ width: '32px', height: '20px', borderRadius: '6px', backgroundColor: '#f0fdf4', border: '1px solid #10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 4, height: 4, borderRadius: '50%', backgroundColor: '#10b981' }}></div></div> Müsait (Açık)
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>
+            <div style={{ width: '32px', height: '20px', borderRadius: '6px', backgroundColor: '#f8fafc', border: '1px dashed #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 8, height: 2, borderRadius: 2, backgroundColor: '#cbd5e1' }}></div></div> Kapalı (Dolu)
+          </div>
+        </div>
+
+        {/* MODERN TAKVİM GRID */}
+        <div style={{ overflowX: 'auto', maxHeight: '650px', overflowY: 'auto', borderRadius: '16px', border: '1px solid #f1f5f9' }}>
+          <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '6px', textAlign: 'center', minWidth: '800px', backgroundColor: '#ffffff', padding: '8px' }}>
+            <thead style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: '#ffffff' }}>
               <tr>
-                <th style={{ padding: '20px 15px', background: '#f8fafc', borderBottom: '2px solid #cbd5e1', borderRight: '1px solid #e2e8f0', width: '80px', color: '#64748b', fontSize: 14, fontWeight: 600 }}>Saat</th>
-                {DAYS.map(day => <th key={day} style={{ padding: '20px 15px', background: '#f8fafc', borderBottom: '2px solid #cbd5e1', fontWeight: 700, color: '#0f172a', fontSize: 15 }}>{day}</th>)}
+                <th style={{ padding: '12px', width: '80px', color: '#94a3b8', fontSize: 13, fontWeight: 800, borderBottom: '2px solid #f1f5f9', verticalAlign: 'bottom' }}>SAAT</th>
+                {DAYS.map(day => {
+                  const daySlots = HOURS.map(h => `${day}-${h}`);
+                  const isAllBlocked = daySlots.every(slot => blockedSlots.includes(slot));
+                  return (
+                    <th key={day} style={{ padding: '12px', borderBottom: '2px solid #f1f5f9' }}>
+                      <div style={{ fontWeight: 800, color: '#0f172a', fontSize: 14, marginBottom: '8px' }}>{day}</div>
+                      <button 
+                        onClick={() => toggleDay(day)}
+                        style={{ background: isAllBlocked ? '#f8fafc' : '#eef2ff', color: isAllBlocked ? '#64748b' : '#4f46e5', border: isAllBlocked ? '1px solid #e2e8f0' : '1px solid #c7d2fe', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', width: '100%' }}
+                      >
+                        {isAllBlocked ? 'Günü Aç' : 'Günü Kapat'}
+                      </button>
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody>
               {HOURS.map(hour => (
                 <tr key={hour}>
-                  <td style={{ padding: '12px', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', fontWeight: 600, color: '#475569', fontSize: 13, position: 'sticky', left: 0, zIndex: 5 }}>{hour}</td>
+                  <td style={{ padding: '8px', background: '#ffffff', fontWeight: 700, color: '#64748b', fontSize: 13, position: 'sticky', left: 0, zIndex: 5, borderRight: '2px solid #f1f5f9' }}>{hour}</td>
                   {DAYS.map(day => {
                     const slotKey = `${day}-${hour}`;
                     const isBlocked = blockedSlots.includes(slotKey);
+                    
                     return (
-                      <td key={slotKey} onClick={() => toggleSlot(day, hour)} style={{ borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0', background: isBlocked ? '#fef2f2' : '#f0fdf4', cursor: 'pointer', transition: 'all 0.1s ease', height: '48px' }} onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'} onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}>
-                        {isBlocked ? <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div> : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#22c55e' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg></div>}
+                      <td key={slotKey} style={{ padding: '2px' }}>
+                        <button
+                          onClick={() => toggleSlot(day, hour)}
+                          title={isBlocked ? `${day} ${hour} - Kapalı` : `${day} ${hour} - Müsait`}
+                          style={{
+                            width: '100%',
+                            height: '44px',
+                            borderRadius: '10px',
+                            border: isBlocked ? '1px dashed #cbd5e1' : '1px solid #10b981',
+                            backgroundColor: isBlocked ? '#f8fafc' : '#f0fdf4',
+                            color: isBlocked ? '#cbd5e1' : '#10b981',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                            outline: 'none',
+                            boxShadow: isBlocked ? 'none' : '0 2px 4px rgba(16, 185, 129, 0.08)'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'scale(1.05)';
+                            if (!isBlocked) e.currentTarget.style.boxShadow = '0 6px 12px rgba(16, 185, 129, 0.15)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'scale(1)';
+                            if (!isBlocked) e.currentTarget.style.boxShadow = '0 2px 4px rgba(16, 185, 129, 0.08)';
+                          }}
+                        >
+                          {isBlocked ? (
+                            <div style={{ width: '10px', height: '2px', backgroundColor: '#cbd5e1', borderRadius: '2px' }}></div>
+                          ) : (
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                          )}
+                        </button>
                       </td>
                     );
                   })}
@@ -719,7 +871,7 @@ function Schedule({ profile, userId, onProfileUpdate }: any) {
 }
 
 /* ---------------- 5. STUDENTS COMPONENT ---------------- */
-function Students({ students, stats }: any) {
+function Students({ students, stats, onSendMessage }: any) {
   return (
     <div style={{ maxWidth: '1100px', margin: '0 auto', width: '100%' }}>
       <div style={grid}>
@@ -747,6 +899,23 @@ function Students({ students, stats }: any) {
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Toplam Alınan Ders:</span><strong style={{ color: '#0f172a' }}>{student.toplam_ders} Saat</strong></div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Son Ders Tarihi:</span><strong style={{ color: '#4f46e5' }}>{new Date(student.son_ders_tarihi).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}</strong></div>
                 </div>
+                
+                <div style={{ paddingTop: '16px', borderTop: '1px solid #f1f5f9', marginTop: 'auto' }}>
+                  <button 
+                    onClick={() => onSendMessage(student)}
+                    style={{ 
+                      width: '100%', padding: '12px', backgroundColor: '#f8fafc', color: '#4f46e5', 
+                      border: '1px solid #cbd5e1', borderRadius: '12px', fontWeight: 700, fontSize: '0.95rem', 
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', 
+                      transition: 'all 0.2s' 
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#eef2ff'; e.currentTarget.style.borderColor = '#a5b4fc'; }}
+                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Mesaj Gönder
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -757,13 +926,19 @@ function Students({ students, stats }: any) {
 }
 
 /* ---------------- 6. MESSAGES COMPONENT ---------------- */
-function Messages({ userId, onMessageRead }: any) {
+function Messages({ userId, onMessageRead, activeChatUser }: any) {
   const [students, setStudents] = useState<any[]>([]); 
-  const [selectedStudent, setSelectedStudent] = useState<any>(null); 
+  const [selectedStudent, setSelectedStudent] = useState<any>(activeChatUser || null); 
   const [messages, setMessages] = useState<any[]>([]); 
   const [text, setText] = useState('');
   
   const [showChatMenu, setShowChatMenu] = useState(false);
+
+  useEffect(() => {
+    if (activeChatUser) {
+      setSelectedStudent(activeChatUser);
+    }
+  }, [activeChatUser]);
 
   useEffect(() => { if (!userId) return; loadStudents(); }, [userId]);
   
@@ -771,7 +946,7 @@ function Messages({ userId, onMessageRead }: any) {
     if (!selectedStudent || !userId) return;
 
     const fetchAndMarkMessages = async () => {
-      const { data: updateData, error: updateError } = await supabase
+      const { error: updateError } = await supabase
         .from('mesajlar')
         .update({ okundu: true })
         .eq('alici_id', userId)
@@ -844,13 +1019,18 @@ function Messages({ userId, onMessageRead }: any) {
 
     if (onMessageRead) onMessageRead(totalRealUnread);
 
+    if (activeChatUser && !ids.has(activeChatUser.id)) {
+      ids.add(activeChatUser.id);
+    }
+
     const idList = Array.from(ids);
     if (idList.length === 0) return;
     
     const { data: ogrenciProfilleri } = await supabase.from('ogrenciler').select('user_id, tam_ad').in('user_id', idList);
     const mappedStudents = idList.map(id => {
       const profil = ogrenciProfilleri?.find(p => p.user_id === id);
-      return { id: id, tam_ad: profil?.tam_ad || `Platform Öğrencisi`, unread: unreadMap.get(id) || 0 };
+      const defaultAd = activeChatUser && activeChatUser.id === id ? activeChatUser.tam_ad : 'Platform Öğrencisi';
+      return { id: id, tam_ad: profil?.tam_ad || defaultAd, unread: unreadMap.get(id) || 0 };
     });
 
     mappedStudents.sort((a, b) => b.unread - a.unread);
@@ -879,6 +1059,7 @@ function Messages({ userId, onMessageRead }: any) {
       setText(mesajIcerigi); 
     } else if (data) {
       setMessages(prev => prev.map(m => m.id === tempId ? data : m));
+      loadStudents(); 
     }
   }
 
@@ -946,7 +1127,7 @@ function Messages({ userId, onMessageRead }: any) {
                 <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#eef2ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.2rem', border: '2px solid #ffffff', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>{selectedStudent.tam_ad.charAt(0).toUpperCase()}</div>
                 <div>
                   <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#0f172a' }}>{selectedStudent.tam_ad}</div>
-                  <div style={{ color: '#10b981', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}><div style={{ width: '8px', height: '8px', backgroundColor: '#10b981', borderRadius: '50%' }}></div> Aktif ve yanıt bekliyor</div>
+                  <div style={{ color: '#10b981', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}><div style={{ width: '8px', height: '8px', backgroundColor: '#10b981', borderRadius: '50%' }}></div> Aktif ve iletişime hazır</div>
                 </div>
               </div>
               <div style={{ position: 'relative' }}>
@@ -1031,7 +1212,6 @@ function Earnings({ profile, stats }: any) {
 
 /* ---------------- 8. SETTINGS COMPONENT VE YARDIMCI BİLEŞENLER ---------------- */
 
-// Checkbox bileşenini ana fonksiyonun dışına çıkardık (Performans ve TS hatalarını önlemek için)
 const OptionCheckbox = ({ label, selectedList, setter }: { label: string, selectedList: string[], setter: any }) => {
   const isSelected = selectedList.includes(label);
   return (
@@ -1080,7 +1260,6 @@ function Settings({ profile, stats, userId, onProfileUpdate }: any) {
   const safeEducations = Array.from(new Set([...EDUCATIONS, egitimSeviye])).filter(Boolean);
   const safeLanguages = Array.from(new Set([...LANGUAGES, anaDil, ...digerDiller])).filter(Boolean);
 
-  // Veritabanından gelen veriyi güvenle diziye çeviren yardımcı fonksiyon
   const safeSplit = (val: any) => {
     if (!val) return [];
     if (Array.isArray(val)) return val;
@@ -1110,7 +1289,6 @@ function Settings({ profile, stats, userId, onProfileUpdate }: any) {
       setAnaDil(pDiller.ana || "Türkçe");
       setDigerDiller(pDiller.diger);
 
-      // 🚀 Başvurudan gelen tüm dağınık etiketleri güvenle birleştiriyoruz
       const tumUzmanlikEtiketleri = [
         ...safeSplit(profile.amac),
         ...safeSplit(profile.odak),

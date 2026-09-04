@@ -349,7 +349,7 @@ export default function HomePage() {
         <div onClick={() => router.push('/')} style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
           <img src="/logo.png" alt="Logo" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
           <h1 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#1e1b4b', letterSpacing: '-0.5px', margin: 0 }}>
-            Turkish Learning Academy<span style={{ color: '#4f46e5' }}>.</span>
+            Turkish Learning Academy<span style={{ color: '#fa700d' }}>.</span>
           </h1>
         </div>
         <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
@@ -368,15 +368,15 @@ export default function HomePage() {
       {/* 2. HERO SECTION */}
       <header style={{ padding: '60px 8%', backgroundColor: '#4f46e5', color: '#ffffff', display: 'flex', alignItems: 'center', flexWrap: 'wrap', minHeight: '520px', position: 'relative', overflow: 'hidden' }}>
         
-        {/* ARKA PLAN GÖRSELİ (Daha dar alan, daha küçük görünüm) */}
-        <div style={{ position: 'absolute', top: 0, right: 0, width: '55%', height: '100%', zIndex: 0 }}>
+        {/* ARKA PLAN GÖRSELİ (Daha Canlı ve Belirgin) */}
+        <div style={{ position: 'absolute', top: 0, right: 0, width: '60%', height: '100%', zIndex: 0 }}>
           <img 
             src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" 
             alt="Online Language Learning" 
-            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.5, objectPosition: 'center' }} 
+            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.70, objectPosition: 'center' }} 
           />
-          {/* Mor renk geçişi maskesi */}
-          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(to right, #4f46e5 0%, rgba(79, 70, 229, 0.4) 40%, transparent 100%)' }}></div>
+          {/* Mor renk geçişi maskesi: Solda tam renk, sağa doğru anında şeffaflaşıyor */}
+          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(to right, #4f46e5 0%, #4f46e5 15%, transparent 40%)' }}></div>
         </div>
 
         {/* ÖN PLANDAKİ YAZILAR VE BUTONLAR */}
