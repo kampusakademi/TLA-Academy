@@ -244,16 +244,15 @@ export default function HomePage() {
     }
   ];
 
-  // 1. DOĞRU YER: SUPABASE ŞİFRE SIFIRLAMA YAKALAYICISI (GÜNCELLENDİ)
+  // SUPABASE ŞİFRE SIFIRLAMA YAKALAYICISI (DÜZELTİLDİ)
   useEffect(() => {
-    // Hem hash (#) hem de query (?) parametrelerini alıyoruz
     const hash = window.location.hash;
     const search = window.location.search;
     const fullUrl = window.location.href;
 
-    // Supabase şifre sıfırlama linkinde 'type=recovery', 'access_token' veya 'code=' bulunur
-    if (fullUrl.includes('type=recovery') || fullUrl.includes('access_token') || fullUrl.includes('code=')) {
-      // Kullanıcıyı token'ları kaybetmeden şifre yenileme sayfasına ışınla!
+    // SADECE URL'de gerçekten 'type=recovery' (şifre sıfırlama) etiketi varsa yönlendir.
+    // 'code=' kontrolünü kaldırdık ki Google (OAuth) girişini sabote etmesin!
+    if (fullUrl.includes('type=recovery')) {
       window.location.href = `/sifre-yenile${search}${hash}`;
     }
   }, []);
