@@ -322,8 +322,13 @@ export default function HomePage() {
 
   const handleGoogleAuth = async () => {
     try {
-      const redirectPath = role === 'ogretmen' ? '/teacher-dashboard' : '/student-dashboard';
-      const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}${redirectPath}` } });
+      // Kullanıcının niyetini (rol ve mod) geri dönüş URL'sine parametre olarak ekliyoruz
+      const { error } = await supabase.auth.signInWithOAuth({ 
+        provider: 'google', 
+        options: { 
+          redirectTo: `${window.location.origin}/auth/callback?role=${role}&mode=${authType}` 
+        } 
+      });
       if (error) throw error;
     } catch (error: any) { alert('Hata: ' + error.message); }
   };
