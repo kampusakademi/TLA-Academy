@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
 export default function AuthCallback() {
@@ -8,38 +8,19 @@ export default function AuthCallback() {
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
-    // React'in useEffect'i 2 kere çalıştırmasını engellemek için kontrol
     let isProcessed = false;
 
-    const handleAuth = async () => {
+    const processAuth = async (session: any) => {
       if (isProcessed) return;
       isProcessed = true;
 
       try {
+        setMessage('Veritabanı kayıtları kontrol ediliyor...');
+        
         const params = new URLSearchParams(window.location.search);
-        const code = params.get('code');
         const role = params.get('role') || 'ogrenci';
         const mode = params.get('mode') || 'login';
-
-        // 1. YENİ SUPABASE GÜVENLİK AKIŞI (PKCE): URL'deki 'code' şifresini oturuma çevir
-        if (code) {
-          setMessage('Güvenlik kodu doğrulanıyor...');
-          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-          if (exchangeError) throw exchangeError;
-        }
-
-        // 2. OTURUM BİLGİSİNİ AL
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        // Eğer oturum oluşturulamadıysa sessizce atmak yerine HATA göster!
-        if (sessionError || !session) {
-          setErrorMsg('Google oturumu alınamadı. Lütfen tekrar deneyin.');
-          setTimeout(() => window.location.replace('/'), 3000);
-          return;
-        }
-
         const user = session.user;
-        setMessage('Veritabanı kayıtları kontrol ediliyor...');
 
         // ============================================
         // SENARYO 1: GİRİŞ YAPMA (LOGIN) KONTROLÜ
@@ -76,7 +57,7 @@ export default function AuthCallback() {
           if (role === 'ogrenci') {
             const { data: student } = await supabase.from('ogrenciler').select('id').eq('user_id', user.id).maybeSingle();
             
-            // Eğer veritabanında öğrenci kaydı yoksa otomatik ekle
+            // Veritabanında öğrenci kaydı yoksa otomatik ekle
             if (!student) {
               setMessage('Öğrenci profiliniz başarıyla oluşturuluyor...');
               const newStudentData = {
@@ -91,7 +72,7 @@ export default function AuthCallback() {
             window.location.replace('/student-dashboard');
           } 
           else if (role === 'ogretmen') {
-            // Gizli butonu bulup basanlara karşı güvenlik kilidi
+            // Gizli butonu zorlayanlara karşı güvenlik kilidi
             await supabase.auth.signOut();
             window.location.replace('/become-teacher');
           }
@@ -99,16 +80,41 @@ export default function AuthCallback() {
 
       } catch (err: any) {
         console.error("Doğrulama hatası:", err);
-        setErrorMsg("Giriş sırasında bir hata oluştu: " + (err.message || "Bilinmeyen hata"));
+        setErrorMsg("Sistemsel bir hata oluştu, lütfen tekrar deneyin.");
         setTimeout(() => { window.location.replace('/'); }, 4000);
       }
     };
 
-    handleAuth();
+    // Supabase arka planda PKCE kodunu işleyip oturumu açtığı an (SIGNED_IN) bu dinleyici tetiklenir
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        processAuth(session);
+      }
+    });
 
+    // Halihazırda oturum çoktan açılmışsa (hızlı yükleme) doğrudan işleme al
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        processAuth(session);
+      } else {
+        // Supabase kütüphanesinin Google'dan gelen kodu işlemesi için 3 saniye mühlet veriyoruz
+        setTimeout(() => {
+          if (!isProcessed) {
+            setErrorMsg('Google oturumu alınamadı. İşlem zaman aşımına uğradı.');
+            setTimeout(() => window.location.replace('/'), 3000);
+          }
+        }, 3000);
+      }
+    });
+
+    return () => {
+      if (authListener && authListener.subscription) {
+        authListener.subscription.unsubscribe();
+      }
+    };
   }, []);
 
-  // EĞER HATA VARSA ŞIK BİR KIRMZI UYARI EKRANI GÖSTER
+  // EĞER HATA VARSA ŞIK BİR KIRMIZI UYARI EKRANI GÖSTER
   if (errorMsg) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#f8fafc', padding: 20 }}>
