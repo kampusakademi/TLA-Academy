@@ -4,23 +4,43 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
 export default function AuthCallback() {
-  const [message, setMessage] = useState('Google ile bağlantı kuruluyor...');
+  const [message, setMessage] = useState('Google ile güvenli bağlantı kuruluyor...');
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
+    // React'in useEffect'i 2 kere çalıştırmasını engellemek için kontrol
     let isProcessed = false;
 
-    const processAuth = async (session: any) => {
+    const handleAuth = async () => {
       if (isProcessed) return;
       isProcessed = true;
 
-      setMessage('Veritabanı kontrol ediliyor...');
-      const params = new URLSearchParams(window.location.search);
-      const role = params.get('role') || 'ogrenci';
-      const mode = params.get('mode') || 'login';
-      const user = session.user;
-
       try {
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('code');
+        const role = params.get('role') || 'ogrenci';
+        const mode = params.get('mode') || 'login';
+
+        // 1. YENİ SUPABASE GÜVENLİK AKIŞI (PKCE): URL'deki 'code' şifresini oturuma çevir
+        if (code) {
+          setMessage('Güvenlik kodu doğrulanıyor...');
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) throw exchangeError;
+        }
+
+        // 2. OTURUM BİLGİSİNİ AL
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        // Eğer oturum oluşturulamadıysa sessizce atmak yerine HATA göster!
+        if (sessionError || !session) {
+          setErrorMsg('Google oturumu alınamadı. Lütfen tekrar deneyin.');
+          setTimeout(() => window.location.replace('/'), 3000);
+          return;
+        }
+
+        const user = session.user;
+        setMessage('Veritabanı kayıtları kontrol ediliyor...');
+
         // ============================================
         // SENARYO 1: GİRİŞ YAPMA (LOGIN) KONTROLÜ
         // ============================================
@@ -28,7 +48,6 @@ export default function AuthCallback() {
           if (role === 'ogrenci') {
             const { data: student } = await supabase.from('ogrenciler').select('id').eq('user_id', user.id).maybeSingle();
             
-            // Eğer veritabanında öğrenci yoksa, oturumu kapat ve kırmızı hata ekranı göster!
             if (!student) {
               await supabase.auth.signOut();
               setErrorMsg("Bu Google hesabına bağlı bir öğrenci kaydı bulunamadı! Lütfen önce 'Kayıt Ol' sekmesinden hesap oluşturun.");
@@ -40,7 +59,6 @@ export default function AuthCallback() {
           else if (role === 'ogretmen') {
             const { data: teacher } = await supabase.from('egitmenler').select('id').eq('user_id', user.id).maybeSingle();
             
-            // Eğer veritabanında eğitmen yoksa, oturumu kapat ve kırmızı hata ekranı göster!
             if (!teacher) {
               await supabase.auth.signOut();
               setErrorMsg("Bu Google hesabına bağlı onaylı bir eğitmen kaydı bulunamadı! Eğitmen olmak için 'Öğretmen Ol' sayfasından başvuru yapmalısınız.");
@@ -58,7 +76,7 @@ export default function AuthCallback() {
           if (role === 'ogrenci') {
             const { data: student } = await supabase.from('ogrenciler').select('id').eq('user_id', user.id).maybeSingle();
             
-            // Öğrenci sekmesinde ilk defa giriyorsa hemen hesabını oluştur
+            // Eğer veritabanında öğrenci kaydı yoksa otomatik ekle
             if (!student) {
               setMessage('Öğrenci profiliniz başarıyla oluşturuluyor...');
               const newStudentData = {
@@ -73,44 +91,24 @@ export default function AuthCallback() {
             window.location.replace('/student-dashboard');
           } 
           else if (role === 'ogretmen') {
-            // Gizli butonu zorlayanlara karşı güvenlik kilidi
+            // Gizli butonu bulup basanlara karşı güvenlik kilidi
             await supabase.auth.signOut();
             window.location.replace('/become-teacher');
           }
         }
-      } catch (err) {
+
+      } catch (err: any) {
         console.error("Doğrulama hatası:", err);
-        setErrorMsg("Sistemsel bir hata oluştu, lütfen tekrar deneyin.");
-        setTimeout(() => { window.location.replace('/'); }, 3000);
+        setErrorMsg("Giriş sırasında bir hata oluştu: " + (err.message || "Bilinmeyen hata"));
+        setTimeout(() => { window.location.replace('/'); }, 4000);
       }
     };
 
-    // Google'ın oturum açma olayını (Event) doğrudan yakalar (Önbellek sorunlarını önler)
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        processAuth(session);
-      }
-    });
+    handleAuth();
 
-    // Sayfa yüklendiğinde halihazırda oturum varsa işle
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        processAuth(session);
-      } else {
-        // Eğer 3 saniye içinde oturum bilgisi gelmezse, işlem iptal edilmiş demektir
-        setTimeout(() => {
-          if(!isProcessed) {
-            setErrorMsg("Giriş işlemi iptal edildi veya zaman aşımına uğradı.");
-            setTimeout(() => window.location.replace('/'), 3000);
-          }
-        }, 3000);
-      }
-    });
-
-    return () => authListener.subscription.unsubscribe();
   }, []);
 
-  // EĞER HATA VARSA ŞIK BİR UYARI EKRANI GÖSTER
+  // EĞER HATA VARSA ŞIK BİR KIRMZI UYARI EKRANI GÖSTER
   if (errorMsg) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#f8fafc', padding: 20 }}>
