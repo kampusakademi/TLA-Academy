@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from "react";
+import toast from 'react-hot-toast';
 import { supabase } from "@/lib/supabaseClient";
 
 export default function EditProfile() {
@@ -74,9 +75,9 @@ export default function EditProfile() {
       .eq('user_id', user.id);
 
     if (error) {
-      alert("Hata: " + error.message);
+      toast.error("Hata: " + error.message);
     } else {
-      alert("Profil başarıyla güncellendi! Vitrinde anında değişti.");
+      toast.success("Profil başarıyla güncellendi! Vitrinde anında değişti.");
     }
     setSaving(false);
   };

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -149,7 +150,7 @@ export default function TeacherProfilePage() {
   // 🚀 FAVORİYE EKLE / ÇIKAR VE TLA DESTEK EKİBİNDEN SİSTEM MESAJI
   async function handleFavoriteToggle() {
     if (!currentUserId) {
-      alert("⚠️ Eğitmenleri favorilerinize eklemek için giriş yapmalısınız.");
+      toast.error("⚠️ Eğitmenleri favorilerinize eklemek için giriş yapmalısınız.");
       return;
     }
 
@@ -193,7 +194,7 @@ export default function TeacherProfilePage() {
           }]);
       }
     } catch (error: any) {
-      alert("Bir hata oluştu: " + error.message);
+      toast.error("Bir hata oluştu: " + error.message);
     } finally {
       setFavLoading(false);
     }
@@ -305,7 +306,7 @@ export default function TeacherProfilePage() {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       
       if (authError || !user) {
-        alert("Lütfen ders ayırtmak için hesabınıza giriş yapın.");
+        toast.error("Lütfen ders ayırtmak için hesabınıza giriş yapın.");
         return;
       }
 
@@ -337,12 +338,12 @@ export default function TeacherProfilePage() {
 
       if (insertError) throw insertError;
       
-      alert("Rezervasyon başarıyla oluşturuldu! 🎉 Eğitmeniniz sizi bekliyor.");
+      toast.success("Rezervasyon başarıyla oluşturuldu! 🎉 Eğitmeniniz sizi bekliyor.");
       setSelectedHour(null);
       loadData(teacher.id); 
       
     } catch (err: any) { 
-      alert("Hata: " + err.message); 
+      toast.error("Hata: " + err.message); 
     } finally { 
       setBookingLoading(false); 
     }
@@ -357,7 +358,7 @@ export default function TeacherProfilePage() {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       
       if (authError || !user) {
-        alert("Lütfen mesaj göndermek için hesabınıza giriş yapın.");
+        toast.error("Lütfen mesaj göndermek için hesabınıza giriş yapın.");
         setShowMsgModal(false);
         return;
       }
@@ -388,7 +389,7 @@ export default function TeacherProfilePage() {
 
     } catch (error: any) {
       console.error(error);
-      alert("Mesaj gönderilirken bir hata oluştu: " + error.message);
+      toast.error("Mesaj gönderilirken bir hata oluştu: " + error.message);
     } finally {
       setSendingMsg(false);
     }

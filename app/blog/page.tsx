@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { useTranslation } from '@/lib/useTranslation';
@@ -109,7 +110,7 @@ export default function BlogListPage() {
       
       setShowAuthModal(false);
     } catch (error: any) {
-      alert(error.message || 'Bir hata oluştu. Lütfen bilgilerinizi kontrol edin.');
+      toast.error(error.message || 'Bir hata oluştu. Lütfen bilgilerinizi kontrol edin.');
     } finally {
       setAuthLoading(false);
     }
@@ -127,7 +128,7 @@ export default function BlogListPage() {
       });
       if (error) throw error;
     } catch (error: any) {
-      alert('Google ile bağlantı kurulamadı: ' + error.message);
+      toast.error('Google ile bağlantı kurulamadı: ' + error.message);
     }
   };
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -70,7 +71,7 @@ export default function FindTeacherWizard() {
 
     } catch (err: any) {
       console.error(err);
-      alert("Eğitmenler getirilirken hata oluştu.");
+      toast.error("Eğitmenler getirilirken hata oluştu.");
     } finally {
       setLoading(false);
     }

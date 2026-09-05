@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -119,6 +120,20 @@ function parseDiller(diller: any) {
 export default function TeacherDashboard() {
   const router = useRouter(); 
   const [tab, setTab] = useState('dashboard');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedTab = localStorage.getItem('teacherActiveTab');
+      if (savedTab) setTab(savedTab);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('teacherActiveTab', tab);
+    }
+  }, [tab]);
+
   const [userId, setUserId] = useState('');
   
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -143,21 +158,32 @@ export default function TeacherDashboard() {
     if (userId) { loadTeacherProfile(); loadDashboardStats(); loadUpcomingLessons(); loadUnreadCount(); }
   }, [userId]);
 
+  // 🚀 GÜNCELLENDİ: Global Real-Time Event Dinleyicileri (Kusursuz Versiyon)
   useEffect(() => {
     if (!userId) return;
+
     async function setOnlineStatus() {
       await supabase.from('egitmenler').update({ son_gorulme: new Date().toISOString() }).eq('user_id', userId);
     }
     setOnlineStatus(); 
     const interval = setInterval(setOnlineStatus, 5 * 60 * 1000); 
 
-    const channel = supabase.channel('schema-db-changes')
+    // TEK KANAL: Tüm olayları koşulsuz dinleyip React'i anında güncelliyoruz
+    const globalChannel = supabase.channel('global-dashboard-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mesajlar' }, () => {
-        if (tab !== 'messages') loadUnreadCount();
-      }).subscribe();
+        loadUnreadCount(); 
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'dersler' }, () => {
+        loadDashboardStats(); 
+        loadUpcomingLessons(); 
+      })
+      .subscribe();
 
-    return () => { clearInterval(interval); supabase.removeChannel(channel); };
-  }, [userId, tab]);
+    return () => { 
+      clearInterval(interval); 
+      supabase.removeChannel(globalChannel); 
+    };
+  }, [userId]);
 
   async function loadUser() {
     const { data } = await supabase.auth.getUser();
@@ -194,9 +220,11 @@ export default function TeacherDashboard() {
         }
       });
       const processedStudents = Array.from(uniqueStudentsMap.values()); setMyStudentsList(processedStudents);
-      const completedCount = safeLessons.filter(l => l.durum === 'Tamamlanan').length;
+      
+      // 🚀 Onay Bekleyen dersleri de "Tamamlanan" gelirlerine / hedeflerine yansıtıyoruz
+      const completedCount = safeLessons.filter(l => l.durum === 'Tamamlanan' || l.durum === 'Onay Bekliyor').length;
       const upcomingCount = safeLessons.filter(l => l.durum === 'Yaklaşan').length;
-      const canceledCount = safeLessons.filter(l => l.durum === 'İptal Edilen').length;
+      const canceledCount = safeLessons.filter(l => l.durum === 'İptal Edilen' || l.durum === 'Öğretmen Gelmedi').length;
 
       const { data: dersYorumlari } = await supabase.from('dersler').select('puan').eq('user_id', userId).not('puan', 'is', null);
       const { data: digerYorumlar } = await supabase.from('yorumlar').select('puan').eq('egitmen_id', userId);
@@ -210,11 +238,32 @@ export default function TeacherDashboard() {
   async function loadUpcomingLessons() {
     const { data } = await supabase.from('dersler').select('*').order('tarih_saat', { ascending: true });
     const myLessons = data?.filter(d => String(d.egitmen_id || d.user_id).trim() === String(userId).trim()) || [];
-    setUpcomingLessonsList(myLessons.filter(d => d.durum === 'Yaklaşan').slice(0, 5));
+    // Yaklaşan ve Onay Bekleyenleri ana ekranda tutuyoruz ki öğretmen sürecin nerede kaldığını görsün
+    setUpcomingLessonsList(myLessons.filter(d => d.durum === 'Yaklaşan' || d.durum === 'Onay Bekliyor').slice(0, 5));
   }
 
-  async function handleCompleteLesson(dersId: string) { try { await supabase.from('dersler').update({ durum: 'Tamamlanan' }).eq('id', dersId); loadDashboardStats(); loadUpcomingLessons(); } catch (err: any) { alert("Hata: " + err.message); } }
-  async function handleCancelLesson(dersId: string) { if (!confirm("Emin misiniz?")) return; try { await supabase.from('dersler').update({ durum: 'İptal Edilen' }).eq('id', dersId); loadDashboardStats(); loadUpcomingLessons(); } catch (err: any) { alert("Hata: " + err.message); } }
+  // 🚀 DERSİ "ONAY BEKLİYOR" STATÜSÜNE ÇEKEN FONKSİYON
+  async function handleCompleteLesson(dersId: string) { 
+    if (!confirm("Dersi bitirmek üzeresiniz. Dersi işlediğinizi teyit etmek için öğrenciye onay bildirimi gidecektir. Onaylıyor musunuz?")) return;
+    try { 
+      await supabase.from('dersler').update({ durum: 'Onay Bekliyor' }).eq('id', dersId); 
+      loadDashboardStats(); 
+      loadUpcomingLessons(); 
+    } catch (err: any) { 
+      toast.error("Hata: " + err.message); 
+    } 
+  }
+
+  async function handleCancelLesson(dersId: string) { 
+    if (!confirm("Emin misiniz?")) return; 
+    try { 
+      await supabase.from('dersler').update({ durum: 'İptal Edilen' }).eq('id', dersId); 
+      loadDashboardStats(); 
+      loadUpcomingLessons(); 
+    } catch (err: any) { 
+      toast.error("Hata: " + err.message); 
+    } 
+  }
   
   const handleLogout = async () => { 
     await supabase.auth.signOut(); 
@@ -277,6 +326,7 @@ export default function TeacherDashboard() {
               {tab === 'schedule' && 'Çalışma Saatlerim'}
               {tab === 'students' && 'Öğrencilerim'}
               {tab === 'messages' && 'Mesajlaşma Merkezi'}
+              {tab === 'earnings' && 'Kazanç Raporu'}
             </h1>
           </div>
           <div style={{ position: 'relative', zIndex: 2 }}>
@@ -304,6 +354,7 @@ export default function TeacherDashboard() {
               setTab('messages');
             }} />}
             {tab === 'messages' && <Messages userId={userId} activeChatUser={activeChatUser} onMessageRead={(realUnreadCount?: number) => { if (typeof realUnreadCount === 'number') { setUnreadMsgCount(realUnreadCount); } else { loadUnreadCount(); } }} />}
+            {tab === 'earnings' && <Earnings profile={teacherProfile} stats={stats} />}
           </div>
         )}
       </main>
@@ -333,7 +384,7 @@ function Dashboard({ profile, stats, upcomingLessons, userId, onComplete, onCanc
   const tahminiKazanc = (stats.completedLessons || 0) * (profile?.saatlik_ucret || 0);
 
   const handleWithdraw = () => {
-    if (tahminiKazanc <= 0) return alert("Şu an çekilebilir bakiyeniz bulunmuyor.");
+    if (tahminiKazanc <= 0) return toast.error("Şu an çekilebilir bakiyeniz bulunmuyor.");
     setWithdrawState('loading');
     setTimeout(() => setWithdrawState('done'), 1500);
     setTimeout(() => setWithdrawState('idle'), 5000);
@@ -414,9 +465,19 @@ function Dashboard({ profile, stats, upcomingLessons, userId, onComplete, onCanc
                       {new Date(lesson.tarih_saat).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <button onClick={() => onCancel(lesson.id)} style={{ background: '#ffffff', color: '#ef4444', border: '1px solid #fecaca', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>İptal</button>
-                      <button onClick={() => onComplete(lesson.id)} style={{ background: '#10b981', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>Tamamlandı</button>
-                      <AkilliCanliDersButonu dersId={lesson.id} tarihSaat={lesson.tarih_saat} />
+                      {/* 🚀 DURUMA GÖRE BUTON VEYA ROZET GÖSTERİMİ */}
+                      {lesson.durum === 'Yaklaşan' && (
+                        <>
+                          <button onClick={() => onCancel(lesson.id)} style={{ background: '#ffffff', color: '#ef4444', border: '1px solid #fecaca', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>İptal</button>
+                          <button onClick={() => onComplete(lesson.id)} style={{ background: '#10b981', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>Tamamlandı</button>
+                          <AkilliCanliDersButonu dersId={lesson.id} tarihSaat={lesson.tarih_saat} />
+                        </>
+                      )}
+                      {lesson.durum === 'Onay Bekliyor' && (
+                        <span style={{ backgroundColor: '#fefce8', color: '#ca8a04', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, border: '1px solid #fde68a' }}>
+                          Öğrenci Onayı Bekleniyor
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -607,7 +668,8 @@ function Lessons({ lessons, stats, onComplete, onCancel }: any) {
   const [activeSubTab, setActiveSubTab] = useState<'all' | 'upcoming' | 'completed'>('all');
   const filteredLessons = lessons.filter((lesson: any) => {
     if (activeSubTab === 'upcoming') return lesson.durum === 'Yaklaşan';
-    if (activeSubTab === 'completed') return lesson.durum === 'Tamamlanan';
+    // 🚀 Onay Bekleyen dersleri de "Geçmiş Dersler" veya "Tamamlananlar" sekmesinde göstersin
+    if (activeSubTab === 'completed') return lesson.durum === 'Tamamlanan' || lesson.durum === 'Onay Bekliyor';
     return true;
   });
 
@@ -644,8 +706,10 @@ function Lessons({ lessons, stats, onComplete, onCancel }: any) {
             <tbody>
               {filteredLessons.map((lesson: any, idx: number) => {
                 const isCompleted = lesson.durum === 'Tamamlanan';
-                const statusBg = isCompleted ? '#dcfce7' : (lesson.durum === 'İptal Edilen' ? '#fef2f2' : '#eef2ff');
-                const statusColor = isCompleted ? '#16a34a' : (lesson.durum === 'İptal Edilen' ? '#dc2626' : '#4f46e5');
+                const isPending = lesson.durum === 'Onay Bekliyor';
+                const statusBg = isCompleted ? '#dcfce7' : (isPending ? '#fefce8' : (lesson.durum === 'İptal Edilen' ? '#fef2f2' : '#eef2ff'));
+                const statusColor = isCompleted ? '#16a34a' : (isPending ? '#ca8a04' : (lesson.durum === 'İptal Edilen' ? '#dc2626' : '#4f46e5'));
+                
                 return (
                   <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.2s' }}>
                     <td style={{ padding: '20px 24px', fontWeight: 600, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -657,7 +721,10 @@ function Lessons({ lessons, stats, onComplete, onCancel }: any) {
                     <td style={{ padding: '20px 24px', fontWeight: 700, color: '#0f172a' }}>{lesson.ucret || 0} TL</td>
                     <td style={{ padding: '20px 24px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <span style={{ background: statusBg, color: statusColor, padding: '6px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: 700, display: 'inline-block' }}>{lesson.durum}</span>
+                        <span style={{ background: statusBg, color: statusColor, padding: '6px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: 700, display: 'inline-block', border: isPending ? '1px solid #fde68a' : 'none' }}>
+                          {isPending ? 'Öğrenci Onayı Bekleniyor' : lesson.durum}
+                        </span>
+                        
                         {lesson.durum === 'Yaklaşan' && (
                           <div style={{ display: 'flex', gap: 8 }}>
                             <button onClick={() => onComplete(lesson.id)} title="Dersi Tamamla" style={{ background: '#10b981', color: 'white', border: 'none', width: '32px', height: '32px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg></button>
@@ -718,21 +785,21 @@ function Schedule({ profile, userId, onProfileUpdate }: any) {
     const ok = confirm("Google Takvim hesabınızı platforma bağlamak istiyor musunuz? Google hesabınız ile oturum açılacaktır.");
     if (ok) {
       setTimeout(() => {
-        alert("Google Takvim bağlantısı (OAuth) başarıyla tetiklendi! Artık randevularınız otomatik olarak takviminize işlenecek.");
+        toast.success("Google Takvim bağlantısı (OAuth) başarıyla tetiklendi! Artık randevularınız otomatik olarak takviminize işlenecek.");
         setGoogleSynced(true);
       }, 1000);
     }
   };
 
   const handleSave = async () => {
-    if (!profile?.id) return alert("⚠️ Önce 'Ayarlar' sekmesinden profil bilgilerinizi bir kez kaydedin ki sistem sizi tanısın!");
+    if (!profile?.id) return toast.error("⚠️ Önce 'Ayarlar' sekmesinden profil bilgilerinizi bir kez kaydedin ki sistem sizi tanısın!");
     try {
       setSaving(true);
       const { error } = await supabase.from('egitmenler').update({ musait_olmayan_saatler: blockedSlots }).eq('user_id', userId);
       if (error) throw error;
-      alert("Çalışma saatleriniz başarıyla güncellendi! 🚀");
+      toast.success("Çalışma saatleriniz başarıyla güncellendi! 🚀");
       if (onProfileUpdate) onProfileUpdate(); 
-    } catch (err: any) { alert("Kaydedilirken hata oluştu: " + err.message); } finally { setSaving(false); }
+    } catch (err: any) { toast.error("Kaydedilirken hata oluştu: " + err.message); } finally { setSaving(false); }
   };
 
   return (
@@ -972,6 +1039,11 @@ function Messages({ userId, onMessageRead, activeChatUser }: any) {
     fetchAndMarkMessages();
 
     const channel = supabase.channel('chat-room').on('postgres_changes', { event: '*', schema: 'public', table: 'mesajlar' }, async (payload: any) => {
+      
+      if (payload.eventType === 'INSERT') {
+        loadStudents(); 
+      }
+
       if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
         const msg = payload.new;
         const isRelevant = (msg.gonderen_id === userId && msg.alici_id === selectedStudent.id) || (msg.gonderen_id === selectedStudent.id && msg.alici_id === userId);
@@ -984,8 +1056,7 @@ function Messages({ userId, onMessageRead, activeChatUser }: any) {
           });
 
           if (msg.alici_id === userId && msg.gonderen_id === selectedStudent.id && !msg.okundu) {
-            const { error: liveUpdateError } = await supabase.from('mesajlar').update({ okundu: true }).eq('id', msg.id);
-            if (liveUpdateError) console.error("Canlı Mesaj Okundu Hatası:", liveUpdateError.message);
+            await supabase.from('mesajlar').update({ okundu: true }).eq('id', msg.id);
             loadStudents();
           }
         }
@@ -1054,7 +1125,7 @@ function Messages({ userId, onMessageRead, activeChatUser }: any) {
     const { data, error } = await supabase.from('mesajlar').insert({ gonderen_id: userId, alici_id: selectedStudent.id, icerik: mesajIcerigi, okundu: false }).select().single();
       
     if (error) { 
-      alert("Mesaj iletilemedi: " + error.message); 
+      toast.error("Mesaj iletilemedi: " + error.message); 
       setMessages(prev => prev.filter(m => m.id !== tempId)); 
       setText(mesajIcerigi); 
     } else if (data) {
@@ -1071,7 +1142,7 @@ function Messages({ userId, onMessageRead, activeChatUser }: any) {
       const { error } = await supabase.from('mesajlar').delete().eq('id', msgId);
       if (error) throw error;
       setMessages(prev => prev.filter(m => m.id !== msgId));
-    } catch (err: any) { alert("Silme hatası: " + err.message); }
+    } catch (err: any) { toast.error("Silme hatası: " + err.message); }
   };
 
   const clearChat = async () => {
@@ -1081,7 +1152,7 @@ function Messages({ userId, onMessageRead, activeChatUser }: any) {
       const { error } = await supabase.from('mesajlar').delete().or(`and(gonderen_id.eq.${userId},alici_id.eq.${selectedStudent.id}),and(gonderen_id.eq.${selectedStudent.id},alici_id.eq.${userId})`);
       if (error) throw error;
       setMessages([]); setSelectedStudent(null); loadStudents(); 
-    } catch (err: any) { alert("Sohbet silinemedi: " + err.message); }
+    } catch (err: any) { toast.error("Sohbet silinemedi: " + err.message); }
   };
 
   return (
@@ -1315,11 +1386,11 @@ function Settings({ profile, stats, userId, onProfileUpdate }: any) {
   };
   
   async function handleAvatarUpload(event: any) {
-    try { setUploading(true); if (!event.target.files || event.target.files.length === 0) throw new Error('Lütfen bir resim seçin.'); const file = event.target.files[0]; const fileExt = file.name.split('.').pop(); const fileName = `${userId}-${Math.random()}.${fileExt}`; const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file, { upsert: true }); if (uploadError) throw uploadError; const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName); setAvatarUrl(publicUrl); alert("Fotoğraf yüklendi! Lütfen değişiklikleri kaydedin."); } catch (error: any) { alert('Hata: ' + error.message); } finally { setUploading(false); }
+    try { setUploading(true); if (!event.target.files || event.target.files.length === 0) throw new Error('Lütfen bir resim seçin.'); const file = event.target.files[0]; const fileExt = file.name.split('.').pop(); const fileName = `${userId}-${Math.random()}.${fileExt}`; const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file, { upsert: true }); if (uploadError) throw uploadError; const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName); setAvatarUrl(publicUrl); toast.success("Fotoğraf yüklendi! Lütfen değişiklikleri kaydedin."); } catch (error: any) { toast.error('Hata: ' + error.message); } finally { setUploading(false); }
   }
   
   async function handleSave() {
-    if (!userId) return alert("Kullanıcı oturumu bulunamadı.");
+    if (!userId) return toast.error("Kullanıcı oturumu bulunamadı.");
     try {
       setSaving(true);
       const tamKonum = (konumUlke || konumSehir) ? `${konumUlke.trim()} - ${konumSehir.trim()}` : null;
@@ -1345,9 +1416,9 @@ function Settings({ profile, stats, userId, onProfileUpdate }: any) {
       
       const { error } = await supabase.from('egitmenler').update(updateData).eq('user_id', userId);
       if (error) throw error;
-      alert("Değişiklikler başarıyla kaydedildi! 🎉 Profilinize anında yansıdı.");
+      toast.success("Değişiklikler başarıyla kaydedildi! 🎉 Profilinize anında yansıdı.");
       onProfileUpdate();
-    } catch (err: any) { console.error(err); alert("Hata: " + err.message); } finally { setSaving(false); }
+    } catch (err: any) { console.error(err); toast.error("Hata: " + err.message); } finally { setSaving(false); }
   }
 
   const isTurkiye = konumUlke?.trim().toLowerCase() === 'türkiye';

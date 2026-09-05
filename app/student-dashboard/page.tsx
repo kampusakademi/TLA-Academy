@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -18,7 +19,6 @@ function useOgrenciDersAktifMi(dersTarihiISO: string) {
       const suAn = new Date();
       const dersZamani = new Date(dersTarihiISO);
 
-      // Sıkı Kurallar: 15 dk öncesi ve 15 dk sonrası
       const aktiflesmeZamani = new Date(dersZamani.getTime() - 15 * 60000);
       const kapanmaZamani = new Date(dersZamani.getTime() + 15 * 60000);
 
@@ -91,6 +91,21 @@ export default function StudentDashboard() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [unreadMsgCount, setUnreadMsgCount] = useState(0);
 
+  // 🚀 Sayfa yüklendiğinde hafızadaki sekmeyi getir
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedTab = localStorage.getItem('studentActiveTab');
+      if (savedTab) setActiveTab(savedTab);
+    }
+  }, []);
+
+  // 🚀 Sekme her değiştiğinde tarayıcı hafızasına kaydet
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('studentActiveTab', activeTab);
+    }
+  }, [activeTab]);
+
   const [stats, setStats] = useState({ seviye: '-', durum: '-', created_at: '' });
   const [upcomingLessons, setUpcomingLessons] = useState<any[]>([]);
   const [pastLessons, setPastLessons] = useState<any[]>([]); 
@@ -155,9 +170,9 @@ export default function StudentDashboard() {
         .order('tarih_saat', { ascending: true });
 
       if (allLessons) {
-        // Yaklaşan olanlar Ana Ekranda. Diğerleri Geçmiş Derslere.
-        const guncelYaklasanlar = allLessons.filter(ders => ders.durum === 'Yaklaşan');
-        const guncelGecmis = allLessons.filter(ders => ders.durum !== 'Yaklaşan').reverse(); 
+        // Durumu 'Onay' kelimesi içeren BÜTÜN dersleri ana ekrana (Yaklaşan) atıyoruz
+        const guncelYaklasanlar = allLessons.filter(ders => ders.durum === 'Yaklaşan' || (ders.durum && ders.durum.includes('Onay')));
+        const guncelGecmis = allLessons.filter(ders => ders.durum !== 'Yaklaşan' && !(ders.durum && ders.durum.includes('Onay'))).reverse(); 
 
         setUpcomingLessons(guncelYaklasanlar);
         setPastLessons(guncelGecmis);
@@ -191,10 +206,9 @@ export default function StudentDashboard() {
     loadDashboardData();
   }, [router]);
 
-  // 🚀 DERS ONAYLAMA / REDDETME VE OTOMATİK MESAJ FONKSİYONU
   const handleDersOnayla = async (dersId: string, yeniDurum: string, targetTeacherId: string) => {
     const onayMesaji = yeniDurum === 'Tamamlanan' 
-      ? "Öğretmenin derse katıldığını ve dersin başarıyla işlendiğini onaylıyorsunuz. Emin misiniz?" 
+      ? "Dersin başarıyla işlendiğini onaylıyorsunuz. Emin misiniz?" 
       : "Öğretmenin derse GELMEDİĞİNİ bildiriyorsunuz. Bu işlem incelenecektir. Emin misiniz?";
 
     if (!window.confirm(onayMesaji)) return;
@@ -207,11 +221,11 @@ export default function StudentDashboard() {
 
       if (error) throw error;
 
-      // OTOMATİK SİSTEM MESAJINI GÖNDER
       if (targetTeacherId && user?.id) {
+        // 🚀 MESAJ İÇERİĞİ GÜNCELLENDİ
         const mesajIcerik = yeniDurum === 'Tamamlanan'
-          ? `📌 Sistem Bildirimi:\n\nTebrikler! 🎉\n"${userName}" adlı öğrenciniz az önce işlediğiniz dersin başarıyla tamamlandığını onayladı. Kendisine bir teşekkür mesajı atarak sonraki dersleri planlayabilirsiniz.`
-          : `📌 Sistem Bildirimi:\n\n⚠️ ÖNEMLİ BİLDİRİM:\n"${userName}" adlı öğrenciniz, az önce bitmesi gereken dersinize KATILMADIĞINIZI bildirdi.\n\nEğer bu durum teknik bir sorundan kaynaklandıysa veya bir yanlışlık varsa lütfen hemen öğrencinizle iletişime geçin. Aksi takdirde profil puanınız olumsuz etkilenebilir.`;
+          ? `📌 Sistem Bildirimi:\n\nTebrikler! 🎉\n"${userName}" adlı öğrenciniz az önce işlediğiniz dersin başarıyla tamamlandığını onayladı.`
+          : `📌 Sistem Bildirimi:\n\n⚠️ ÖNEMLİ BİLDİRİM:\n"${userName}" adlı öğrenciniz, dersinize katılmadığınızı bildirdi. Gerekli inceleme yapıldıktan sonra tarafınıza dönüş yapılacaktır.`;
 
         await supabase.from('mesajlar').insert([{
           gonderen_id: user.id,
@@ -222,31 +236,42 @@ export default function StudentDashboard() {
       }
       
       if (yeniDurum === 'Tamamlanan') {
-        // Öğrenci "Evet, Katıldı" dediği an modal anında ekrana gelir.
         setDegerlendirmeModali(dersId);
       } else {
-        alert('⚠️ Bildiriminiz yönetime ve eğitmene iletildi.');
+        toast.success('⚠️ Bildiriminiz yönetime ve eğitmene iletildi.');
       }
       
-      // Ders Geçmiş Derslere düşer, böylece bir daha sorulmaz.
       loadDashboardData(); 
     } catch (error: any) {
-      alert("Bir hata oluştu: " + error.message);
+      toast.error("Bir hata oluştu: " + error.message);
     }
   };
 
-  // 🚀 CANLI BİLDİRİM VE SAYAÇ DİNLEYİCİSİ
+  // 🚀 GÜÇLÜ GERÇEK ZAMANLI (REALTIME) DİNLEYİCİ
   useEffect(() => {
     if (!user?.id) return;
+
+    async function setOnlineStatus() {
+      await supabase.from('ogrenciler').update({ son_gorulme: new Date().toISOString() }).eq('user_id', user.id);
+    }
+    setOnlineStatus(); 
+    const interval = setInterval(setOnlineStatus, 5 * 60 * 1000); 
+
     loadUnreadCount();
 
-    const channel = supabase.channel('student-schema-db-changes')
+    const globalChannel = supabase.channel('global-student-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mesajlar' }, () => {
-        loadUnreadCount();
+        loadUnreadCount(); 
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'dersler' }, () => {
+        loadDashboardData(); // Öğretmen ders onayladığında sayfa yenilemeden ana ekrana düşer!
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => { 
+      clearInterval(interval);
+      supabase.removeChannel(globalChannel); 
+    };
   }, [user?.id]);
 
   async function loadUnreadCount() {
@@ -273,7 +298,7 @@ export default function StudentDashboard() {
       
       setFavoriteTeachers(prev => prev.filter(t => (t.user_id || t.id) !== egitmenId));
     } catch (error: any) {
-      alert("Favorilerden çıkarılırken hata oluştu: " + error.message);
+      toast.error("Favorilerden çıkarılırken hata oluştu: " + error.message);
     }
   };
 
@@ -283,9 +308,9 @@ export default function StudentDashboard() {
       const { error } = await supabase.from('ogrenciler').update({ tam_ad: settingsForm.tamAd }).eq('user_id', user.id);
       if (error) throw error;
       setUserName(settingsForm.tamAd);
-      alert("Profil ayarlarınız başarıyla güncellendi!");
+      toast.success("Profil ayarlarınız başarıyla güncellendi!");
     } catch (err: any) {
-      alert("Güncelleme başarısız: " + err.message);
+      toast.error("Güncelleme başarısız: " + err.message);
     }
   };
 
@@ -296,7 +321,7 @@ export default function StudentDashboard() {
   };
 
   const handleSubmitRating = async (dersId: string) => {
-    if (secilenPuan === 0) return alert("Lütfen 1 ile 5 arası bir yıldız seçin!");
+    if (secilenPuan === 0) return toast.error("Lütfen 1 ile 5 arası bir yıldız seçin!");
     setRatingLoading(true);
     try {
       const response = await fetch("/api/ders-degerlendir", {
@@ -305,13 +330,13 @@ export default function StudentDashboard() {
         body: JSON.stringify({ dersId, puan: secilenPuan, yorum: yazilanYorum }),
       });
       if (response.ok) {
-        alert("Değerlendirmeniz başarıyla kaydedildi!");
+        toast.success("Değerlendirmeniz başarıyla kaydedildi!");
         setDegerlendirmeModali(null);
         setSecilenPuan(0);
         setYazilanYorum("");
         loadDashboardData(); 
       } else {
-        alert("Değerlendirme kaydedilirken bir hata oluştu.");
+        toast.error("Değerlendirme kaydedilirken bir hata oluştu.");
       }
     } catch (error) { console.error(error); } finally { setRatingLoading(false); }
   };
@@ -341,7 +366,7 @@ export default function StudentDashboard() {
 
     } catch (error: any) {
       console.error("Silme hatası:", error);
-      alert("Değerlendirme silinirken bir hata oluştu: " + error.message);
+      toast.error("Değerlendirme silinirken bir hata oluştu: " + error.message);
     }
   };
 
@@ -510,11 +535,10 @@ export default function StudentDashboard() {
 
         <div style={{ flex: 1, padding: activeTab === 'messages' ? '0' : '40px 60px', overflowY: 'auto' }}>
           
-          {/* SEKME 1: ANA GÖRÜNÜM (OYUNLAŞTIRMA EKLENDİ) */}
+          {/* SEKME 1: ANA GÖRÜNÜM */}
           {activeTab === 'dashboard' && (
             <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
               
-              {/* 🚀 DİNAMİK OYUNLAŞTIRMA VE MOTİVASYON KARTLARI */}
               {(() => {
                 const tamamlananDersSayisi = pastLessons.filter(d => d.durum === 'Tamamlanan').length;
                 
@@ -530,7 +554,6 @@ export default function StudentDashboard() {
                 return (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', marginBottom: '40px' }}>
                     
-                    {/* 1. Rozet / Unvan */}
                     <div style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)', display: 'flex', alignItems: 'center', gap: '20px', transition: 'transform 0.2s' }} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-4px)'} onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
                       <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#fffbeb', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.2rem', flexShrink: 0, boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)' }}>
                         {tamamlananDersSayisi >= 30 ? '👑' : (tamamlananDersSayisi >= 15 ? '🏅' : (tamamlananDersSayisi >= 5 ? '🚀' : '🌱'))}
@@ -541,7 +564,6 @@ export default function StudentDashboard() {
                       </div>
                     </div>
 
-                    {/* 2. Toplam Katılım ve İlerleme */}
                     <div style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)', display: 'flex', alignItems: 'center', gap: '20px', transition: 'transform 0.2s' }} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-4px)'} onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
                       <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#eef2ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
@@ -560,7 +582,6 @@ export default function StudentDashboard() {
                       </div>
                     </div>
 
-                    {/* 3. Sıradaki Hedef */}
                     <div style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)', display: 'flex', alignItems: 'center', gap: '20px', transition: 'transform 0.2s' }} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-4px)'} onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
                       <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#f0fdf4', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
@@ -593,13 +614,16 @@ export default function StudentDashboard() {
                       const egitmenId = ders.egitmenler?.user_id || ders.egitmenler?.id || ders.user_id;
                       const suAn = new Date();
                       const dersZamani = new Date(ders.tarih_saat);
-                      // Sadece Yaklaşan olan ve saati geçmiş derslerde onay sor
+                      // Ders saatinin üzerinden 50 dk geçti mi?
                       const zamanGectiMi = suAn > new Date(dersZamani.getTime() + 50 * 60000);
+                      
+                      // 🚀 DERS DURUM ONAYI GEREKİYOR MU? ("Onay" kelimesi varsa veya süresi geçmişse)
+                      const onayBekliyor = ders.durum && ders.durum.includes('Onay');
+                      const onayGerekiyorMu = onayBekliyor || (ders.durum === 'Yaklaşan' && zamanGectiMi);
 
                       return (
                         <div key={idx} style={{ border: '1px solid #e2e8f0', borderRadius: '16px', padding: '20px', display: 'flex', flexDirection: 'column', backgroundColor: '#f8fafc', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
                           
-                          {/* Üst Bilgi Satırı */}
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div 
                               onClick={() => egitmenId && router.push(`/teachers/${egitmenId}`)}
@@ -623,18 +647,17 @@ export default function StudentDashboard() {
                                 {new Date(ders.tarih_saat).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
                               </div>
                               
-                              {/* SADECE YAKLAŞAN VE ZAMANI GEÇMEMİŞSE DERS BUTONU */}
                               {ders.durum === 'Yaklaşan' && !zamanGectiMi && (
                                 <OgrenciCanliDersButonu dersId={ders.id} tarihSaat={ders.tarih_saat} />
                               )}
                             </div>
                           </div>
 
-                          {/* 🚀 DERS DURUM ONAYI ALANI (Ders süresi bittiyse ve DERS HALA YAKLAŞAN STATÜSÜNDEYSE) */}
-                          {zamanGectiMi && ders.durum === 'Yaklaşan' ? (
+                          {/* 🚀 DERS DURUM ONAYI ALANI */}
+                          {onayGerekiyorMu ? (
                             <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
                               <p style={{ margin: '0 0 12px 0', fontSize: '0.95rem', color: '#0f172a', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: '1.2rem' }}>🔔</span> Öğretmen derse katıldı mı?
+                                <span style={{ fontSize: '1.2rem' }}>🔔</span> {onayBekliyor ? 'Öğretmen dersi tamamladı olarak işaretledi. Derse katıldı mı?' : 'Dersin süresi doldu. Öğretmen derse katıldı mı?'}
                               </p>
                               <div style={{ display: 'flex', gap: '8px' }}>
                                 <button 
@@ -741,7 +764,7 @@ export default function StudentDashboard() {
                     {pastLessons.map((ders) => (
                       <div key={ders.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "24px", backgroundColor: "#ffffff", borderRadius: "16px", border: "1px solid #e2e8f0", boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
                         
-                        <div>
+                        <div style={{ flex: 1 }}>
                           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '8px' }}>
                             <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: "#0f172a" }}>{ders.egitmenler?.ders_turu || 'Özel Ders'}</h4>
                             {ders.durum.includes('İptal') || ders.durum === 'Öğretmen Gelmedi' ? (
@@ -759,6 +782,29 @@ export default function StudentDashboard() {
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginLeft: 4}}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
                             {new Date(ders.tarih_saat).toLocaleDateString('tr-TR')}
                           </p>
+
+                          {/* 🚀 DURUM ONAYI 2: Öğretmen Erkenden "Tamamlandı" işaretlediyse ve öğrenci henüz puan vermediyse */}
+                          {ders.durum === 'Tamamlanan' && !ders.puan && (
+                            <div style={{ marginTop: "16px", padding: "16px", backgroundColor: "#fffbeb", borderRadius: "16px", border: "1px solid #fde68a" }}>
+                              <p style={{ margin: '0 0 12px 0', fontSize: '0.95rem', color: '#92400e', fontWeight: 700 }}>
+                                🔔 Öğretmen bu dersi "Tamamlandı" olarak işaretledi. Her şey yolunda mıydı?
+                              </p>
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                <button 
+                                  onClick={() => setDegerlendirmeModali(ders.id)}
+                                  style={{ flex: 1, padding: "10px", backgroundColor: "#f59e0b", color: "white", border: "none", borderRadius: "10px", fontWeight: "700", cursor: "pointer", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                                >
+                                  Evet, Dersi Değerlendir
+                                </button>
+                                <button 
+                                  onClick={() => handleDersOnayla(ders.id, 'Öğretmen Gelmedi', ders.egitmenler?.user_id || ders.egitmenler?.id || ders.user_id)}
+                                  style={{ flex: 1, padding: "10px", backgroundColor: "#ffffff", color: "#ef4444", border: "1px solid #fca5a5", borderRadius: "10px", fontWeight: "700", cursor: "pointer", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                                >
+                                  Hayır, Öğretmen Gelmedi
+                                </button>
+                              </div>
+                            </div>
+                          )}
                           
                           {/* Puan verildiyse göster */}
                           {ders.puan && (
@@ -775,20 +821,10 @@ export default function StudentDashboard() {
                               <button
                                 onClick={() => handleDeleteRating(ders.id, ders.egitmenler?.user_id || ders.egitmenler?.id || ders.user_id)}
                                 style={{
-                                  background: "none",
-                                  border: "1px solid #fecaca",
-                                  color: "#ef4444",
-                                  cursor: "pointer",
-                                  fontSize: "0.85rem",
-                                  fontWeight: "600",
-                                  padding: "6px 12px",
-                                  borderRadius: "8px",
-                                  backgroundColor: "#fef2f2",
-                                  transition: "all 0.2s",
-                                  flexShrink: 0,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 6
+                                  background: "none", border: "1px solid #fecaca", color: "#ef4444", cursor: "pointer",
+                                  fontSize: "0.85rem", fontWeight: "600", padding: "6px 12px", borderRadius: "8px",
+                                  backgroundColor: "#fef2f2", transition: "all 0.2s", flexShrink: 0,
+                                  display: 'flex', alignItems: 'center', gap: 6
                                 }}
                                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'}
                                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fef2f2'}
@@ -823,7 +859,7 @@ export default function StudentDashboard() {
 
           {/* SEKME 3: MESAJLAŞMA MERKEZİ (ÖĞRENCİ) */}
           {activeTab === 'messages' && (
-            <Messages userId={user?.id} onMessageRead={loadUnreadCount} />
+            <Messages userId={user?.id} onMessageRead={loadUnreadCount} activeChatUser={null} />
           )}
 
           {/* SEKME 4: PROFİL AYARLARI */}
@@ -912,12 +948,16 @@ export default function StudentDashboard() {
 }
 
 /* ---------------- MESSAGES COMPONENT ---------------- */
-function Messages({ userId, onMessageRead }: any) {
+function Messages({ userId, onMessageRead, activeChatUser }: any) {
   const [teachers, setTeachers] = useState<any[]>([]); 
-  const [selectedTeacher, setSelectedTeacher] = useState<any>(null); 
+  const [selectedTeacher, setSelectedTeacher] = useState<any>(activeChatUser || null); 
   const [messages, setMessages] = useState<any[]>([]); 
   const [text, setText] = useState('');
   const [showChatMenu, setShowChatMenu] = useState(false);
+
+  useEffect(() => {
+    if (activeChatUser) setSelectedTeacher(activeChatUser);
+  }, [activeChatUser]);
 
   useEffect(() => { if (!userId) return; loadTeachers(); }, [userId]);
   
@@ -950,6 +990,10 @@ function Messages({ userId, onMessageRead }: any) {
     fetchAndMarkMessages();
 
     const channel = supabase.channel('chat-room-student').on('postgres_changes', { event: '*', schema: 'public', table: 'mesajlar' }, async (payload: any) => {
+      if (payload.eventType === 'INSERT') {
+        loadTeachers();
+      }
+
       if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
         const msg = payload.new;
         const isRelevant = (msg.gonderen_id === userId && msg.alici_id === selectedTeacher.id) || (msg.gonderen_id === selectedTeacher.id && msg.alici_id === userId);
@@ -1043,7 +1087,7 @@ function Messages({ userId, onMessageRead }: any) {
       .single();
       
     if (error) { 
-      alert("Mesaj iletilemedi: " + error.message); 
+      toast.error("Mesaj iletilemedi: " + error.message); 
       setMessages(prev => prev.filter(m => m.id !== tempId)); 
       setText(mesajIcerigi); 
     } else if (data) {
@@ -1060,7 +1104,7 @@ function Messages({ userId, onMessageRead }: any) {
       if (error) throw error;
       setMessages(prev => prev.filter(m => m.id !== msgId));
     } catch (err: any) {
-      alert("Silme hatası: " + err.message);
+      toast.error("Silme hatası: " + err.message);
     }
   };
 
@@ -1080,7 +1124,7 @@ function Messages({ userId, onMessageRead }: any) {
       loadTeachers(); 
       if (onMessageRead) onMessageRead();
     } catch (err: any) {
-      alert("Sohbet silinemedi: " + err.message);
+      toast.error("Sohbet silinemedi: " + err.message);
     }
   };
 

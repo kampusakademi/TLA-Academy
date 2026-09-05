@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -58,12 +59,12 @@ export default function BecomeTeacher() {
   // 1. Adım Doğrulama
   const handleNextStep = () => {
     if (!formData.fullName.trim() || !formData.email.trim() || !formData.price || !formData.bio.trim() || !formData.konum || !formData.sehir.trim() || !formData.egitim || !formData.okul.trim() || !formData.anaDil) {
-      alert("⚠️ Lütfen sonraki adıma geçmeden önce kişisel bilgilerinizi, konumunuzu, dillerinizi ve eğitim bilgilerinizi eksiksiz doldurun.");
+      toast.error("⚠️ Lütfen sonraki adıma geçmeden önce kişisel bilgilerinizi, konumunuzu, dillerinizi ve eğitim bilgilerinizi eksiksiz doldurun.");
       return;
     }
     
     if (!formData.email.includes('@')) {
-      alert("⚠️ Lütfen geçerli bir e-posta adresi girin.");
+      toast.error("⚠️ Lütfen geçerli bir e-posta adresi girin.");
       return;
     }
 
@@ -76,7 +77,7 @@ export default function BecomeTeacher() {
     
     const hasSelection = specialties.amac.length > 0 || specialties.odak.length > 0 || specialties.seviye.length > 0;
     if (!hasSelection) {
-      alert("⚠️ Lütfen başvurunuzu tamamlamadan önce en az bir hedef kitle, seviye veya odak alanı seçin.");
+      toast.error("⚠️ Lütfen başvurunuzu tamamlamadan önce en az bir hedef kitle, seviye veya odak alanı seçin.");
       return;
     }
 
@@ -133,11 +134,11 @@ export default function BecomeTeacher() {
 
       if (error) throw error;
 
-      alert("🎉 Başvurunuz ve belgeleriniz başarıyla alındı! Bilgileriniz yönetim ekibine iletildi. İnceleme sonrası giriş bilgileriniz e-posta adresinize gönderilecektir.");
+      toast.success("🎉 Başvurunuz ve belgeleriniz başarıyla alındı! Bilgileriniz yönetim ekibine iletildi. İnceleme sonrası giriş bilgileriniz e-posta adresinize gönderilecektir.");
       router.push('/');
 
     } catch (error: any) {
-      alert("Hata oluştu: " + error.message);
+      toast.error("Hata oluştu: " + error.message);
     } finally {
       setLoading(false);
     }

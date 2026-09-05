@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from "react";
+import toast from 'react-hot-toast';
 import { supabase } from "@/lib/supabaseClient";
 
 export default function ProfilDuzenle() {
@@ -41,18 +42,18 @@ export default function ProfilDuzenle() {
       .update(profil)
       .eq('email', user.email);
 
-    if (error) alert("Bilgiler güncellenemedi: " + error.message);
-    else alert("Profil bilgileriniz başarıyla güncellendi!");
+    if (error) toast.error("Bilgiler güncellenemedi: " + error.message);
+    else toast.success("Profil bilgileriniz başarıyla güncellendi!");
   };
 
   const sifreDegistir = async () => {
     if (yeniSifre.length < 6) {
-      alert("Şifre en az 6 karakter olmalıdır.");
+      toast.error("Şifre en az 6 karakter olmalıdır.");
       return;
     }
     const { error } = await supabase.auth.updateUser({ password: yeniSifre });
-    if (error) alert("Şifre güncellenemedi: " + error.message);
-    else { alert("Şifreniz başarıyla değiştirildi."); setYeniSifre(""); }
+    if (error) toast.error("Şifre güncellenemedi: " + error.message);
+    else { toast.success("Şifreniz başarıyla değiştirildi."); setYeniSifre(""); }
   };
 
   if (loading) return <div style={{ padding: 40 }}>Yükleniyor...</div>;

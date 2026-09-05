@@ -2,6 +2,7 @@
 'use client';
 
 import Link from 'next/link';
+import toast from 'react-hot-toast';
 import { use, useState } from 'react';
 
 // TypeScript Şablonumuz
@@ -121,10 +122,10 @@ export default function TeacherDetailPage({ params }: { params: Promise<{ name: 
 
   const handleBooking = () => {
     if (!selectedDay || !selectedTime) {
-      alert('Lütfen takvimden bir gün ve ders saati seçiniz!');
+      toast.error('Lütfen takvimden bir gün ve ders saati seçiniz!');
       return;
     }
-    alert(`Harika! ${teacher.name} ile ${selectedDay} günü saat ${selectedTime} için ders talebiniz oluşturuldu.`);
+    toast.success(`Harika! ${teacher.name} ile ${selectedDay} günü saat ${selectedTime} için ders talebiniz oluşturuldu.`);
   };
 
   return (

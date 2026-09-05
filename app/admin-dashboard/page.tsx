@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -39,7 +40,7 @@ export default function AdminDashboard() {
     });
 
     if (error) {
-      alert("Giriş başarısız: Lütfen e-posta veya şifrenizi kontrol edin.");
+      toast.error("Giriş başarısız: Lütfen e-posta veya şifrenizi kontrol edin.");
     } else if (data.session) {
       setAdminId(data.session.user.id);
     }
@@ -242,7 +243,7 @@ function LessonsManagement() {
     const { data, error } = await supabase.storage.from('ders-kayitlari').createSignedUrls(paths, 3600);
     
     if (error || !data) {
-      alert("Kayıtlar getirilirken bir hata oluştu.");
+      toast.error("Kayıtlar getirilirken bir hata oluştu.");
       return;
     }
     
@@ -532,20 +533,20 @@ function SystemSettings() {
   const handlePasswordUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      alert("Şifreler birbiriyle eşleşmiyor!");
+      toast.error("Şifreler birbiriyle eşleşmiyor!");
       return;
     }
     if (newPassword.length < 6) {
-      alert("Şifre en az 6 karakter olmalıdır.");
+      toast.error("Şifre en az 6 karakter olmalıdır.");
       return;
     }
 
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) {
-      alert("Şifre güncellenirken hata oluştu: " + error.message);
+      toast.error("Şifre güncellenirken hata oluştu: " + error.message);
     } else {
-      alert("Yönetici şifreniz başarıyla güncellendi!");
+      toast.success("Yönetici şifreniz başarıyla güncellendi!");
       setNewPassword('');
       setConfirmPassword('');
     }
@@ -554,7 +555,7 @@ function SystemSettings() {
 
   const handleSettingsSave = (e: React.FormEvent) => {
     e.preventDefault();
-    alert(`Platform ayarları kaydedildi. (Mevcut Komisyon: %${komisyon})`);
+    toast.success(`Platform ayarları kaydedildi. (Mevcut Komisyon: %${komisyon})`);
   };
 
   return (
@@ -634,7 +635,7 @@ function UserManagement() {
     
     const { data, error } = await supabase.from(table).update({ durum: newStatus }).eq('user_id', userId).select();
     if (error) {
-      alert("Durum güncellenemedi: " + error.message);
+      toast.error("Durum güncellenemedi: " + error.message);
     } else {
       loadUsers();
     }
@@ -655,10 +656,10 @@ function UserManagement() {
       
       const { error: tableError } = await supabase.from(table).delete().eq('user_id', userId);
       if (tableError) throw tableError;
-      alert("Kullanıcı tamamen silindi!");
+      toast.success("Kullanıcı tamamen silindi!");
       loadUsers();
     } catch (error: any) {
-      alert("Silme başarısız: " + error.message);
+      toast.error("Silme başarısız: " + error.message);
     }
   }
 
@@ -817,8 +818,8 @@ function ApplicationsManagement() {
         }
         
         await supabase.from('basvurular').delete().eq('id', basvuruObj.id);
-        alert("Başvuru onaylandı. Eğitmen profili eksiksiz bir şekilde güncellendi!");
-      } catch (err: any) { alert("Sistemsel Hata: " + err.message); }
+        toast.success("Başvuru onaylandı. Eğitmen profili eksiksiz bir şekilde güncellendi!");
+      } catch (err: any) { toast.error("Sistemsel Hata: " + err.message); }
     }
     setSeciliBasvuru(null); 
     loadBasvurular(); 
@@ -977,7 +978,7 @@ function BlogManagement() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if(!baslik || !icerik) return alert("Başlık ve İçerik zorunludur!");
+    if(!baslik || !icerik) return toast.error("Başlık ve İçerik zorunludur!");
 
     const postData = {
       baslik,
@@ -992,12 +993,12 @@ function BlogManagement() {
 
     if (isEditing) {
       const { error } = await supabase.from('blog_yazilari').update(postData).eq('id', currentId);
-      if (error) alert("Güncelleme hatası: " + error.message);
-      else { alert("Başarıyla güncellendi!"); closeModal(); loadPosts(); }
+      if (error) toast.error("Güncelleme hatası: " + error.message);
+      else { toast.success("Başarıyla güncellendi!"); closeModal(); loadPosts(); }
     } else {
       const { error } = await supabase.from('blog_yazilari').insert([postData]);
-      if (error) alert("Ekleme hatası: " + error.message);
-      else { alert("Başarıyla eklendi!"); closeModal(); loadPosts(); }
+      if (error) toast.error("Ekleme hatası: " + error.message);
+      else { toast.success("Başarıyla eklendi!"); closeModal(); loadPosts(); }
     }
   };
 
@@ -1015,7 +1016,7 @@ function BlogManagement() {
   const deletePost = async (id: string) => {
     if (!confirm("Bu yazıyı kalıcı olarak silmek istiyor musunuz?")) return;
     const { error } = await supabase.from('blog_yazilari').delete().eq('id', id);
-    if (error) alert("Silme hatası: " + error.message);
+    if (error) toast.error("Silme hatası: " + error.message);
     else loadPosts();
   };
 

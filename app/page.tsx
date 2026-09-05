@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import LanguageToggle from '@/app/components/LanguageToggle';
@@ -316,7 +317,7 @@ export default function HomePage() {
         }
       }
       setShowAuthModal(false);
-    } catch (error: any) { alert(error.message); } finally { setLoading(false); }
+    } catch (error: any) { toast.error(error.message); } finally { setLoading(false); }
   };
 
   const handleGoogleAuth = async () => {
@@ -329,7 +330,7 @@ export default function HomePage() {
         } 
       });
       if (error) throw error;
-    } catch (error: any) { alert('Hata: ' + error.message); }
+    } catch (error: any) { toast.error('Hata: ' + error.message); }
   };
 
   const handleSearch = () => router.push('/egitmenler'); 
