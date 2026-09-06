@@ -67,6 +67,9 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
   const [isScreenStarting, setIsScreenStarting] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  const [unreadCount, setUnreadCount] = useState(0);
+  const isChatOpenRef = useRef(isChatOpen);
+
   // ================= BEYAZ TAHTA STATE'LERİ =================
   const [isWhiteboardActive, setIsWhiteboardActive] = useState(false);
   const [activeTool, setActiveTool] = useState<'pen' | 'eraser' | 'text' | 'move'>('pen');
@@ -90,7 +93,6 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
 
   const SCREEN_SHARE_UID = 88888888;
 
-  // ================= 🚀 SESSİZ KAYIT REF'LERİ =================
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const isRecordingStartedRef = useRef(false);
@@ -98,6 +100,16 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const hasLoggedEntryRef = useRef(false);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (screenTrack) { screenTrack.close(); }
+      if (screenClient) { screenClient.leave(); }
+      client.leave();
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [client, screenClient, screenTrack]);
 
   useEffect(() => {
     async function rolTespitEt() {
@@ -122,7 +134,24 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
   const benimRolum = gercekRol === "ogretmen" ? "Öğretmen" : "Öğrenci";
   const karsiTarafRolu = gercekRol === "ogretmen" ? "Öğrenci" : "Öğretmen";
 
-  // ================= 🚀 AUDIT LOG (SİSTEM GÜNLÜĞÜ) KAYDEDİCİ =================
+  // 🚀 DÜZELTME: Sohbet Bildirim Rozeti Mantığı Kökten Çözüldü
+  useEffect(() => {
+    isChatOpenRef.current = isChatOpen;
+    if (isChatOpen) {
+      setUnreadCount(0); // Sohbet açıldığında bildirimi anında sıfırla
+    }
+  }, [isChatOpen]);
+
+  useEffect(() => {
+    if (chatMessages.length > 0) {
+      const lastMsg = chatMessages[chatMessages.length - 1];
+      // Yalnızca yeni mesaj bana ait değilse ve sohbet kapalıysa sayacı artır
+      if (lastMsg.sender !== benimRolum && !isChatOpenRef.current) {
+        setUnreadCount(prev => prev + 1);
+      }
+    }
+  }, [chatMessages, benimRolum]); // isChatOpen state'i buradan kaldırıldı, döngü engellendi
+
   const logUserAction = async (action: 'Odaya Girdi' | 'Odadan Çıktı') => {
     if (!channelName || !gercekRol) return;
     try {
@@ -132,7 +161,6 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
         aksiyon: action,
         kullanici_id: currentUserId || 'anonim'
       }]);
-      console.log(`Log kaydedildi: ${benimRolum} ${action}`);
     } catch (err) {
       console.error("Log kaydedilemedi:", err);
     }
@@ -154,7 +182,6 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
     }
   };
 
-  // ================= 🚀 ÖĞRETMEN SİSTEM KAYDI BAŞLATMA =================
   const startLessonWithRecording = async () => {
     try {
       if (isRecordingStartedRef.current) return;
@@ -207,7 +234,7 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
 
     } catch (error) {
       isRecordingStartedRef.current = false;
-      alert("Sistem Kalite Kontrol kaydını başlatmadan derse giremezsiniz. Lütfen 'Bu Sekme'yi seçerek izin verin.");
+      toast.error("Sistem Kalite Kontrol kaydını başlatmadan derse giremezsiniz. Lütfen 'Bu Sekme'yi seçerek izin verin.");
     }
   };
 
@@ -252,7 +279,7 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
             setStudentScreenAllowed(veri.allowed);
             if (!veri.allowed && screenTrack) {
               toggleScreenShare();
-              alert("Öğretmen materyal paylaşımı izninizi kaldırdı.");
+              toast.error("Öğretmen materyal paylaşımı izninizi kaldırdı.");
             }
           }
         }
@@ -286,7 +313,6 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
     return () => { supabase.removeChannel(roomChannel); };
   }, [channelName, gercekRol, screenTrack]);
 
-  // ================= BEYAZ TAHTA VE DİĞER ÇEKİRDEK KODLAR =================
   const toggleWhiteboard = () => {
     const newState = !isWhiteboardActive;
     setIsWhiteboardActive(newState);
@@ -423,7 +449,7 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
         const urls = Object.values(data.query.pages).map((p: any) => p.imageinfo?.[0]?.thumburl || p.imageinfo?.[0]?.url).filter(Boolean); 
         setImageSearchResults(urls as string[]);
       }
-    } catch (err) { alert("Görseller aranırken bir hata oluştu."); } 
+    } catch (err) { toast.error("Görseller aranırken bir hata oluştu."); } 
     finally { setIsSearchingImage(false); }
   };
 
@@ -438,7 +464,6 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
     img.src = url; setIsImageModalOpen(false); setImageSearchQuery(""); setImageSearchResults([]);
   };
 
-  // ================= VİDEO VE SİSTEM FONKSİYONLARI =================
   useEffect(() => {
     let isMounted = true;
     async function getToken() {
@@ -456,15 +481,12 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
 
   const joinState = useJoin({ appid: appId, channel: channelName, token: token }, !!appId && !!channelName && !!token && isRecordingReady);
   
-  // 🚀 ODAYA GİRİŞ LOGU (Sadece bir kez çalışır)
   useEffect(() => {
-    // joinState === true yerine joinState.isConnected değerini kontrol ediyoruz
     if (joinState.isConnected && !hasLoggedEntryRef.current) {
       hasLoggedEntryRef.current = true;
       logUserAction('Odaya Girdi');
     }
   }, [joinState.isConnected]);
-
 
   const { localMicrophoneTrack } = useLocalMicrophoneTrack(isRecordingReady);
   const { localCameraTrack } = useLocalCameraTrack(isRecordingReady);
@@ -481,18 +503,15 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
   const toggleMic = () => { if (localMicrophoneTrack) { localMicrophoneTrack.setMuted(!isMuted); setIsMuted(!isMuted); } };
   const toggleCamera = () => { if (localCameraTrack) { localCameraTrack.setMuted(!isVideoOff); setIsVideoOff(!isVideoOff); } };
 
-  // ================= 🚀 EKRAN / MATERYAL YANSITMA (AGORA SHARE) =================
   const toggleScreenShare = async () => {
     if (gercekRol === "ogrenci" && !studentScreenAllowed && !screenTrack) {
-      alert("Ekran paylaşabilmek için lütfen öğretmeninizden izin isteyin."); return;
+      toast.error("Ekran paylaşabilmek için lütfen öğretmeninizden izin isteyin."); return;
     }
 
     if (!screenTrack) {
       try {
         setIsScreenStarting(true);
         const track = await AgoraRTC.createScreenVideoTrack({ encoderConfig: "1080p_1", optimizationMode: "detail" }, "disable");
-        
-        if (localCameraTrack) await client.unpublish(localCameraTrack);
         setScreenTrack(track);
 
         const sClient = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
@@ -504,15 +523,12 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
         track.on('track-ended', async () => {
           track.close(); setScreenTrack(null);
           await sClient.leave(); setScreenClient(null);
-          if (localCameraTrack) await client.publish(localCameraTrack);
         });
       } catch (error: any) { 
-        // İptal edildi
       } finally { setIsScreenStarting(false); }
     } else {
       screenTrack.close(); setScreenTrack(null);
       if (screenClient) { await screenClient.leave(); setScreenClient(null); }
-      if (localCameraTrack) await client.publish(localCameraTrack);
     }
   };
 
@@ -523,7 +539,6 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
         if (screenTrack) { screenTrack.close(); if (screenClient) await screenClient.leave(); }
         localMicrophoneTrack?.close(); localCameraTrack?.close();
         
-        // 🚀 ODADAN ÇIKIŞ LOGU
         await logUserAction('Odadan Çıktı');
 
         await client.leave();
@@ -537,7 +552,6 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
     }
   };
 
-  // ================= 🚀 ÖĞRETMEN BEKLEME (ONAY) EKRANI =================
   if (gercekRol === "ogretmen" && !isRecordingReady) {
     return (
       <div style={{ height: '100vh', width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f1f5f9', fontFamily: '"Inter", sans-serif' }}>
@@ -567,9 +581,46 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
   }
 
   const isLocalSharing = screenTrack !== null;
-  const remoteScreenUser = remoteUsers.find(u => Number(u.uid) === SCREEN_SHARE_UID);
+  const remoteScreenUser = isLocalSharing ? null : remoteUsers.find(u => Number(u.uid) === SCREEN_SHARE_UID);
+  
   const remoteCameraUsers = remoteUsers.filter(u => Number(u.uid) !== SCREEN_SHARE_UID);
   const firstRemoteCamera = remoteCameraUsers.length > 0 ? remoteCameraUsers[0] : null;
+
+  const isWhiteboardMain = isWhiteboardActive;
+  const isLocalScreenMain = !isWhiteboardActive && isLocalSharing;
+  const isRemoteScreenMain = !isWhiteboardActive && !isLocalSharing && remoteScreenUser;
+  const isFirstRemoteCameraMain = !isWhiteboardActive && !isLocalSharing && !remoteScreenUser && firstRemoteCamera;
+  const isLocalCameraMain = !isWhiteboardActive && !isLocalSharing && !remoteScreenUser && !firstRemoteCamera;
+
+  const showSidebar = isChatOpen || isWhiteboardActive || isLocalSharing || remoteScreenUser || firstRemoteCamera;
+
+  const mainStyle: React.CSSProperties = { 
+    gridColumn: '1 / 2', 
+    gridRow: '1 / -1', 
+    width: '100%', 
+    height: '100%', 
+    backgroundColor: '#000000', 
+    borderRadius: '24px', 
+    overflow: 'hidden', 
+    position: 'relative', 
+    border: '2px solid #ffffff', 
+    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.08)', 
+    transition: 'all 0.3s' 
+  };
+  
+  // 🚀 DÜZELTME: Sohbet açıldığında kameralar küçülür, sohbete devasa alan kalır
+  const sideStyle: React.CSSProperties = { 
+    gridColumn: '2 / 3', 
+    width: '100%', 
+    height: isChatOpen ? '130px' : '200px', // Otomatik Yükseklik Ayarı
+    backgroundColor: '#000000', 
+    borderRadius: '20px', 
+    overflow: 'hidden', 
+    position: 'relative', 
+    border: '2px solid #ffffff', 
+    boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
+  };
 
   const toolBtnStyle = (isActive: boolean) => ({
     background: isActive ? '#eef2ff' : 'transparent', color: isActive ? '#4f46e5' : '#64748b', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center'
@@ -603,138 +654,145 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
         </div>
       </header>
 
-      <main style={{ flex: 1, padding: '20px 28px', display: 'flex', gap: '20px', overflow: 'hidden', height: 'calc(100vh - 170px)' }}>
-        
-        <div style={{ flex: (isChatOpen || isWhiteboardActive) ? 2.5 : 3, backgroundColor: '#000000', borderRadius: '24px', overflow: 'hidden', position: 'relative', border: '2px solid #ffffff', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.08)', transition: 'all 0.3s' }}>
-          {tokenLoading ? (
-            <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1', fontSize: '1.1rem', fontWeight: 600, gap: '14px' }}>
-              <div style={{ width: '40px', height: '40px', border: '4px solid #334155', borderTopColor: '#4f46e5', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-              <span>Güvenli ders bağlantısı kuruluyor...</span>
-            </div>
-          ) : isWhiteboardActive ? (
-            <div style={{ width: '100%', height: '100%', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden' }}>
-              {textInput.visible && (
-                <input
-                  autoFocus type="text" value={textInput.text} onChange={(e) => setTextInput(prev => ({...prev, text: e.target.value}))}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      if (textInput.text.trim()) { objectsRef.current.push({ id: textInput.id, type: 'text', x: textInput.realX, y: textInput.realY, w: 0.1, h: 0.05, text: textInput.text, color: drawColor }); emitObjects(); redrawAll(); }
-                      setTextInput(prev => ({...prev, visible: false})); setActiveTool('move'); 
-                    }
-                  }}
-                  style={{ position: 'absolute', left: `${textInput.x}px`, top: `${textInput.y - 12}px`, color: drawColor, font: 'bold 24px Inter, sans-serif', background: 'transparent', border: '2px dashed #4f46e5', outline: 'none', padding: '4px 8px', minWidth: '200px', zIndex: 9999 }}
+      {tokenLoading ? (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: '1.1rem', fontWeight: 600, gap: '14px' }}>
+          <div style={{ width: '40px', height: '40px', border: '4px solid #cbd5e1', borderTopColor: '#4f46e5', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+          <span>Güvenli ders bağlantısı kuruluyor...</span>
+        </div>
+      ) : (
+        <main style={{ 
+          flex: 1, 
+          padding: '20px 28px', 
+          display: 'grid', 
+          gridTemplateColumns: showSidebar ? 'minmax(0, 1fr) 320px' : 'minmax(0, 1fr)',
+          gridTemplateRows: 'min-content min-content min-content min-content minmax(0, 1fr)', // 🚀 DÜZELTME: Sohbet kutusunun alta kadar genişlemesini sağlayan Grid sistemi
+          gap: '16px', 
+          overflow: 'hidden', 
+          height: 'calc(100vh - 170px)' 
+        }}>
+          
+          {/* BEYAZ TAHTA */}
+          {isWhiteboardActive && (
+            <div style={isWhiteboardMain ? mainStyle : sideStyle}>
+              <div style={{ width: '100%', height: '100%', backgroundColor: '#ffffff', position: 'relative', overflow: 'hidden' }}>
+                {textInput.visible && (
+                  <input
+                    autoFocus type="text" value={textInput.text} onChange={(e) => setTextInput(prev => ({...prev, text: e.target.value}))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        if (textInput.text.trim()) { objectsRef.current.push({ id: textInput.id, type: 'text', x: textInput.realX, y: textInput.realY, w: 0.1, h: 0.05, text: textInput.text, color: drawColor }); emitObjects(); redrawAll(); }
+                        setTextInput(prev => ({...prev, visible: false})); setActiveTool('move'); 
+                      }
+                    }}
+                    style={{ position: 'absolute', left: `${textInput.x}px`, top: `${textInput.y - 12}px`, color: drawColor, font: 'bold 24px Inter, sans-serif', background: 'transparent', border: '2px dashed #4f46e5', outline: 'none', padding: '4px 8px', minWidth: '200px', zIndex: 9999 }}
+                  />
+                )}
+                <canvas
+                  ref={canvasRef} onMouseDown={startDraw} onMouseMove={moveDraw} onMouseUp={stopDraw} onMouseOut={stopDraw} onTouchStart={startDraw} onTouchMove={moveDraw} onTouchEnd={stopDraw}
+                  style={{ width: '100%', height: '100%', cursor: activeTool === 'text' ? 'text' : (activeTool === 'move' ? 'move' : 'crosshair'), touchAction: 'none' }}
                 />
-              )}
-
-              <canvas
-                ref={canvasRef} onMouseDown={startDraw} onMouseMove={moveDraw} onMouseUp={stopDraw} onMouseOut={stopDraw} onTouchStart={startDraw} onTouchMove={moveDraw} onTouchEnd={stopDraw}
-                style={{ width: '100%', height: '100%', cursor: activeTool === 'text' ? 'text' : (activeTool === 'move' ? 'move' : 'crosshair'), touchAction: 'none' }}
-              />
-              
-              <div style={{ position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 8, background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(10px)', padding: '8px 16px', borderRadius: 20, boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0', alignItems: 'center', zIndex: 40 }}>
-                 <button onClick={() => setActiveTool('move')} title="Seç & Taşı / Ölçekle" style={toolBtnStyle(activeTool === 'move')}><MousePointer2 size={20} /></button>
-                 <button onClick={() => setActiveTool('pen')} title="Kalem" style={toolBtnStyle(activeTool === 'pen')}><PenTool size={20} /></button>
-                 <button onClick={() => setActiveTool('eraser')} title="Kısmi Silgi" style={toolBtnStyle(activeTool === 'eraser')}><Eraser size={20} /></button>
-                 <button onClick={() => setActiveTool('text')} title="Yazı Yaz (Ekrana Tıkla)" style={toolBtnStyle(activeTool === 'text')}><Type size={20} /></button>
-                 <button onClick={() => setIsImageModalOpen(true)} title="Görsel Arama" style={toolBtnStyle(false)}><Search size={20} /></button>
-
-                 <div style={{ width: 1, height: 24, backgroundColor: '#cbd5e1', margin: '0 8px' }} />
-                 <div style={{ display: 'flex', gap: 6, opacity: activeTool === 'eraser' ? 0.3 : 1, pointerEvents: activeTool === 'eraser' ? 'none' : 'auto' }}>
-                   {['#0f172a', '#ef4444', '#3b82f6', '#10b981', '#f59e0b'].map(c => (
-                      <button key={c} onClick={() => setDrawColor(c)} style={{ width: 24, height: 24, borderRadius: '50%', backgroundColor: c, border: drawColor === c ? '3px solid #cbd5e1' : 'none', cursor: 'pointer', transition: 'transform 0.1s' }} onMouseEnter={e => e.currentTarget.style.transform='scale(1.1)'} onMouseLeave={e => e.currentTarget.style.transform='scale(1)'} />
-                   ))}
-                 </div>
-                 <div style={{ width: 1, height: 24, backgroundColor: '#cbd5e1', margin: '0 8px' }} />
-                 <button onClick={() => clearCanvas(true)} title="Tüm Tahtayı Temizle" style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px 12px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, gap: '6px' }}><Trash2 size={16} /> Temizle</button>
+                <div style={{ position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 8, background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(10px)', padding: '8px 16px', borderRadius: 20, boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0', alignItems: 'center', zIndex: 40 }}>
+                   <button onClick={() => setActiveTool('move')} title="Seç & Taşı / Ölçekle" style={toolBtnStyle(activeTool === 'move')}><MousePointer2 size={20} /></button>
+                   <button onClick={() => setActiveTool('pen')} title="Kalem" style={toolBtnStyle(activeTool === 'pen')}><PenTool size={20} /></button>
+                   <button onClick={() => setActiveTool('eraser')} title="Kısmi Silgi" style={toolBtnStyle(activeTool === 'eraser')}><Eraser size={20} /></button>
+                   <button onClick={() => setActiveTool('text')} title="Yazı Yaz (Ekrana Tıkla)" style={toolBtnStyle(activeTool === 'text')}><Type size={20} /></button>
+                   <button onClick={() => setIsImageModalOpen(true)} title="Görsel Arama" style={toolBtnStyle(false)}><Search size={20} /></button>
+                   <div style={{ width: 1, height: 24, backgroundColor: '#cbd5e1', margin: '0 8px' }} />
+                   <div style={{ display: 'flex', gap: 6, opacity: activeTool === 'eraser' ? 0.3 : 1, pointerEvents: activeTool === 'eraser' ? 'none' : 'auto' }}>
+                     {['#0f172a', '#ef4444', '#3b82f6', '#10b981', '#f59e0b'].map(c => (
+                        <button key={c} onClick={() => setDrawColor(c)} style={{ width: 24, height: 24, borderRadius: '50%', backgroundColor: c, border: drawColor === c ? '3px solid #cbd5e1' : 'none', cursor: 'pointer', transition: 'transform 0.1s' }} onMouseEnter={e => e.currentTarget.style.transform='scale(1.1)'} onMouseLeave={e => e.currentTarget.style.transform='scale(1)'} />
+                     ))}
+                   </div>
+                   <div style={{ width: 1, height: 24, backgroundColor: '#cbd5e1', margin: '0 8px' }} />
+                   <button onClick={() => clearCanvas(true)} title="Tüm Tahtayı Temizle" style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px 12px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, gap: '6px' }}><Trash2 size={16} /> Temizle</button>
+                </div>
+                <NameBadge name="Ortak Beyaz Tahta" isLocal={false} />
               </div>
-              <NameBadge name="Ortak Beyaz Tahta" isLocal={false} />
             </div>
-          ) : isLocalSharing ? (
-            <>
+          )}
+
+          {/* BENİM EKRAN PAYLAŞIMIM */}
+          {isLocalSharing && (
+            <div style={isLocalScreenMain ? mainStyle : sideStyle}>
               <LocalVideoTrack track={screenTrack} play={true} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
               <NameBadge name="Sizin Ekranınız" isLocal={true} />
-            </>
-          ) : remoteScreenUser ? (
-            <>
+            </div>
+          )}
+
+          {/* KARŞI TARAFIN EKRAN PAYLAŞIMI */}
+          {remoteScreenUser && (
+            <div style={isRemoteScreenMain ? mainStyle : sideStyle}>
               <RemoteUser user={remoteScreenUser} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
               <NameBadge name={`${karsiTarafRolu} Ekranı`} isLocal={false} />
-            </>
-          ) : firstRemoteCamera ? (
-            <>
+            </div>
+          )}
+
+          {/* KARŞI TARAFIN KAMERASI (1. KİŞİ) */}
+          {firstRemoteCamera && (
+            <div style={isFirstRemoteCameraMain ? mainStyle : sideStyle}>
               <RemoteUser user={firstRemoteCamera} playVideo={true} playAudio={true} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               <NameBadge name={karsiTarafRolu} isLocal={false} />
-            </>
-          ) : (
-            <>
-              {localCameraTrack && !isVideoOff ? (
-                <LocalVideoTrack track={localCameraTrack} play={true} style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
-              ) : (
-                <CameraOffState name="Kameranız Kapalı" />
-              )}
-              <NameBadge name={`Sen (${benimRolum}) - Oda Boş`} isLocal={true} />
-            </>
-          )}
-        </div>
-
-        {(isLocalSharing || remoteScreenUser || firstRemoteCamera || isChatOpen || isWhiteboardActive) && (
-          <div style={{ flex: 1, maxWidth: '360px', display: 'flex', flexDirection: 'column', gap: '16px', overflow: 'hidden' }}>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto', maxHeight: isChatOpen ? '45%' : '100%' }}>
-              <div style={{ width: '100%', height: '200px', minHeight: '200px', backgroundColor: '#000000', borderRadius: '20px', overflow: 'hidden', position: 'relative', border: '2px solid #ffffff', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                {localCameraTrack && !isVideoOff ? (
-                  <LocalVideoTrack track={localCameraTrack} play={true} style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
-                ) : (
-                  <CameraOffState name="Kameranız Kapalı" />
-                )}
-                <NameBadge name={`Sen (${benimRolum})`} isLocal={true} />
-              </div>
-
-              {remoteCameraUsers.map(user => (
-                <div key={user.uid} style={{ width: '100%', height: '200px', minHeight: '200px', backgroundColor: '#000000', borderRadius: '20px', overflow: 'hidden', position: 'relative', border: '2px solid #ffffff', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                  <RemoteUser user={user} playVideo={true} playAudio={true} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  <NameBadge name={karsiTarafRolu} isLocal={false} />
-                </div>
-              ))}
             </div>
+          )}
 
-            {isChatOpen && (
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 16px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
-                <div style={{ padding: '14px 18px', borderBottom: '1px solid #f1f5f9', fontWeight: 800, fontSize: '0.95rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', color: '#0f172a' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <MessageSquare size={18} color="#4f46e5" /> Ders Sohbeti
-                  </span>
-                  <button onClick={() => setIsChatOpen(false)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                    <X size={18} />
-                  </button>
-                </div>
-                
-                <div style={{ flex: 1, padding: '14px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {chatMessages.length === 0 ? (
-                    <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem', marginTop: '24px' }}>Henüz mesaj yok. İlk mesajı siz gönderin!</div>
-                  ) : (
-                    chatMessages.map((msg, i) => (
-                      <div key={i} style={{ alignSelf: msg.sender === benimRolum ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
-                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '4px', textAlign: msg.sender === benimRolum ? 'right' : 'left', fontWeight: 600 }}>{msg.sender} • {msg.time}</div>
-                        <div style={{ backgroundColor: msg.sender === benimRolum ? '#4f46e5' : '#f1f5f9', color: msg.sender === benimRolum ? '#ffffff' : '#0f172a', padding: '10px 14px', borderRadius: '14px', fontSize: '0.9rem', lineHeight: 1.4, borderBottomRightRadius: msg.sender === benimRolum ? 0 : '14px', borderBottomLeftRadius: msg.sender === benimRolum ? '14px' : 0, boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-                          {msg.text}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                  <div ref={chatEndRef} />
-                </div>
-
-                <form onSubmit={sendChatMessage} style={{ padding: '12px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '8px', backgroundColor: '#f8fafc' }}>
-                  <input value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Mesaj yazın..." style={{ flex: 1, padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', outline: 'none', fontSize: '0.9rem' }} />
-                  <button type="submit" disabled={!chatInput.trim()} style={{ padding: '0 14px', borderRadius: '10px', border: 'none', backgroundColor: chatInput.trim() ? '#4f46e5' : '#e2e8f0', color: chatInput.trim() ? '#ffffff' : '#94a3b8', cursor: chatInput.trim() ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Send size={18} />
-                  </button>
-                </form>
-              </div>
+          {/* KENDİ KAMERANIZ */}
+          <div style={isLocalCameraMain ? mainStyle : sideStyle}>
+            {localCameraTrack && !isVideoOff ? (
+              <LocalVideoTrack track={localCameraTrack} play={true} style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+            ) : (
+              <CameraOffState name="Kameranız Kapalı" />
             )}
+            <NameBadge name={`Sen (${benimRolum})`} isLocal={true} />
           </div>
-        )}
-      </main>
+
+          {/* 🚀 DÜZELTME: CHAT BÖLÜMÜNÜN MÜKEMMEL YERLEŞİMİ */}
+          {isChatOpen && (
+            <div style={{ 
+              gridColumn: '2 / 3', 
+              gridRow: 'auto / -1', // 🚀 Chat kutusunun sayfanın en altına kadar tüm boşluğu doldurmasını sağlar!
+              display: 'flex', 
+              flexDirection: 'column', 
+              backgroundColor: '#ffffff', 
+              borderRadius: '20px', 
+              border: '1px solid #e2e8f0', 
+              boxShadow: '0 4px 16px rgba(0,0,0,0.04)', 
+              overflow: 'hidden', 
+              minHeight: '250px' 
+            }}>
+              <div style={{ padding: '14px 18px', borderBottom: '1px solid #f1f5f9', fontWeight: 800, fontSize: '0.95rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', color: '#0f172a' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <MessageSquare size={18} color="#4f46e5" /> Ders Sohbeti
+                </span>
+                <button onClick={() => setIsChatOpen(false)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                  <X size={18} />
+                </button>
+              </div>
+              <div style={{ flex: 1, padding: '14px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {chatMessages.length === 0 ? (
+                  <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem', marginTop: '24px' }}>Henüz mesaj yok. İlk mesajı siz gönderin!</div>
+                ) : (
+                  chatMessages.map((msg, i) => (
+                    <div key={i} style={{ alignSelf: msg.sender === benimRolum ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '4px', textAlign: msg.sender === benimRolum ? 'right' : 'left', fontWeight: 600 }}>{msg.sender} • {msg.time}</div>
+                      <div style={{ backgroundColor: msg.sender === benimRolum ? '#4f46e5' : '#f1f5f9', color: msg.sender === benimRolum ? '#ffffff' : '#0f172a', padding: '10px 14px', borderRadius: '14px', fontSize: '0.9rem', lineHeight: 1.4, borderBottomRightRadius: msg.sender === benimRolum ? 0 : '14px', borderBottomLeftRadius: msg.sender === benimRolum ? '14px' : 0, boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                        {msg.text}
+                      </div>
+                    </div>
+                  ))
+                )}
+                <div ref={chatEndRef} />
+              </div>
+              <form onSubmit={sendChatMessage} style={{ padding: '12px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '8px', backgroundColor: '#f8fafc' }}>
+                <input value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Mesaj yazın..." style={{ flex: 1, padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', outline: 'none', fontSize: '0.9rem' }} />
+                <button type="submit" disabled={!chatInput.trim()} style={{ padding: '0 14px', borderRadius: '10px', border: 'none', backgroundColor: chatInput.trim() ? '#4f46e5' : '#e2e8f0', color: chatInput.trim() ? '#ffffff' : '#94a3b8', cursor: chatInput.trim() ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Send size={18} />
+                </button>
+              </form>
+            </div>
+          )}
+
+        </main>
+      )}
 
       <footer style={{ paddingBottom: '24px', display: 'flex', justifyContent: 'center', zIndex: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(16px)', padding: '10px 20px', borderRadius: '40px', border: '1px solid rgba(226, 232, 240, 0.8)', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.08)' }}>
@@ -747,8 +805,17 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
             {isVideoOff ? <VideoOff size={20} /> : <Video size={20} />}
           </button>
 
-          <button onClick={() => setIsChatOpen(!isChatOpen)} title="Sohbeti Aç/Kapat" style={{ ...controlBtn(isChatOpen), borderColor: isChatOpen ? '#4f46e5' : '#e2e8f0', backgroundColor: isChatOpen ? '#eef2ff' : '#ffffff', color: isChatOpen ? '#4f46e5' : '#0f172a' }}>
+          <button 
+            onClick={() => { setIsChatOpen(!isChatOpen); }} 
+            title="Sohbeti Aç/Kapat" 
+            style={{ ...controlBtn(isChatOpen), position: 'relative', borderColor: isChatOpen ? '#4f46e5' : '#e2e8f0', backgroundColor: isChatOpen ? '#eef2ff' : '#ffffff', color: isChatOpen ? '#4f46e5' : '#0f172a' }}
+          >
             <MessageSquare size={20} />
+            {unreadCount > 0 && !isChatOpen && (
+              <span style={{ position: 'absolute', top: '-4px', right: '-4px', backgroundColor: '#ef4444', color: '#ffffff', fontSize: '11px', fontWeight: 800, width: '22px', height: '22px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #ffffff', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
           </button>
           
           <div style={{ width: '1px', height: '28px', backgroundColor: '#e2e8f0', margin: '0 4px' }}></div>
@@ -818,7 +885,6 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
         </div>
       </footer>
 
-      {/* 🚀 ÜCRETSİZ GÖRSEL ARAMA MODALI */}
       {isImageModalOpen && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
           <div style={{ background: '#ffffff', width: '100%', maxWidth: '700px', borderRadius: '24px', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
