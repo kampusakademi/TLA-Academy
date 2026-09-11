@@ -7,7 +7,12 @@ import LanguageToggle from '@/app/components/LanguageToggle';
 import { useTranslation } from '@/lib/useTranslation';
 import { useCurrency } from '@/lib/CurrencyContext';
 
-// YouTube URL'sinden Video ID'sini çıkaran yardımcı fonksiyon
+import { 
+  Search, Sparkles, BadgeCheck, Languages, TrendingUp, 
+  Star, CheckCircle, MapPin, GraduationCap, Target, 
+  PlayCircle, SearchX, Crown, Medal, ShieldCheck 
+} from 'lucide-react';
+
 const getYouTubeId = (url: string) => {
   if (!url) return null;
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -15,7 +20,6 @@ const getYouTubeId = (url: string) => {
   return (match && match[2].length === 11) ? match[2] : null;
 };
 
-// DİLLERİ TEMİZLEYEN FONKSİYON
 const formatDiller = (diller: any) => {
   if (!diller) return '';
   try {
@@ -35,7 +39,6 @@ export default function TeachersListPage() {
   const [teachers, setTeachers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // FİLTRELEME VE SIRALAMA STATE'LERİ
   const [searchTerm, setSearchTerm] = useState('');
   const [filterKategori, setFilterKategori] = useState('');
   const [filterHedef, setFilterHedef] = useState('');
@@ -132,12 +135,47 @@ export default function TeachersListPage() {
     }
 
     if (filterKategori) {
+      const etiket = String(tItem.one_cikan_etiket || '').toLowerCase().trim();
+      
       if (filterKategori === 'Süper Öğretmen') {
-        if (!(Number(tItem.gercek_puan_ortalamasi) >= 4.5 && tItem.gercek_tamamlanan_ders >= 10)) return false;
-      } else if (filterKategori === 'Profesyonel Öğretmen') {
-        if (!(tItem.gercek_tamamlanan_ders > 0)) return false;
-      } else if (filterKategori === 'Yeni Öğretmen') {
-        if (tItem.gercek_tamamlanan_ders >= 5) return false;
+        const hasTag = etiket.includes('süper') || etiket.includes('super');
+        const hasStats = Number(tItem.gercek_puan_ortalamasi) >= 4.5 && tItem.gercek_tamamlanan_ders >= 10;
+        if (!hasTag && !hasStats) return false;
+      } 
+      else if (filterKategori === 'Uzman Öğretmen') {
+        if (!etiket.includes('uzman')) return false;
+      }
+      else if (filterKategori === 'Yeni Öğretmen') {
+        const hasTag = etiket.includes('yeni');
+        const isNewByStats = !tItem.gercek_puan_ortalamasi || tItem.gercek_tamamlanan_ders < 5;
+        if (!hasTag && !isNewByStats) return false;
+      } 
+      else if (filterKategori === 'Profesyonel Öğretmen') {
+        const hasTag = etiket.includes('profesyonel');
+        const isProByStats = tItem.gercek_tamamlanan_ders > 0;
+        if (!hasTag && !isProByStats) return false;
+      }
+    }
+
+    if (filterMusaitlik && tItem.musait_saatler) {
+      try {
+        const saatler = typeof tItem.musait_saatler === 'string' 
+          ? JSON.parse(tItem.musait_saatler) 
+          : tItem.musait_saatler;
+          
+        let uygunMu = false;
+        saatler.forEach((slot: any) => {
+          if (!slot.baslangic) return;
+          const saatNumarasi = parseInt(slot.baslangic.split(':')[0], 10);
+          
+          if (filterMusaitlik === 'Sabah' && saatNumarasi >= 6 && saatNumarasi < 12) uygunMu = true;
+          if (filterMusaitlik === 'Öğle' && saatNumarasi >= 12 && saatNumarasi < 18) uygunMu = true;
+          if (filterMusaitlik === 'Akşam' && saatNumarasi >= 18 && saatNumarasi <= 24) uygunMu = true;
+        });
+
+        if (!uygunMu) return false;
+      } catch (e) {
+        return false;
       }
     }
 
@@ -179,7 +217,51 @@ export default function TeachersListPage() {
     }
   };
 
-  // 🚀 Daha kompakt select tasarımı (Boşlukları azalttık)
+  const renderBadge = (etiket: string) => {
+    const lower = etiket.toLowerCase();
+    // 🚀 HATA DÜZELTİLDİ: TypeScript'in null değerini kabul etmesi için ": any" eklendi
+    let icon: any = <Star size={14} color="#64748b" />;
+    let bg = "#f8fafc";
+    let color = "#475569";
+    let border = "#e2e8f0";
+
+    if (lower.includes('süper') || lower.includes('super')) {
+      icon = <Crown size={14} color="#b45309" fill="#fbbf24" />;
+      bg = "#fffbeb";
+      color = "#b45309";
+      border = "#fde68a";
+    } else if (lower.includes('uzman')) {
+      icon = <Medal size={14} color="#1d4ed8" fill="#93c5fd" />;
+      bg = "#eff6ff";
+      color = "#1d4ed8";
+      border = "#bfdbfe";
+    } else if (lower.includes('profesyonel')) {
+      icon = <ShieldCheck size={14} color="#6d28d9" fill="#c4b5fd" />;
+      bg = "#f5f3ff";
+      color = "#6d28d9";
+      border = "#ddd6fe";
+    } else if (lower.includes('yeni')) {
+      icon = null;
+      bg = "#f0fdf4";
+      color = "#15803d";
+      border = "#bbf7d0";
+    }
+
+    return (
+      <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 2 }}>
+        <span style={{ 
+          padding: '6px 14px', backgroundColor: bg, color: color, borderRadius: '20px', 
+          fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.5px', 
+          boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', display: 'flex', 
+          alignItems: 'center', gap: '6px', border: `1px solid ${border}` 
+        }}>
+          {icon}
+          {etiket.toUpperCase()}
+        </span>
+      </div>
+    );
+  };
+
   const selectStyle = {
     width: "100%", padding: '8px 12px', border: "1px solid #cbd5e1", borderRadius: '10px',
     outline: "none", fontSize: '0.85rem', color: '#0f172a', background: '#f8fafc', 
@@ -208,7 +290,6 @@ export default function TeachersListPage() {
         </div>
       </nav>
 
-      {/* 🚀 Üstteki gereksiz büyük boşluklar daraltıldı (margin 15px yapıldı) */}
       <div style={{ maxWidth: '1400px', width: '100%', margin: '15px auto 0', padding: '0 20px', flex: 1 }}>
         
         <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -228,12 +309,10 @@ export default function TeachersListPage() {
           </h1>
           <p style={{ color: '#64748b', fontSize: '0.95rem', marginBottom: '16px' }}>Aşağıdaki gelişmiş filtreleri kullanarak hedeflerinize uygun uzmanı saniyeler içinde bulun.</p>
           
-          {/* 🚀 DAHA KOMPAKT VE TOPLU FİLTRELEME PANELİ */}
           <div style={{ backgroundColor: '#ffffff', padding: '16px 20px', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px -5px rgba(0,0,0,0.05)' }}>
             
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', alignItems: 'center' }}>
               
-              {/* 1. Hedef */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Hedefini Seç</label>
                 <select value={filterHedef} onChange={e => setFilterHedef(e.target.value)} style={selectStyle}>
@@ -245,29 +324,27 @@ export default function TeachersListPage() {
                 </select>
               </div>
 
-              {/* 2. Öğretmen Kategorileri */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Kategori</label>
                 <select value={filterKategori} onChange={e => setFilterKategori(e.target.value)} style={selectStyle}>
                   <option value="">Tüm Eğitmenler</option>
-                  <option value="Süper Öğretmen">Süper Öğretmen (⭐4.5+)</option>
+                  <option value="Süper Öğretmen">Süper Öğretmen</option>
+                  <option value="Uzman Öğretmen">Uzman Öğretmen</option>
                   <option value="Profesyonel Öğretmen">Profesyonel</option>
                   <option value="Yeni Öğretmen">Yeni Öğretmen</option>
                 </select>
               </div>
 
-               {/* 3. Müsaitlik Seç */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Müsaitlik Seç</label>
                 <select value={filterMusaitlik} onChange={e => setFilterMusaitlik(e.target.value)} style={selectStyle}>
                   <option value="">Farketmez</option>
                   <option value="Sabah">Sabah (06:00-12:00)</option>
-                  <option value="Öğle">Öğleden Sonra</option>
+                  <option value="Öğle">Öğleden Sonra (12:00-18:00)</option>
                   <option value="Akşam">Akşam (18:00-24:00)</option>
                 </select>
               </div>
 
-               {/* 4. Öğretmenin Ülkesi */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Ülke</label>
                 <select value={filterUlke} onChange={e => setFilterUlke(e.target.value)} style={selectStyle}>
@@ -278,7 +355,6 @@ export default function TeachersListPage() {
                 </select>
               </div>
 
-              {/* 5. Sıralama */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Sırala</label>
                 <select value={sortOrder} onChange={e => setSortOrder(e.target.value)} style={selectStyle}>
@@ -290,7 +366,6 @@ export default function TeachersListPage() {
                 </select>
               </div>
 
-              {/* 6. Fiyat Slider */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>
                   Ücret: {filterMaxFiyat ? `Maks. ${filterMaxFiyat}₺` : 'Farketmez'}
@@ -312,10 +387,9 @@ export default function TeachersListPage() {
 
             <div style={{ height: '1px', background: '#f1f5f9', margin: '14px 0' }}></div>
 
-            {/* Arama Kutusu ve Akıllı Eşleşme */}
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
                <div style={{ flex: '1 1 280px', display: 'flex', alignItems: 'center', gap: '10px', background: '#f8fafc', padding: '10px 16px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                  <Search size={18} color="#94a3b8" />
                   <input
                     type="text"
                     placeholder="Eğitmen ismi veya biyografisinden kelime arayın..."
@@ -331,7 +405,7 @@ export default function TeachersListPage() {
                   onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#4338ca'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#4f46e5'; e.currentTarget.style.transform = 'translateY(0)'; }}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path></svg>
+                  <Sparkles size={16} />
                   Hızlı Akıllı Eşleşme
                 </button>
             </div>
@@ -390,19 +464,19 @@ export default function TeachersListPage() {
                         <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: '#0f172a' }}>
                           {tItem.tam_ad}
                         </h2>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="#3b82f6" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                        <BadgeCheck size={20} fill="#3b82f6" color="#ffffff" />
                       </div>
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.95rem', color: '#4f46e5', fontWeight: 600, marginBottom: '12px' }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+                          <Languages size={16} />
                           {tItem.ders_turu || 'Türkçe Eğitmeni'}
                         </span>
                         {tItem.seviye && (
                           <>
                             <div style={{ width: '4px', height: '4px', backgroundColor: '#cbd5e1', borderRadius: '50%' }}></div>
                             <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                              <TrendingUp size={14} />
                               {tItem.seviye}
                             </span>
                           </>
@@ -412,12 +486,12 @@ export default function TeachersListPage() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '0.9rem', marginBottom: '16px' }}>
                         {tItem.gercek_puan_ortalamasi ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                            <Star size={16} fill="#f59e0b" color="#f59e0b" />
                             <span style={{ fontWeight: 800, color: '#0f172a', fontSize: '1rem' }}>{tItem.gercek_puan_ortalamasi}</span>
                             <span style={{ color: '#94a3b8', fontWeight: 500 }}>({tItem.gercek_yorum_sayisi} değerlendirme)</span>
                           </div>
                         ) : (
-                          <span style={{ fontWeight: 700, color: '#3b82f6', backgroundColor: '#eff6ff', padding: '4px 10px', borderRadius: '6px', fontSize: '0.8rem' }}>
+                          <span style={{ fontWeight: 800, color: '#15803d', backgroundColor: '#f0fdf4', padding: '4px 10px', borderRadius: '6px', fontSize: '0.8rem', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center' }}>
                             {t.teacherCard?.newTeacher || 'Yeni Eğitmen'}
                           </span>
                         )}
@@ -425,7 +499,7 @@ export default function TeachersListPage() {
                         <div style={{ width: '1px', height: '14px', backgroundColor: '#e2e8f0' }}></div>
                         
                         <div style={{ color: '#475569', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                          <CheckCircle size={16} color="#16a34a" />
                           {tItem.gercek_tamamlanan_ders || 0} Ders Tamamlandı
                         </div>
                       </div>
@@ -433,14 +507,14 @@ export default function TeachersListPage() {
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
                         {tItem.konum && (
                           <span style={{ padding: '6px 12px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                            <MapPin size={14} />
                             {tItem.konum}
                           </span>
                         )}
                         
                         {tItem.egitim && (
                           <span style={{ padding: '6px 12px', backgroundColor: '#fffbeb', border: '1px solid #fde68a', color: '#d97706', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+                            <GraduationCap size={14} />
                             {tItem.egitim}
                           </span>
                         )}
@@ -450,15 +524,14 @@ export default function TeachersListPage() {
                           .filter((item: string) => item.trim() !== '')
                           .slice(0, 3)
                           .map((item: string, i: number) => (
-                            <span key={i} style={{ padding: '6px 12px', backgroundColor: '#eef2ff', border: '1px solid #c7d2fe', color: '#4f46e5', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+                            <span key={i} style={{ padding: '6px 12px', backgroundColor: '#eef2ff', border: '1px solid #c7d2fe', color: '#4f46e5', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 700 }}>
                               {item.trim()}
                             </span>
                           ))}
                       </div>
 
                       {dillerMetni && (
-                        <div style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '8px', display: 'flex', gap: '6px' }}>
+                        <div style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '8px', display: 'flex', gap: '6px', alignItems: 'center' }}>
                           <span style={{ fontWeight: 700, color: '#0f172a' }}>{t.listPage?.languages || 'Diller'}:</span> {dillerMetni}
                         </div>
                       )}
@@ -498,21 +571,14 @@ export default function TeachersListPage() {
                       </div>
                     </div>
                     
-                    {tItem.one_cikan_etiket && (
-                      <div style={{ position: 'absolute', top: '16px', right: '16px' }}>
-                        <span style={{ padding: '6px 12px', backgroundColor: '#0f172a', color: '#ffffff', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.5px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path></svg>
-                          {tItem.one_cikan_etiket.toUpperCase()}
-                        </span>
-                      </div>
-                    )}
+                    {tItem.one_cikan_etiket && renderBadge(tItem.one_cikan_etiket)}
                   </div>
                 );
               })
             ) : (
               <div style={{ textAlign: 'center', padding: '100px 20px', backgroundColor: '#ffffff', borderRadius: '24px', border: '1px dashed #e2e8f0' }}>
                 <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                  <SearchX size={48} color="#cbd5e1" />
                 </div>
                 <h3 style={{ fontSize: '1.5rem', color: '#0f172a', marginBottom: '8px', fontWeight: 800 }}>Eğitmen Bulunamadı</h3>
                 <p style={{ color: '#64748b' }}>Filtreleme kriterlerinize uygun eğitmen şu an için listemizde yok.</p>
@@ -532,7 +598,7 @@ export default function TeachersListPage() {
                       </div>
                     ) : (
                       <div style={{ width: '100%', height: '220px', borderRadius: '16px', backgroundColor: '#f8fafc', border: '1px dashed #cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', marginBottom: '16px' }}>
-                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        <PlayCircle size={40} style={{ marginBottom: 12 }} />
                         <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>Bu eğitmenin tanıtım videosu yok.</span>
                       </div>
                     )}
@@ -559,7 +625,7 @@ export default function TeachersListPage() {
                 ) : (
                   <div style={{ height: '300px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', textAlign: 'center', padding: '0 20px' }}>
                     <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
-                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>
+                      <PlayCircle size={28} />
                     </div>
                     <span style={{ fontSize: '1rem', fontWeight: 600, color: '#475569' }}>Videoyu Önizle</span>
                     <p style={{ margin: '8px 0 0 0', fontSize: '0.9rem', lineHeight: 1.5 }}>Eğitmenin tanıtım videosunu görmek için farenizi bir profilin üzerine getirin.</p>
@@ -599,10 +665,18 @@ export default function TeachersListPage() {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
           <div style={{ display: 'flex', gap: '24px' }}>
-            <a href="#" aria-label="Instagram" style={{ color: '#94a3b8', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.color = '#ffffff'; e.currentTarget.style.transform = 'scale(1.1)'; }} onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.transform = 'scale(1)'; }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg></a>
-            <a href="#" aria-label="Facebook" style={{ color: '#94a3b8', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.color = '#ffffff'; e.currentTarget.style.transform = 'scale(1.1)'; }} onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.transform = 'scale(1)'; }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg></a>
-            <a href="#" aria-label="YouTube" style={{ color: '#94a3b8', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.color = '#ffffff'; e.currentTarget.style.transform = 'scale(1.1)'; }} onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.transform = 'scale(1)'; }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33 2.78 2.78 0 0 0 1.94 2C5.12 19.5 12 19.5 12 19.5s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.33 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg></a>
-            <a href="#" aria-label="X (Twitter)" style={{ color: '#94a3b8', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.color = '#ffffff'; e.currentTarget.style.transform = 'scale(1.1)'; }} onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.transform = 'scale(1)'; }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4l11.73 16h5L9 4H4z"></path><path d="M4 20l6.76-6.76M20 4l-6.76 6.76"></path></svg></a>
+            <a href="#" aria-label="Instagram" style={{ color: '#94a3b8', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.color = '#ffffff'; e.currentTarget.style.transform = 'scale(1.1)'; }} onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.transform = 'scale(1)'; }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+            </a>
+            <a href="#" aria-label="Facebook" style={{ color: '#94a3b8', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.color = '#ffffff'; e.currentTarget.style.transform = 'scale(1.1)'; }} onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.transform = 'scale(1)'; }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
+            </a>
+            <a href="#" aria-label="YouTube" style={{ color: '#94a3b8', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.color = '#ffffff'; e.currentTarget.style.transform = 'scale(1.1)'; }} onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.transform = 'scale(1)'; }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33 2.78 2.78 0 0 0 1.94 2C5.12 19.5 12 19.5 12 19.5s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.33 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg>
+            </a>
+            <a href="#" aria-label="X (Twitter)" style={{ color: '#94a3b8', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.color = '#ffffff'; e.currentTarget.style.transform = 'scale(1.1)'; }} onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.transform = 'scale(1)'; }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4l11.73 16h5L9 4H4z"></path><path d="M4 20l6.76-6.76M20 4l-6.76 6.76"></path></svg>
+            </a>
           </div>
           <div style={{ textAlign: 'center', fontSize: '0.9rem' }}>&copy; {new Date().getFullYear()} Turkish Learning Academy. Tüm hakları saklıdır.</div>
         </div>

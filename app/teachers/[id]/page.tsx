@@ -18,7 +18,7 @@ export default function TeacherProfilePage() {
   const [tamamlananDersSayisi, setTamamlananDersSayisi] = useState(0);
   const [hasPreviousLesson, setHasPreviousLesson] = useState(false);
 
-  // 🚀 FAVORİ (KAYDETME) STATE'LERİ
+  // FAVORİ STATE'LERİ
   const [isFavorited, setIsFavorited] = useState(false);
   const [favLoading, setFavLoading] = useState(false);
 
@@ -80,7 +80,6 @@ export default function TeacherProfilePage() {
         setTeacher(teacherData);
         const targetUserId = teacherData.user_id || teacherData.id;
 
-        // KULLANICI GİRİŞ YAPMIŞSA FAVORİ DURUMUNU KONTROL ET
         if (user) {
           const { data: favData } = await supabase
             .from('favoriler')
@@ -147,7 +146,6 @@ export default function TeacherProfilePage() {
     }
   }
 
-  // 🚀 FAVORİYE EKLE / ÇIKAR VE TLA DESTEK EKİBİNDEN SİSTEM MESAJI
   async function handleFavoriteToggle() {
     if (!currentUserId) {
       toast.error("⚠️ Eğitmenleri favorilerinize eklemek için giriş yapmalısınız.");
@@ -181,7 +179,6 @@ export default function TeacherProfilePage() {
 
         const ogrenciAdi = ogrenciData?.tam_ad || "Bir öğrenci";
 
-        // 🚀 YENİ SİSTEM MESAJI TASARIMI
         const otomatikMesaj = `🏢 TLA Destek Ekibi:\n\nHarika bir haberimiz var! 🎉\n"${ogrenciAdi}" adlı öğrenci profilinizi inceledi ve sizi Favorilerine ekledi.\n\nBu sohbete yanıt yazarak doğrudan öğrenciyle iletişime geçebilir ve ilk adımı siz atabilirsiniz.`;
 
         await supabase
@@ -493,6 +490,45 @@ export default function TeacherProfilePage() {
 
   const benzersizEtiketler = Array.from(new Set(tumUzmanlikEtiketleri));
 
+  // SAĞ ÜST İÇİN STATÜ ROZETİ RENDER FONKSİYONU
+  const renderBadge = (etiket: string) => {
+    if(!etiket) return null;
+    const lower = etiket.toLowerCase();
+    
+    let bg = "#f8fafc";
+    let color = "#475569";
+    let border = "#e2e8f0";
+
+    if (lower.includes('süper') || lower.includes('super')) {
+      bg = "#fffbeb";
+      color = "#b45309";
+      border = "#fde68a";
+    } else if (lower.includes('uzman')) {
+      bg = "#eff6ff";
+      color = "#1d4ed8";
+      border = "#bfdbfe";
+    } else if (lower.includes('profesyonel')) {
+      bg = "#f5f3ff";
+      color = "#6d28d9";
+      border = "#ddd6fe";
+    } else if (lower.includes('yeni')) {
+      bg = "#f0fdf4";
+      color = "#15803d";
+      border = "#bbf7d0";
+    }
+
+    return (
+        <span style={{ 
+          padding: '8px 16px', backgroundColor: bg, color: color, borderRadius: '16px', 
+          fontSize: '0.85rem', fontWeight: 800, letterSpacing: '0.5px', 
+          display: 'flex', alignItems: 'center', border: `1px solid ${border}`,
+          whiteSpace: 'nowrap', boxShadow: '0 4px 6px rgba(0,0,0,0.05)'
+        }}>
+          {etiket.toUpperCase()}
+        </span>
+    );
+  };
+
   return (
     <div style={{ fontFamily: '"Inter", system-ui, sans-serif', color: '#0f172a', backgroundColor: '#f8fafc', minHeight: '100vh', paddingBottom: '100px' }}>
       
@@ -507,60 +543,66 @@ export default function TeacherProfilePage() {
         {/* SOL TARAF */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
           
-          <div style={{ backgroundColor: '#ffffff', borderRadius: '24px', overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.06)' }}>
+          <div style={{ backgroundColor: '#ffffff', borderRadius: '24px', overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.06)', position: 'relative' }}>
+            
+            {/* ÜST RENKLİ BANNER */}
             <div style={{ height: '140px', background: 'linear-gradient(135deg, #e0e7ff 0%, #ede9fe 50%, #f3e8ff 100%)' }}></div>
             
-            <div style={{ padding: '0 32px 32px 32px', display: 'flex', gap: '28px', alignItems: 'flex-start', marginTop: '-54px' }}>
-              <div style={{ position: 'relative', flexShrink: 0, padding: '4px', background: 'linear-gradient(135deg, #818cf8 0%, #10b981 100%)', borderRadius: '50%', boxShadow: '0 15px 35px -5px rgba(99, 102, 241, 0.3)' }}>
-                <img 
-                  src={teacher?.avatar_url || `https://ui-avatars.com/api/?name=${teacher?.tam_ad || 'Eğitmen'}&background=c7d2fe&color=3730a3&size=140&bold=true`} 
-                  alt={teacher?.tam_ad}
-                  style={{ width: '130px', height: '130px', borderRadius: '50%', objectFit: 'cover', border: '4px solid #ffffff' }} 
-                />
-                {isTeacherOnline && (
-                  <div style={{ position: 'absolute', bottom: 8, right: 8, width: '22px', height: '22px', backgroundColor: '#10b981', border: '3px solid #ffffff', borderRadius: '50%', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }} title="Çevrimiçi"></div>
-                )}
-              </div>
+            {/* 🚀 KARTIN SAĞ ÜST KÖŞESİNE SABİTLENMİŞ PUAN VE ROZET ALANI */}
+            <div style={{ position: 'absolute', top: '24px', right: '24px', display: 'flex', alignItems: 'center', gap: '12px', zIndex: 10 }}>
+              {teacher?.one_cikan_etiket && renderBadge(teacher.one_cikan_etiket)}
               
-              <div style={{ flex: 1, paddingTop: '62px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <h1 style={{ fontSize: '2.4rem', fontWeight: 900, margin: 0, color: '#0f172a', letterSpacing: '-1px', lineHeight: 1.1 }}>
-                      {teacher?.tam_ad}
-                    </h1>
-                    <p style={{ margin: 0, fontSize: '1.15rem', color: '#4f46e5', fontWeight: 700, letterSpacing: '-0.2px' }}>
-                      {teacher?.ders_turu || 'Türkçe Öğretmeni'}
-                    </p>
+              {dinamikOrtalama ? (
+                <div style={{ background: '#ffffff', padding: '8px 16px', borderRadius: '16px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#0f172a' }}>{dinamikOrtalama}</div>
+                  <span style={{ color: '#fbbf24', fontSize: '1.2rem', marginTop: '-2px' }}>★</span>
+                  <div style={{ width: '1px', height: '20px', backgroundColor: '#e2e8f0', margin: '0 4px' }}></div>
+                  <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>{gecerliPuanlar.length} Yorum</div>
+                </div>
+              ) : (
+                <div style={{ background: '#ffffff', padding: '10px 16px', borderRadius: '16px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+                  <span style={{ fontSize: '0.85rem', color: '#1d4ed8', fontWeight: 700 }}>✨ Henüz Puanlanmadı</span>
+                </div>
+              )}
+            </div>
 
-                    <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ padding: '8px 16px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#ffffff', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 10px rgba(16, 185, 129, 0.25)' }}>
-                        <span style={{ fontSize: '1.1rem' }}>🌟</span> {tamamlananDersSayisi} Ders Tamamlandı
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                    {dinamikOrtalama ? (
-                      <div style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: '16px', border: '1px solid #f1f5f9' }}>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span>{dinamikOrtalama}</span>
-                          <span style={{ color: '#fbbf24', fontSize: '1.4rem' }}>★</span>
-                        </div>
-                        <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px', fontWeight: 600 }}>
-                          {gecerliPuanlar.length} değerlendirme
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{ background: '#eff6ff', padding: '12px 16px', borderRadius: '16px', border: '1px solid #bfdbfe', textAlign: 'center' }}>
-                        <div style={{ fontSize: '1rem', fontWeight: 800, color: '#1d4ed8', marginBottom: '2px' }}>✨ Yeni</div>
-                        <div style={{ fontSize: '0.8rem', color: '#60a5fa', fontWeight: 600 }}>Henüz puanlanmadı</div>
-                      </div>
-                    )}
-                  </div>
+            {/* İÇERİK KISMI */}
+            <div style={{ padding: '0 32px 32px 32px', marginTop: '-54px', position: 'relative', zIndex: 5, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+              
+              {/* PROFİL VE İSİM ALANI */}
+              <div style={{ display: 'flex', flexDirection: 'row', gap: '28px', alignItems: 'flex-start', width: '100%' }}>
+                
+                {/* AVATAR */}
+                <div style={{ position: 'relative', flexShrink: 0, padding: '4px', background: '#ffffff', borderRadius: '50%', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}>
+                  <img 
+                    src={teacher?.avatar_url || `https://ui-avatars.com/api/?name=${teacher?.tam_ad || 'Eğitmen'}&background=c7d2fe&color=3730a3&size=140&bold=true`} 
+                    alt={teacher?.tam_ad}
+                    style={{ width: '130px', height: '130px', borderRadius: '50%', objectFit: 'cover' }} 
+                  />
+                  {isTeacherOnline && (
+                    <div style={{ position: 'absolute', bottom: 8, right: 8, width: '22px', height: '22px', backgroundColor: '#10b981', border: '3px solid #ffffff', borderRadius: '50%', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }} title="Çevrimiçi"></div>
+                  )}
+                </div>
+                
+                {/* İSİM VE UNVAN */}
+                <div style={{ flex: 1, paddingTop: '64px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                  <h1 style={{ fontSize: '2.4rem', fontWeight: 900, margin: '0 0 4px 0', color: '#0f172a', letterSpacing: '-1px', textAlign: 'left' }}>
+                    {teacher?.tam_ad}
+                  </h1>
+                  <p style={{ margin: 0, fontSize: '1.1rem', color: '#4f46e5', fontWeight: 700, textAlign: 'left' }}>
+                    {teacher?.ders_turu || 'Türkçe Öğretmeni'}
+                  </p>
+                </div>
+              </div>
+
+              {/* 🚀 ETİKETLER (Tamamlanan Ders, Konum, Diller) - KESİN SOLA YASLI */}
+              <div style={{ marginTop: '28px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '12px', width: '100%' }}>
+                
+                <div style={{ padding: '8px 16px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#ffffff', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 10px rgba(16, 185, 129, 0.25)' }}>
+                  <span style={{ fontSize: '1.1rem' }}></span> {tamamlananDersSayisi} Toplam Ders Sayısı
                 </div>
 
-                <div style={{ marginTop: '24px', display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'flex-start', width: '100%' }}>
                   {safeKonum && (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px 6px 8px', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', borderRadius: '24px', fontSize: '0.9rem', fontWeight: 600 }}>
                       <div style={{ width: '28px', height: '28px', background: '#e0e7ff', color: '#4f46e5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -580,7 +622,7 @@ export default function TeacherProfilePage() {
                 </div>
 
                 {dillerArray.length > 0 && (
-                  <div style={{ marginTop: '20px', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', background: '#f8fafc', padding: '12px 16px', borderRadius: '16px' }}>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', background: '#f8fafc', padding: '12px 16px', borderRadius: '16px', border: '1px solid #f1f5f9' }}>
                     <strong style={{ fontSize: '0.9rem', color: '#64748b' }}>Konuştuğu Diller:</strong>
                     {dillerArray.map((dil: string, index: number) => {
                       const isAnaDil = dil.includes('(Ana Dil)');
@@ -609,10 +651,8 @@ export default function TeacherProfilePage() {
             )}
           </div>
 
-          {/* UZMANLIK, BİYOGRAFİ VE METODOLOJİ - TEK KARTTA BİRLEŞTİRİLDİ */}
           <div style={{ backgroundColor: '#ffffff', padding: '40px', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', gap: '40px', marginBottom: '40px' }}>
             
-            {/* 1. UZMANLIK VE ODAK ALANLARI */}
             <div>
               <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{ width: '44px', height: '44px', background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>
@@ -633,7 +673,6 @@ export default function TeacherProfilePage() {
 
             <div style={{ height: '1px', background: '#f1f5f9' }}></div>
 
-            {/* 2. EĞİTMEN HAKKINDA */}
             <div>
               <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{ width: '44px', height: '44px', background: 'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>
@@ -648,7 +687,6 @@ export default function TeacherProfilePage() {
 
             <div style={{ height: '1px', background: '#f1f5f9' }}></div>
 
-            {/* 3. ÖĞRETİM YAKLAŞIMI */}
             <div>
               <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{ width: '44px', height: '44px', background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>
@@ -733,7 +771,12 @@ export default function TeacherProfilePage() {
 
               <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a', marginBottom: '16px', marginTop: '12px' }}>Saat Seçin</h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', maxHeight: '220px', overflowY: 'auto', paddingRight: '8px' }}>
-                {selectedDate && HOURS.map(hour => {
+                
+                {/* 🚀 GEÇMİŞ VEYA ÇOK YAKIN SAATLERİ TAMAMEN GİZLEYEN KATİ FİLTRE */}
+                {selectedDate && HOURS.filter(hour => {
+                  const status = checkSlotStatus(selectedDate, hour);
+                  return status.reason !== 'Geçti' && status.reason !== 'Çok Yakın';
+                }).map(hour => {
                   const status = checkSlotStatus(selectedDate, hour);
                   const isSelected = selectedHour === hour;
 
@@ -757,6 +800,16 @@ export default function TeacherProfilePage() {
                     </button>
                   );
                 })}
+
+                {/* Eğer tüm saatler geçtiyse veya 2 saatten az kaldıysa görünecek uyarı */}
+                {selectedDate && HOURS.filter(h => {
+                  const s = checkSlotStatus(selectedDate, h);
+                  return s.reason !== 'Geçti' && s.reason !== 'Çok Yakın';
+                }).length === 0 && (
+                  <div style={{ gridColumn: 'span 3', padding: '16px', textAlign: 'center', color: '#94a3b8', fontSize: '0.9rem', backgroundColor: '#f8fafc', borderRadius: '12px' }}>
+                    Bu gün için seçilebilir saat bulunmuyor.
+                  </div>
+                )}
               </div>
             </div>
 

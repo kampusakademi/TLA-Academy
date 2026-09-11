@@ -79,7 +79,7 @@ export default function SifreBelirle() {
   const handleSetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password.length < 6) {
-      alert("Parolanız en az 6 karakter olmalıdır.");
+      toast.error("Parolanız en az 6 karakter olmalıdır.");
       return;
     }
 
@@ -91,14 +91,14 @@ export default function SifreBelirle() {
 
       if (error) throw error;
 
-      alert("🎉 Parolanız başarıyla oluşturuldu! Sisteme yönlendiriliyorsunuz...");
+      toast.success("🎉 Parolanız başarıyla oluşturuldu! Sisteme yönlendiriliyorsunuz...");
       
       // ANA SAYFA YERİNE DOĞRUDAN EĞİTMEN PANELİNE YÖNLENDİR
       // (Eğer panelinin adres adı farklıysa '/egitmen-paneli' kısmını kendi klasör adınla değiştir)
       router.push('/teacher-dashboard'); 
       
     } catch (error: any) {
-      alert("Hata oluştu: " + error.message);
+      toast.error("Hata oluştu: " + error.message);
     } finally {
       setLoading(false);
     }

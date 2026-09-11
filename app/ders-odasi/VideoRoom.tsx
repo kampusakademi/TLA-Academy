@@ -57,7 +57,6 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
   const [tokenLoading, setTokenLoading] = useState(true);
 
   const [gercekRol, setGercekRol] = useState(userRole);
-  const [isRecordingReady, setIsRecordingReady] = useState(false); 
   
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<any[]>([]);
@@ -93,13 +92,9 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
 
   const SCREEN_SHARE_UID = 88888888;
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const recordedChunksRef = useRef<Blob[]>([]);
-  const isRecordingStartedRef = useRef(false);
-  const recordIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const hasLoggedEntryRef = useRef(false);
+  const hasStartedRecordingRef = useRef(false);
 
   useEffect(() => {
     const handleBeforeUnload = () => {
@@ -119,13 +114,9 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
         const { data: egitmenData } = await supabase.from('egitmenler').select('id').eq('user_id', user.id).maybeSingle();
         if (egitmenData) {
           setGercekRol("ogretmen");
-          setIsRecordingReady(false); 
         } else {
           setGercekRol("ogrenci");
-          setIsRecordingReady(true); 
         }
-      } else {
-        setIsRecordingReady(true);
       }
     }
     rolTespitEt();
@@ -134,23 +125,21 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
   const benimRolum = gercekRol === "ogretmen" ? "Öğretmen" : "Öğrenci";
   const karsiTarafRolu = gercekRol === "ogretmen" ? "Öğrenci" : "Öğretmen";
 
-  // 🚀 DÜZELTME: Sohbet Bildirim Rozeti Mantığı Kökten Çözüldü
   useEffect(() => {
     isChatOpenRef.current = isChatOpen;
     if (isChatOpen) {
-      setUnreadCount(0); // Sohbet açıldığında bildirimi anında sıfırla
+      setUnreadCount(0); 
     }
   }, [isChatOpen]);
 
   useEffect(() => {
     if (chatMessages.length > 0) {
       const lastMsg = chatMessages[chatMessages.length - 1];
-      // Yalnızca yeni mesaj bana ait değilse ve sohbet kapalıysa sayacı artır
       if (lastMsg.sender !== benimRolum && !isChatOpenRef.current) {
         setUnreadCount(prev => prev + 1);
       }
     }
-  }, [chatMessages, benimRolum]); // isChatOpen state'i buradan kaldırıldı, döngü engellendi
+  }, [chatMessages, benimRolum]); 
 
   const logUserAction = async (action: 'Odaya Girdi' | 'Odadan Çıktı') => {
     if (!channelName || !gercekRol) return;
@@ -166,84 +155,26 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
     }
   };
 
-  const uploadRecordingToSupabase = async (videoBlob: Blob) => {
+  // 🚀 AGORA CLOUD RECORDING BAŞLATMA API İSTEĞİ (Onay Ekranı Olmadan Otomatik Çalışır)
+  const startCloudRecording = async () => {
+    if (hasStartedRecordingRef.current || gercekRol !== 'ogretmen') return;
+    hasStartedRecordingRef.current = true;
     try {
-      const fileName = `${channelName}/kesit-${Date.now()}.webm`;
-      const { data, error } = await supabase.storage.from('ders-kayitlari').upload(fileName, videoBlob, { contentType: 'video/webm' });
-      if (error) return console.error("Kayıt yükleme hatası:", error);
-
-      const filePath = data.path;
-      const { data: dersData } = await supabase.from('dersler').select('kayit_url').eq('id', channelName).maybeSingle();
-      const existingUrls = dersData?.kayit_url ? `${dersData.kayit_url},${filePath}` : filePath;
-
-      await supabase.from('dersler').update({ kayit_url: existingUrls }).eq('id', channelName);
+      const res = await fetch('/api/record', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channelName, action: 'start' }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        console.warn("Bulut kaydı başlatılamadı:", data);
+      } else {
+        console.log("Agora Bulut Kaydı Başarıyla Başlatıldı:", data);
+      }
     } catch (err) {
-      console.error("Yükleme işlemi sırasında hata:", err);
+      console.error("Bulut kaydı isteğinde hata:", err);
     }
   };
-
-  const startLessonWithRecording = async () => {
-    try {
-      if (isRecordingStartedRef.current) return;
-      isRecordingStartedRef.current = true;
-
-      const displayStream = await navigator.mediaDevices.getDisplayMedia({ 
-        video: { displaySurface: "browser" }, 
-        audio: { echoCancellation: false, noiseSuppression: false },
-        preferCurrentTab: true 
-      } as any);
-      
-      const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-      const audioContext = new AudioContext();
-      const dest = audioContext.createMediaStreamDestination();
-
-      if (displayStream.getAudioTracks().length > 0) {
-        const displayAudioSource = audioContext.createMediaStreamSource(displayStream);
-        displayAudioSource.connect(dest);
-      }
-      
-      if (micStream.getAudioTracks().length > 0) {
-        const micAudioSource = audioContext.createMediaStreamSource(micStream);
-        micAudioSource.connect(dest);
-      }
-
-      const mixedStream = new MediaStream([...displayStream.getVideoTracks(), ...dest.stream.getAudioTracks()]);
-      const recorder = new MediaRecorder(mixedStream, { mimeType: 'video/webm;codecs=vp9' });
-      mediaRecorderRef.current = recorder;
-
-      recorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); };
-
-      recorder.onstop = async () => {
-        if (recordedChunksRef.current.length === 0) return;
-        const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
-        recordedChunksRef.current = []; 
-        await uploadRecordingToSupabase(blob);
-      };
-
-      recorder.start(5000); 
-
-      recordIntervalRef.current = setInterval(() => {
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-          mediaRecorderRef.current.stop(); 
-          setTimeout(() => { if(mediaRecorderRef.current) mediaRecorderRef.current.start(5000); }, 1000);
-        }
-      }, 30 * 60 * 1000); 
-
-      setIsRecordingReady(true); 
-
-    } catch (error) {
-      isRecordingStartedRef.current = false;
-      toast.error("Sistem Kalite Kontrol kaydını başlatmadan derse giremezsiniz. Lütfen 'Bu Sekme'yi seçerek izin verin.");
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      if (recordIntervalRef.current) clearInterval(recordIntervalRef.current);
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") mediaRecorderRef.current.stop(); 
-    };
-  }, []);
 
   const toggleStudentPermission = () => {
     const newState = !teacherPermissionState;
@@ -479,17 +410,18 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
     return () => { isMounted = false; };
   }, [channelName]);
 
-  const joinState = useJoin({ appid: appId, channel: channelName, token: token }, !!appId && !!channelName && !!token && isRecordingReady);
+  const joinState = useJoin({ appid: appId, channel: channelName, token: token }, !!appId && !!channelName && !!token);
   
   useEffect(() => {
     if (joinState.isConnected && !hasLoggedEntryRef.current) {
       hasLoggedEntryRef.current = true;
       logUserAction('Odaya Girdi');
+      startCloudRecording(); // 🚀 Öğretmen girdiği an kaydı başlatır.
     }
-  }, [joinState.isConnected]);
+  }, [joinState.isConnected, gercekRol]);
 
-  const { localMicrophoneTrack } = useLocalMicrophoneTrack(isRecordingReady);
-  const { localCameraTrack } = useLocalCameraTrack(isRecordingReady);
+  const { localMicrophoneTrack } = useLocalMicrophoneTrack(true);
+  const { localCameraTrack } = useLocalCameraTrack(true);
   
   useEffect(() => { if (localCameraTrack) localCameraTrack.setEncoderConfiguration("480p_1").catch(() => {}); }, [localCameraTrack]);
 
@@ -542,43 +474,10 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
         await logUserAction('Odadan Çıktı');
 
         await client.leave();
-
-        if (gercekRol === "ogretmen" && mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-           mediaRecorderRef.current.stop();
-           await new Promise(resolve => setTimeout(resolve, 1000)); 
-        }
       } catch(e) { }
       router.back();
     }
   };
-
-  if (gercekRol === "ogretmen" && !isRecordingReady) {
-    return (
-      <div style={{ height: '100vh', width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f1f5f9', fontFamily: '"Inter", sans-serif' }}>
-        <div style={{ background: '#ffffff', padding: '40px', borderRadius: '24px', textAlign: 'center', maxWidth: '480px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
-          <div style={{ width: '64px', height: '64px', background: '#eef2ff', color: '#4f46e5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto' }}>
-            <Video size={32} />
-          </div>
-          <h2 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#0f172a', marginBottom: '12px' }}>Ders Kaydını Başlat</h2>
-          <div style={{ color: '#475569', fontSize: '0.95rem', lineHeight: 1.6, marginBottom: '32px', textAlign: 'left', background: '#f8fafc', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-            Platform standartları gereği dersler kaydedilmektedir. Lütfen aşağıdaki butona basın ve açılan pencerede:
-            <ul style={{ margin: '12px 0 0 0', paddingLeft: '20px' }}>
-              <li><strong>Bu Sekme (This Tab)</strong> seçeneğini seçin.</li>
-              <li>Aksi takdirde videoda kameralar ve beyaz tahta gözükmez.</li>
-            </ul>
-          </div>
-          <button 
-            onClick={startLessonWithRecording}
-            style={{ padding: '16px 32px', background: '#4f46e5', color: '#ffffff', border: 'none', borderRadius: '12px', fontSize: '1.1rem', fontWeight: 800, cursor: 'pointer', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 4px 10px rgba(79, 70, 229, 0.25)', transition: 'transform 0.2s' }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-          >
-            <Video size={20} /> Sistem Kaydını Başlat ve Odaya Gir
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   const isLocalSharing = screenTrack !== null;
   const remoteScreenUser = isLocalSharing ? null : remoteUsers.find(u => Number(u.uid) === SCREEN_SHARE_UID);
@@ -608,11 +507,10 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
     transition: 'all 0.3s' 
   };
   
-  // 🚀 DÜZELTME: Sohbet açıldığında kameralar küçülür, sohbete devasa alan kalır
   const sideStyle: React.CSSProperties = { 
     gridColumn: '2 / 3', 
     width: '100%', 
-    height: isChatOpen ? '130px' : '200px', // Otomatik Yükseklik Ayarı
+    height: isChatOpen ? '130px' : '200px',
     backgroundColor: '#000000', 
     borderRadius: '20px', 
     overflow: 'hidden', 
@@ -665,7 +563,7 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
           padding: '20px 28px', 
           display: 'grid', 
           gridTemplateColumns: showSidebar ? 'minmax(0, 1fr) 320px' : 'minmax(0, 1fr)',
-          gridTemplateRows: 'min-content min-content min-content min-content minmax(0, 1fr)', // 🚀 DÜZELTME: Sohbet kutusunun alta kadar genişlemesini sağlayan Grid sistemi
+          gridTemplateRows: 'min-content min-content min-content min-content minmax(0, 1fr)', 
           gap: '16px', 
           overflow: 'hidden', 
           height: 'calc(100vh - 170px)' 
@@ -745,11 +643,11 @@ function RoomContent({ channelName, userRole }: { channelName: string, userRole:
             <NameBadge name={`Sen (${benimRolum})`} isLocal={true} />
           </div>
 
-          {/* 🚀 DÜZELTME: CHAT BÖLÜMÜNÜN MÜKEMMEL YERLEŞİMİ */}
+          {/* CHAT BÖLÜMÜ */}
           {isChatOpen && (
             <div style={{ 
               gridColumn: '2 / 3', 
-              gridRow: 'auto / -1', // 🚀 Chat kutusunun sayfanın en altına kadar tüm boşluğu doldurmasını sağlar!
+              gridRow: 'auto / -1', 
               display: 'flex', 
               flexDirection: 'column', 
               backgroundColor: '#ffffff', 

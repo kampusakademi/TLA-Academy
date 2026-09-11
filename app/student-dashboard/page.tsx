@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
@@ -222,7 +222,6 @@ export default function StudentDashboard() {
       if (error) throw error;
 
       if (targetTeacherId && user?.id) {
-        // 🚀 MESAJ İÇERİĞİ GÜNCELLENDİ
         const mesajIcerik = yeniDurum === 'Tamamlanan'
           ? `📌 Sistem Bildirimi:\n\nTebrikler! 🎉\n"${userName}" adlı öğrenciniz az önce işlediğiniz dersin başarıyla tamamlandığını onayladı.`
           : `📌 Sistem Bildirimi:\n\n⚠️ ÖNEMLİ BİLDİRİM:\n"${userName}" adlı öğrenciniz, dersinize katılmadığınızı bildirdi. Gerekli inceleme yapıldıktan sonra tarafınıza dönüş yapılacaktır.`;
@@ -380,11 +379,10 @@ export default function StudentDashboard() {
     );
   }
 
+  // 🚀 MENÜ SIRALAMASI GÜNCELLENDİ (Mesajlar Merkezi 3. sıraya alındı)
   const menu = [
     { key: 'dashboard', label: 'Genel Bakış', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg> },
     { key: 'explore', label: 'Eğitmenleri Keşfet', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> },
-    { key: 'favorites', label: 'Favori Eğitmenlerim', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg> },
-    { key: 'past_lessons', label: 'Geçmiş Derslerim', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg> },
     { key: 'messages', 
       label: (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
@@ -398,6 +396,8 @@ export default function StudentDashboard() {
       ), 
       icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z"/></svg> 
     },
+    { key: 'favorites', label: 'Favori Eğitmenlerim', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg> },
+    { key: 'past_lessons', label: 'Geçmiş Derslerim', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg> },
     { key: 'settings', label: 'Profil Ayarları', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg> }
   ];
 
@@ -406,12 +406,14 @@ export default function StudentDashboard() {
       
       {/* SOL MENÜ */}
       <aside style={{ width: '280px', backgroundColor: '#0f172a', color: '#94a3b8', borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column', padding: '32px 24px', position: 'sticky', top: 0, height: '100vh' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 40, paddingLeft: 8 }}>
+        
+        {/* 🚀 Logo ve Site İsmi Alanı Kurumsallaştırıldı */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 40, paddingLeft: 8, cursor: 'pointer' }} onClick={() => setActiveTab('dashboard')}>
           <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg, #4f46e5, #3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
           </div>
-          <h2 style={{ fontSize: 18, fontWeight: 800, color: '#f8fafc', letterSpacing: '-0.5px', lineHeight: 1.2, margin: 0 }}>
-            Turkish Learning<br /><span style={{ color: '#818cf8', fontSize: 13, fontWeight: 600 }}>Academy</span>
+          <h2 style={{ fontSize: 18, fontWeight: 900, color: '#f8fafc', letterSpacing: '-0.5px', margin: 0, lineHeight: '1.2' }}>
+            Turkish Learning <br/> Academy
           </h2>
         </div>
 
@@ -479,7 +481,8 @@ export default function StudentDashboard() {
               Öğrenci Paneli
             </span>
             <h1 style={{ fontSize: '28px', fontWeight: 900, color: '#ffffff', letterSpacing: '-0.5px', margin: 0 }}>
-              {activeTab === 'dashboard' && `Hoş geldin, ${userName.split(' ')[0]} 👋`}
+              {/* 🚀 Başlıktaki Emoji Kaldırıldı */}
+              {activeTab === 'dashboard' && `Hoş geldin, ${userName.split(' ')[0]}`}
               {activeTab === 'favorites' && 'Favori Eğitmenlerim'}
               {activeTab === 'past_lessons' && 'Geçmiş Ders Kayıtları'}
               {activeTab === 'messages' && 'Mesajlaşma Merkezi'}
@@ -955,6 +958,18 @@ function Messages({ userId, onMessageRead, activeChatUser }: any) {
   const [text, setText] = useState('');
   const [showChatMenu, setShowChatMenu] = useState(false);
 
+  // 🚀 MESAJLARIN SONUNA KAYDIRMAK İÇİN REF
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Mesajlar listesi güncellendiğinde aşağı kaydır
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
   useEffect(() => {
     if (activeChatUser) setSelectedTeacher(activeChatUser);
   }, [activeChatUser]);
@@ -983,7 +998,8 @@ function Messages({ userId, onMessageRead, activeChatUser }: any) {
         .or(`and(gonderen_id.eq.${userId},alici_id.eq.${selectedTeacher.id}),and(gonderen_id.eq.${selectedTeacher.id},alici_id.eq.${userId})`)
         .order('olusturulma_tarihi', { ascending: true });
       
-      const filteredMessages = (data || []).filter(m => !(m.gonderen_id === userId && m.icerik && m.icerik.includes('📌 Sistem Bildirimi')));
+      // 🚀 SİSTEM BİLDİRİMLERİ FİLTRELENDİ (Öğrenci asla bu mesajları göremeyecek)
+      const filteredMessages = (data || []).filter(m => !(m.icerik && m.icerik.includes('📌 Sistem Bildirimi') && m.gonderen_id === userId) && !(m.icerik && m.icerik.includes('🏢 TLA Destek Ekibi') && m.gonderen_id === userId));
       setMessages(filteredMessages);
     };
 
@@ -998,7 +1014,8 @@ function Messages({ userId, onMessageRead, activeChatUser }: any) {
         const msg = payload.new;
         const isRelevant = (msg.gonderen_id === userId && msg.alici_id === selectedTeacher.id) || (msg.gonderen_id === selectedTeacher.id && msg.alici_id === userId);
         
-        if (isRelevant && !(msg.gonderen_id === userId && msg.icerik && msg.icerik.includes('📌 Sistem Bildirimi'))) {
+        // 🚀 SİSTEM BİLDİRİMLERİ FİLTRELENDİ
+        if (isRelevant && !(msg.icerik && msg.icerik.includes('📌 Sistem Bildirimi') && msg.gonderen_id === userId) && !(msg.icerik && msg.icerik.includes('🏢 TLA Destek Ekibi') && msg.gonderen_id === userId)) {
           setMessages(prev => {
             const exists = prev.some(m => m.id === msg.id || (m.icerik === msg.icerik && m.gonderen_id === msg.gonderen_id && !m.id));
             if (exists) return prev.map(m => (m.id === msg.id || (m.icerik === msg.icerik && m.gonderen_id === msg.gonderen_id && !m.id)) ? msg : m);
@@ -1032,7 +1049,8 @@ function Messages({ userId, onMessageRead, activeChatUser }: any) {
     const unreadMap = new Map<string, number>();
 
     data.forEach(m => { 
-      if (m.gonderen_id === userId && m.icerik && m.icerik.includes('📌 Sistem Bildirimi')) return; 
+      // 🚀 SİSTEM BİLDİRİMLERİ FİLTRELENDİ
+      if ((m.icerik && m.icerik.includes('📌 Sistem Bildirimi') && m.gonderen_id === userId) || (m.icerik && m.icerik.includes('🏢 TLA Destek Ekibi') && m.gonderen_id === userId)) return; 
 
       const isMeSender = m.gonderen_id === userId;
       const otherId = isMeSender ? m.alici_id : m.gonderen_id;
@@ -1134,7 +1152,7 @@ function Messages({ userId, onMessageRead, activeChatUser }: any) {
       <div style={{ width: '340px', borderRight: '1px solid #e2e8f0', overflowY: 'auto', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '24px', fontWeight: 800, fontSize: '1.2rem', color: '#0f172a', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             Sohbetler
           </div>
           {teachers.some(s => s.unread > 0) && (
@@ -1195,7 +1213,7 @@ function Messages({ userId, onMessageRead, activeChatUser }: any) {
                   <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#0f172a' }}>{selectedTeacher.tam_ad}</div>
                   <div style={{ color: '#10b981', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
                     <div style={{ width: '8px', height: '8px', backgroundColor: '#10b981', borderRadius: '50%' }}></div>
-                    Eğitmen
+                    Çevrimiçi
                   </div>
                 </div>
               </div>
@@ -1207,7 +1225,7 @@ function Messages({ userId, onMessageRead, activeChatUser }: any) {
                   onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f1f5f9'}
                   onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="12" cy="12" r="1"></circle>
                     <circle cx="12" cy="5" r="1"></circle>
                     <circle cx="12" cy="19" r="1"></circle>
@@ -1277,6 +1295,8 @@ function Messages({ userId, onMessageRead, activeChatUser }: any) {
                   </div>
                 );
               })}
+              {/* 🚀 MESAJLARIN SONUNA YÖNLENDİREN REFERANS DIV'İ */}
+              <div ref={messagesEndRef} />
             </div>
             
             <div style={{ padding: '24px 32px', backgroundColor: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(8px)', borderTop: '1px solid #f1f5f9', position: 'relative', zIndex: 10 }}>

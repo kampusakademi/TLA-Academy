@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
@@ -158,7 +158,7 @@ export default function TeacherDashboard() {
     if (userId) { loadTeacherProfile(); loadDashboardStats(); loadUpcomingLessons(); loadUnreadCount(); }
   }, [userId]);
 
-  // 🚀 GÜNCELLENDİ: Global Real-Time Event Dinleyicileri (Kusursuz Versiyon)
+  // 🚀 Global Real-Time Event Dinleyicileri
   useEffect(() => {
     if (!userId) return;
 
@@ -168,7 +168,6 @@ export default function TeacherDashboard() {
     setOnlineStatus(); 
     const interval = setInterval(setOnlineStatus, 5 * 60 * 1000); 
 
-    // TEK KANAL: Tüm olayları koşulsuz dinleyip React'i anında güncelliyoruz
     const globalChannel = supabase.channel('global-dashboard-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mesajlar' }, () => {
         loadUnreadCount(); 
@@ -221,7 +220,6 @@ export default function TeacherDashboard() {
       });
       const processedStudents = Array.from(uniqueStudentsMap.values()); setMyStudentsList(processedStudents);
       
-      // 🚀 Onay Bekleyen dersleri de "Tamamlanan" gelirlerine / hedeflerine yansıtıyoruz
       const completedCount = safeLessons.filter(l => l.durum === 'Tamamlanan' || l.durum === 'Onay Bekliyor').length;
       const upcomingCount = safeLessons.filter(l => l.durum === 'Yaklaşan').length;
       const canceledCount = safeLessons.filter(l => l.durum === 'İptal Edilen' || l.durum === 'Öğretmen Gelmedi').length;
@@ -238,11 +236,9 @@ export default function TeacherDashboard() {
   async function loadUpcomingLessons() {
     const { data } = await supabase.from('dersler').select('*').order('tarih_saat', { ascending: true });
     const myLessons = data?.filter(d => String(d.egitmen_id || d.user_id).trim() === String(userId).trim()) || [];
-    // Yaklaşan ve Onay Bekleyenleri ana ekranda tutuyoruz ki öğretmen sürecin nerede kaldığını görsün
     setUpcomingLessonsList(myLessons.filter(d => d.durum === 'Yaklaşan' || d.durum === 'Onay Bekliyor').slice(0, 5));
   }
 
-  // 🚀 DERSİ "ONAY BEKLİYOR" STATÜSÜNE ÇEKEN FONKSİYON
   async function handleCompleteLesson(dersId: string) { 
     if (!confirm("Dersi bitirmek üzeresiniz. Dersi işlediğinizi teyit etmek için öğrenciye onay bildirimi gidecektir. Onaylıyor musunuz?")) return;
     try { 
@@ -297,9 +293,12 @@ export default function TeacherDashboard() {
     <div style={layout}>
       <aside style={{ width: '280px', background: '#0f172a', color: '#94a3b8', padding: '32px 24px', display: 'flex', flexDirection: 'column', height: '100vh', position: 'sticky', top: 0, borderRight: '1px solid #1e293b' }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 40, paddingLeft: 8 }}>
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg, #4f46e5, #3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
-            <h2 style={{ fontSize: 18, fontWeight: 800, color: '#f8fafc', letterSpacing: '-0.5px', margin: 0 }}>Turkish Learning<br /><span style={{ color: '#818cf8', fontSize: 13, fontWeight: 600 }}>Academy</span></h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 40, paddingLeft: 8, cursor: 'pointer' }} onClick={() => setTab('dashboard')}>
+             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+             </svg>
+            <h2 style={{ fontSize: 18, fontWeight: 800, color: '#f8fafc', letterSpacing: '-0.5px', margin: 0, lineHeight: '1.2' }}>Turkish Learning <br/> Academy</h2>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {menu.map(m => {
@@ -319,7 +318,7 @@ export default function TeacherDashboard() {
           <div style={{ position: 'relative', zIndex: 2 }}>
             <span style={{ fontSize: '12px', fontWeight: 700, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '1.5px', display: 'block', marginBottom: '8px' }}>Eğitmen Yönetim Paneli</span>
             <h1 style={{ fontSize: '28px', fontWeight: 900, color: '#ffffff', letterSpacing: '-0.5px', margin: 0 }}>
-              {tab === 'dashboard' && `Hoş geldin, ${teacherProfile?.tam_ad?.split(' ')[0] || "Eğitmen"} 👋`}
+              {tab === 'dashboard' && `Hoş geldin, ${teacherProfile?.tam_ad?.split(' ')[0] || "Eğitmen"}`}
               {tab === 'profile' && 'Profil Görünümü'}
               {tab === 'settings' && 'Profil Ayarları'}
               {tab === 'lessons' && 'Ders Kayıtları'}
@@ -382,6 +381,8 @@ function Dashboard({ profile, stats, upcomingLessons, userId, onComplete, onCanc
   const [withdrawState, setWithdrawState] = useState<'idle' | 'loading' | 'done'>('idle');
   
   const tahminiKazanc = (stats.completedLessons || 0) * (profile?.saatlik_ucret || 0);
+
+  const iptalOrani = stats.totalLessons > 0 ? Math.round((stats.canceledLessons / stats.totalLessons) * 100) : 0;
 
   const handleWithdraw = () => {
     if (tahminiKazanc <= 0) return toast.error("Şu an çekilebilir bakiyeniz bulunmuyor.");
@@ -465,7 +466,6 @@ function Dashboard({ profile, stats, upcomingLessons, userId, onComplete, onCanc
                       {new Date(lesson.tarih_saat).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      {/* 🚀 DURUMA GÖRE BUTON VEYA ROZET GÖSTERİMİ */}
                       {lesson.durum === 'Yaklaşan' && (
                         <>
                           <button onClick={() => onCancel(lesson.id)} style={{ background: '#ffffff', color: '#ef4444', border: '1px solid #fecaca', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>İptal</button>
@@ -493,7 +493,19 @@ function Dashboard({ profile, stats, upcomingLessons, userId, onComplete, onCanc
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20, fontSize: 14, color: '#475569' }}>
             <div style={summaryRow}><span>Toplam Süreç:</span> <strong style={{color: '#0f172a'}}>{stats.totalLessons} Ders</strong></div>
             <div style={summaryRow}><span>Bitirilen:</span> <strong style={{color: '#0f172a'}}>{stats.completedLessons} Saat</strong></div>
-            <div style={summaryRow}><span>İptaller:</span> <strong style={{color: '#dc2626'}}>{stats.canceledLessons} Adet</strong></div>
+            
+            <div style={summaryRow}>
+              <span>İptal Edilen:</span> 
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <strong style={{color: '#dc2626'}}>{stats.canceledLessons} Adet</strong>
+                {iptalOrani > 0 && (
+                  <span style={{ fontSize: '11px', background: '#fef2f2', color: '#dc2626', padding: '2px 6px', borderRadius: '6px', fontWeight: 700 }}>
+                    %{iptalOrani} Oran
+                  </span>
+                )}
+              </div>
+            </div>
+            
             <div style={summaryRow}>
               <span>Profil Durumu:</span> 
               <span style={{ padding: '4px 10px', background: '#dcfce7', color: '#16a34a', borderRadius: 12, fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -668,7 +680,6 @@ function Lessons({ lessons, stats, onComplete, onCancel }: any) {
   const [activeSubTab, setActiveSubTab] = useState<'all' | 'upcoming' | 'completed'>('all');
   const filteredLessons = lessons.filter((lesson: any) => {
     if (activeSubTab === 'upcoming') return lesson.durum === 'Yaklaşan';
-    // 🚀 Onay Bekleyen dersleri de "Geçmiş Dersler" veya "Tamamlananlar" sekmesinde göstersin
     if (activeSubTab === 'completed') return lesson.durum === 'Tamamlanan' || lesson.durum === 'Onay Bekliyor';
     return true;
   });
@@ -745,7 +756,7 @@ function Lessons({ lessons, stats, onComplete, onCancel }: any) {
   );
 }
 
-/* ---------------- 4. SCHEDULE COMPONENT (MODERN & PROFESYONEL TASARIM) ---------------- */
+/* ---------------- 4. SCHEDULE COMPONENT ---------------- */
 function Schedule({ profile, userId, onProfileUpdate }: any) {
   const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
   const HOURS = Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`);
@@ -955,9 +966,9 @@ function Students({ students, stats, onSendMessage }: any) {
               <div key={idx} style={{ border: '1px solid #e2e8f0', borderRadius: '16px', padding: '24px', background: '#ffffff', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '16px' }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#eef2ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '18px' }}>{student.adi?.charAt(0).toUpperCase() || 'Ö'}</div>
+                    <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#eef2ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '18px' }}>{student.tam_ad?.charAt(0).toUpperCase() || 'Ö'}</div>
                     <div>
-                      <h4 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>{student.adi}</h4>
+                      <h4 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>{student.tam_ad}</h4>
                       <span style={{ fontSize: '12px', color: '#4f46e5', background: '#eef2ff', padding: '4px 10px', borderRadius: '8px', fontWeight: 600, display: 'inline-block', marginTop: '6px' }}>{student.ders_turu || 'Genel Ders'}</span>
                     </div>
                   </div>
@@ -1000,6 +1011,18 @@ function Messages({ userId, onMessageRead, activeChatUser }: any) {
   const [text, setText] = useState('');
   
   const [showChatMenu, setShowChatMenu] = useState(false);
+
+  // 🚀 MESAJLARIN SONUNA KAYDIRMAK İÇİN REF
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Mesajlar listesi güncellendiğinde aşağı kaydır
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   useEffect(() => {
     if (activeChatUser) {
@@ -1097,16 +1120,43 @@ function Messages({ userId, onMessageRead, activeChatUser }: any) {
     const idList = Array.from(ids);
     if (idList.length === 0) return;
     
-    const { data: ogrenciProfilleri } = await supabase.from('ogrenciler').select('user_id, tam_ad').in('user_id', idList);
+    let ogrenciProfilleri: any[] = [];
+    const { data: dataWithSeen, error: errWithSeen } = await supabase.from('ogrenciler').select('user_id, tam_ad, son_gorulme').in('user_id', idList);
+    
+    if (errWithSeen) {
+       const { data: dataWithoutSeen } = await supabase.from('ogrenciler').select('user_id, tam_ad').in('user_id', idList);
+       ogrenciProfilleri = dataWithoutSeen || [];
+    } else {
+       ogrenciProfilleri = dataWithSeen || [];
+    }
+
+    const { data: derslerData } = await supabase.from('dersler').select('ogrenci_id, ogrenci_adi').in('ogrenci_id', idList);
+
     const mappedStudents = idList.map(id => {
       const profil = ogrenciProfilleri?.find(p => p.user_id === id);
+      const dersProfil = derslerData?.find(p => p.ogrenci_id === id);
+
+      const foundName = profil?.tam_ad || dersProfil?.ogrenci_adi;
       const defaultAd = activeChatUser && activeChatUser.id === id ? activeChatUser.tam_ad : 'Platform Öğrencisi';
-      return { id: id, tam_ad: profil?.tam_ad || defaultAd, unread: unreadMap.get(id) || 0 };
+      
+      return { 
+        id: id, 
+        tam_ad: foundName || defaultAd, 
+        unread: unreadMap.get(id) || 0, 
+        son_gorulme: profil?.son_gorulme || null 
+      };
     });
 
     mappedStudents.sort((a, b) => b.unread - a.unread);
     setStudents(mappedStudents);
   }
+
+  const isOnline = (dateStr: string) => {
+    if (!dateStr) return false;
+    const lastSeen = new Date(dateStr).getTime();
+    const now = new Date().getTime();
+    return (now - lastSeen) < 15 * 60 * 1000;
+  };
 
   const forceMarkAllAsRead = async () => {
     await supabase.from('mesajlar').update({ okundu: true }).eq('alici_id', userId).eq('okundu', false);
@@ -1155,6 +1205,8 @@ function Messages({ userId, onMessageRead, activeChatUser }: any) {
     } catch (err: any) { toast.error("Sohbet silinemedi: " + err.message); }
   };
 
+  const isStudentOnline = selectedStudent ? isOnline(selectedStudent.son_gorulme) : false;
+
   return (
     <div style={{ display: 'flex', height: '100%', backgroundColor: '#ffffff', borderRadius: 24, border: '1px solid #e2e8f0', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
       <div style={{ width: '340px', borderRight: '1px solid #e2e8f0', overflowY: 'auto', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
@@ -1176,7 +1228,7 @@ function Messages({ userId, onMessageRead, activeChatUser }: any) {
             {students.map((s, i) => (
               <div key={i} onClick={() => setSelectedStudent(s)} style={{ padding: '16px', borderRadius: '16px', cursor: 'pointer', marginBottom: '10px', transition: 'all 0.2s', background: selectedStudent?.id === s.id ? '#ffffff' : 'transparent', border: selectedStudent?.id === s.id ? '1px solid #cbd5e1' : '1px solid transparent', boxShadow: selectedStudent?.id === s.id ? '0 4px 6px -1px rgba(0,0,0,0.05)' : 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                  <div style={{ width: '44px', height: '44px', borderRadius: '50%', backgroundColor: selectedStudent?.id === s.id ? '#eef2ff' : '#e2e8f0', color: selectedStudent?.id === s.id ? '#4f46e5' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1rem', border: '2px solid white', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>{s.tam_ad.charAt(0).toUpperCase()}</div>
+                  <div style={{ width: '44px', height: '44px', borderRadius: '50%', backgroundColor: selectedStudent?.id === s.id ? '#eef2ff' : '#e2e8f0', color: selectedStudent?.id === s.id ? '#4f46e5' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1rem', border: '2px solid white', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>{s.tam_ad?.charAt(0).toUpperCase() || 'Ö'}</div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1rem', marginBottom: '2px' }}>{s.tam_ad}</div>
                     <div style={{ fontSize: '0.8rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Platform Öğrencisi</div>
@@ -1195,10 +1247,18 @@ function Messages({ userId, onMessageRead, activeChatUser }: any) {
           <>
             <div style={{ padding: '20px 32px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(8px)', position: 'relative', zIndex: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#eef2ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.2rem', border: '2px solid #ffffff', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>{selectedStudent.tam_ad.charAt(0).toUpperCase()}</div>
+                <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#eef2ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.2rem', border: '2px solid #ffffff', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', position: 'relative' }}>
+                  {selectedStudent.tam_ad?.charAt(0).toUpperCase() || 'Ö'}
+                  {isStudentOnline && <div style={{ position: 'absolute', bottom: 0, right: 0, width: '12px', height: '12px', backgroundColor: '#10b981', border: '2px solid #ffffff', borderRadius: '50%' }}></div>}
+                </div>
                 <div>
                   <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#0f172a' }}>{selectedStudent.tam_ad}</div>
-                  <div style={{ color: '#10b981', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}><div style={{ width: '8px', height: '8px', backgroundColor: '#10b981', borderRadius: '50%' }}></div> Aktif ve iletişime hazır</div>
+                  
+                  <div style={{ color: isStudentOnline ? '#10b981' : '#94a3b8', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                    <div style={{ width: '8px', height: '8px', backgroundColor: isStudentOnline ? '#10b981' : '#94a3b8', borderRadius: '50%' }}></div> 
+                    {isStudentOnline ? 'Çevrimiçi' : 'Çevrimdışı'}
+                  </div>
+
                 </div>
               </div>
               <div style={{ position: 'relative' }}>
@@ -1242,6 +1302,8 @@ function Messages({ userId, onMessageRead, activeChatUser }: any) {
                   </div>
                 );
               })}
+              {/* 🚀 MESAJLARIN SONUNA YÖNLENDİREN REFERANS DIV'İ */}
+              <div ref={messagesEndRef} />
             </div>
             
             <div style={{ padding: '24px 32px', backgroundColor: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(8px)', borderTop: '1px solid #f1f5f9', position: 'relative', zIndex: 10 }}>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import toast from 'react-hot-toast';
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 
@@ -27,17 +28,17 @@ export default function Register() {
       console.log("SIGNUP ERROR:", error);
 
       if (error) {
-        alert("Hata: " + error.message);
+        toast.error("Hata: " + error.message);
         return;
       }
 
-      alert("Kayıt isteği gönderildi. Konsolu kontrol et (F12).");
+      toast.success("Kayıt isteği gönderildi. Konsolu kontrol et (F12).");
 
       console.log("USER:", data.user);
       console.log("SESSION:", data.session);
     } catch (err) {
       console.error("REGISTER CRASH:", err);
-      alert("Beklenmeyen hata oluştu.");
+      toast.error("Beklenmeyen hata oluştu.");
     }
   }
 
