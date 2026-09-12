@@ -23,11 +23,10 @@ export default function AdminDashboard() {
   async function checkAdmin() {
     setAuthChecking(true);
     
-    // 🚀 GÜVENLİK: Sekme kapatıldığında çıkış yapma kontrolü
+    // 🚀 GÜVENLİK 1: Sekme kapatıldığında çıkış yapma kontrolü
     const isTabSessionActive = sessionStorage.getItem('isAdminSessionActive');
     
     if (!isTabSessionActive) {
-      // Eğer bu sekmeye özel onay anahtarı yoksa (sekme yeni açılmışsa), Supabase'den zorla çıkış yap
       await supabase.auth.signOut();
       setAdminId('');
       setAuthChecking(false);
@@ -37,7 +36,18 @@ export default function AdminDashboard() {
     // Sekme onaylıysa normal kontrolü yap
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      setAdminId(session.user.id);
+      // 🚀 GÜVENLİK 2: Kullanıcının Rolünü Kontrol Et (Öğrenci veya Öğretmen mi?)
+      const userRole = session.user.user_metadata?.role;
+      
+      if (userRole === 'ogrenci' || userRole === 'ogretmen') {
+        // Eğer yanlışlıkla öğrenci/öğretmen sekmedeki yetkiyi aşarsa anında kov
+        await supabase.auth.signOut();
+        sessionStorage.removeItem('isAdminSessionActive');
+        setAdminId('');
+        toast.error("Yetkisiz Giriş: Bu alana sadece yöneticiler erişebilir.");
+      } else {
+        setAdminId(session.user.id);
+      }
     }
     setAuthChecking(false);
   }
@@ -54,9 +64,19 @@ export default function AdminDashboard() {
     if (error) {
       toast.error("Giriş başarısız: Lütfen e-posta veya şifrenizi kontrol edin.");
     } else if (data.session) {
-      setAdminId(data.session.user.id);
-      // 🚀 GÜVENLİK: Giriş başarılı olduğunda bu sekmeye özel geçici anahtar oluştur
-      sessionStorage.setItem('isAdminSessionActive', 'true');
+      // 🚀 GÜVENLİK 3: Giriş formunu kullanan kişinin rolünü kontrol et
+      const userRole = data.session.user.user_metadata?.role;
+
+      if (userRole === 'ogrenci' || userRole === 'ogretmen') {
+        // Şifreyi bilse bile öğrenci veya öğretmense kapıdan çevir!
+        await supabase.auth.signOut();
+        toast.error("Yetkisiz Giriş: Yönetici bilgilerini giriniz");
+      } else {
+        // Sadece yetkili admin girebilir
+        setAdminId(data.session.user.id);
+        sessionStorage.setItem('isAdminSessionActive', 'true');
+        toast.success("Yönetici girişi başarılı!");
+      }
     }
     setLoginLoading(false);
   };

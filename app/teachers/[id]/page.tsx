@@ -17,6 +17,8 @@ export default function TeacherProfilePage() {
 
   const [tamamlananDersSayisi, setTamamlananDersSayisi] = useState(0);
   const [hasPreviousLesson, setHasPreviousLesson] = useState(false);
+  
+  const [bookingStatsText, setBookingStatsText] = useState<string | null>(null);
 
   // FAVORİ STATE'LERİ
   const [isFavorited, setIsFavorited] = useState(false);
@@ -29,18 +31,31 @@ export default function TeacherProfilePage() {
   const [loadingChat, setLoadingChat] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
+  // HAFTALIK TAKVİM İÇİN STATELER
+  const [weekOffset, setWeekOffset] = useState(0); 
   const [availableDates, setAvailableDates] = useState<{date: Date, dayName: string, label: string}[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedHour, setSelectedHour] = useState<string | null>(null);
 
-  const HOURS = Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`);
+  const [userTimeZone, setUserTimeZone] = useState('Europe/Istanbul');
+
+  useEffect(() => {
+    try {
+      setUserTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
+    } catch (e) {
+      // Hata durumunda varsayılan İstanbul kalır
+    }
+  }, []);
 
   useEffect(() => {
     const dates = [];
     const dayMap = { 0: 'Paz', 1: 'Pzt', 2: 'Sal', 3: 'Çar', 4: 'Per', 5: 'Cum', 6: 'Cmt' };
     
+    const baseDate = new Date();
+    baseDate.setDate(baseDate.getDate() + (weekOffset * 7)); 
+
     for(let i = 0; i < 7; i++) {
-        const d = new Date();
+        const d = new Date(baseDate);
         d.setDate(d.getDate() + i); 
         dates.push({
             date: d,
@@ -49,8 +64,11 @@ export default function TeacherProfilePage() {
         });
     }
     setAvailableDates(dates);
-    setSelectedDate(dates[0].date);
+    setSelectedDate(dates[0].date); 
+    setSelectedHour(null);
+  }, [weekOffset]);
 
+  useEffect(() => {
     if (id) {
       const rawId = Array.isArray(id) ? id[0] : id;
       loadData(rawId.trim());
@@ -93,7 +111,7 @@ export default function TeacherProfilePage() {
 
         const { data: tumDerslerData } = await supabase
           .from('dersler')
-          .select('durum, ogrenci_id')
+          .select('durum, ogrenci_id, created_at')
           .eq('user_id', targetUserId);
         
         if (tumDerslerData) {
@@ -111,7 +129,37 @@ export default function TeacherProfilePage() {
           .select('*')
           .eq('user_id', targetUserId)
           .neq('durum', 'İptal Edilen');
+        
         setBookedLessons(lessonData || []);
+
+        if (lessonData && lessonData.length > 0) {
+          const now = new Date();
+          const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          const last48h = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+
+          let bugunAyirtilan = 0;
+          let sonIkiGunAyirtilan = 0;
+
+          lessonData.forEach((lesson: any) => {
+            if (lesson.created_at) {
+              const createdTime = new Date(lesson.created_at);
+              if (createdTime >= last24h) {
+                bugunAyirtilan++;
+                sonIkiGunAyirtilan++;
+              } else if (createdTime >= last48h) {
+                sonIkiGunAyirtilan++;
+              }
+            }
+          });
+
+          if (bugunAyirtilan > 0) {
+            setBookingStatsText(`🔥 Bugün ${bugunAyirtilan} ders ayırtıldı`);
+          } else if (sonIkiGunAyirtilan > 0) {
+            setBookingStatsText(`📈 Son 2 günde ${sonIkiGunAyirtilan} ders ayırtıldı`);
+          } else {
+            setBookingStatsText(null);
+          }
+        }
 
         const { data: dersYorumlari } = await supabase
           .from('dersler')
@@ -243,28 +291,28 @@ export default function TeacherProfilePage() {
     return () => { supabase.removeChannel(channel); };
   }, [showMsgModal, currentUserId, teacher]);
 
-  function checkSlotStatus(date: Date, hour: string) {
+  function checkSlotStatus(slotDate: Date) {
     if (!teacher) return { disabled: true, reason: '' };
 
     const now = new Date();
-    const [saatNum] = hour.split(':').map(Number);
-    
-    const slotDateTime = new Date(date);
-    slotDateTime.setHours(saatNum, 0, 0, 0);
 
-    if (slotDateTime < now) {
+    if (slotDate < now) {
         return { disabled: true, reason: 'Geçti' };
     }
 
     const minimumIzinVerilenZaman = new Date(now.getTime() + 2 * 60 * 60 * 1000);
     
-    if (slotDateTime < minimumIzinVerilenZaman) {
+    if (slotDate < minimumIzinVerilenZaman) {
         return { disabled: true, reason: 'Çok Yakın' }; 
     }
 
+    const trtDateStr = slotDate.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' });
+    const trtDate = new Date(trtDateStr);
+    
     const dayMap = { 0: 'Pazar', 1: 'Pazartesi', 2: 'Salı', 3: 'Çarşamba', 4: 'Perşembe', 5: 'Cuma', 6: 'Cumartesi' };
-    const dayName = dayMap[date.getDay() as keyof typeof dayMap];
-    const slotKey = `${dayName}-${hour}`;
+    const trtDayName = dayMap[trtDate.getDay() as keyof typeof dayMap];
+    const trtHour = trtDate.getHours().toString().padStart(2, '0') + ':00';
+    const slotKey = `${trtDayName}-${trtHour}`;
 
     if (teacher.musait_olmayan_saatler && teacher.musait_olmayan_saatler.includes(slotKey)) {
         return { disabled: true, reason: 'Kapalı' };
@@ -273,10 +321,7 @@ export default function TeacherProfilePage() {
     const isBooked = bookedLessons.some(lesson => {
         try {
             const lDate = new Date(lesson.tarih_saat);
-            return lDate.getFullYear() === date.getFullYear() &&
-                   lDate.getMonth() === date.getMonth() &&
-                   lDate.getDate() === date.getDate() &&
-                   lDate.getHours() === saatNum;
+            return lDate.getTime() === slotDate.getTime();
         } catch { return false; }
     });
 
@@ -315,10 +360,7 @@ export default function TeacherProfilePage() {
 
       const finalOgrenciAdi = ogrenciData?.tam_ad || user?.user_metadata?.full_name || "Öğrenci";
 
-      const [saat] = selectedHour.split(':');
-      const islemTarihi = new Date(selectedDate);
-      islemTarihi.setHours(Number(saat), 0, 0, 0); 
-      const targetTimestamp = islemTarihi.toISOString(); 
+      const targetTimestamp = new Date(Number(selectedHour)).toISOString(); 
 
       const { error: insertError } = await supabase
         .from('dersler')
@@ -411,6 +453,25 @@ export default function TeacherProfilePage() {
     return "📅 Genellikle 1 gün içinde yanıt verir";
   };
 
+  const getWeekRangeText = () => {
+    if (availableDates.length === 0) return "";
+    const first = availableDates[0].date;
+    const last = availableDates[6].date;
+    const monthNames = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
+    
+    const fDay = first.getDate();
+    const lDay = last.getDate();
+    const fMonth = monthNames[first.getMonth()];
+    const lMonth = monthNames[last.getMonth()];
+    const year = last.getFullYear();
+    
+    if (fMonth === lMonth) {
+      return `${fDay} - ${lDay} ${lMonth} ${year}`;
+    } else {
+      return `${fDay} ${fMonth} - ${lDay} ${lMonth} ${year}`;
+    }
+  };
+
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontWeight: 600, color: '#475569', backgroundColor: '#f8fafc' }}>Bilgiler yükleniyor...</div>;
   if (!teacher) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontWeight: 600, color: '#ef4444', backgroundColor: '#f8fafc' }}>Eğitmen profili bulunamadı.</div>;
 
@@ -490,7 +551,6 @@ export default function TeacherProfilePage() {
 
   const benzersizEtiketler = Array.from(new Set(tumUzmanlikEtiketleri));
 
-  // 🚀 SAĞ ÜST İÇİN STATÜ ROZETİ RENDER FONKSİYONU (İKONLU TASARIM)
   const renderBadge = (etiket: string) => {
     if(!etiket) return null;
     const lower = etiket.toLowerCase();
@@ -502,13 +562,13 @@ export default function TeacherProfilePage() {
 
     if (lower.includes('süper') || lower.includes('super')) {
       bg = "#fffbeb"; color = "#d97706"; border = "#fde68a";
-      icon = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/></svg>; // Taç İkonu
+      icon = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/></svg>; 
     } else if (lower.includes('uzman')) {
       bg = "#eff6ff"; color = "#2563eb"; border = "#bfdbfe";
-      icon = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>; // Madalya İkonu
+      icon = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>; 
     } else if (lower.includes('profesyonel')) {
       bg = "#f5f3ff"; color = "#6d28d9"; border = "#ddd6fe";
-      icon = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>; // Kalkan İkonu
+      icon = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>; 
     }
 
     return (
@@ -540,10 +600,8 @@ export default function TeacherProfilePage() {
           
           <div style={{ backgroundColor: '#ffffff', borderRadius: '24px', overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.06)', position: 'relative' }}>
             
-            {/* ÜST RENKLİ BANNER */}
             <div style={{ height: '140px', background: 'linear-gradient(135deg, #e0e7ff 0%, #ede9fe 50%, #f3e8ff 100%)' }}></div>
             
-            {/* 🚀 KARTIN SAĞ ÜST KÖŞESİNE SABİTLENMİŞ PUAN VE ROZET ALANI */}
             <div style={{ position: 'absolute', top: '24px', right: '24px', display: 'flex', alignItems: 'center', gap: '12px', zIndex: 10 }}>
               {teacher?.one_cikan_etiket && renderBadge(teacher.one_cikan_etiket)}
               
@@ -562,13 +620,10 @@ export default function TeacherProfilePage() {
               )}
             </div>
 
-            {/* İÇERİK KISMI */}
             <div style={{ padding: '0 32px 32px 32px', marginTop: '-54px', position: 'relative', zIndex: 5, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
               
-              {/* PROFİL VE İSİM ALANI */}
               <div style={{ display: 'flex', flexDirection: 'row', gap: '28px', alignItems: 'flex-start', width: '100%' }}>
                 
-                {/* AVATAR */}
                 <div style={{ position: 'relative', flexShrink: 0, padding: '4px', background: '#ffffff', borderRadius: '50%', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}>
                   <img 
                     src={teacher?.avatar_url || `https://ui-avatars.com/api/?name=${teacher?.tam_ad || 'Eğitmen'}&background=c7d2fe&color=3730a3&size=140&bold=true`} 
@@ -580,7 +635,6 @@ export default function TeacherProfilePage() {
                   )}
                 </div>
                 
-                {/* İSİM VE UNVAN */}
                 <div style={{ flex: 1, paddingTop: '64px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                   <h1 style={{ fontSize: '2.4rem', fontWeight: 900, margin: '0 0 4px 0', color: '#0f172a', letterSpacing: '-1px', textAlign: 'left' }}>
                     {teacher?.tam_ad}
@@ -591,13 +645,19 @@ export default function TeacherProfilePage() {
                 </div>
               </div>
 
-              {/* 🚀 ETİKETLER (Tamamlanan Ders, Konum, Diller) - KESİN SOLA YASLI */}
               <div style={{ marginTop: '28px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '12px', width: '100%' }}>
                 
-                {/* 🚀 YENİDEN TASARLANAN "DERS TAMAMLANDI" ROZETİ */}
-                <div style={{ padding: '6px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#0f172a', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
-                  {tamamlananDersSayisi} Ders Tamamlandı
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px', width: '100%' }}>
+                  <div style={{ padding: '6px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#0f172a', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                    {tamamlananDersSayisi} Ders Tamamlandı
+                  </div>
+
+                  {bookingStatsText && (
+                    <span style={{ color: '#475569', fontSize: '0.9rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      {bookingStatsText}
+                    </span>
+                  )}
                 </div>
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'flex-start', width: '100%' }}>
@@ -652,10 +712,7 @@ export default function TeacherProfilePage() {
           <div style={{ backgroundColor: '#ffffff', padding: '40px', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', gap: '40px', marginBottom: '40px' }}>
             
             <div>
-              <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '44px', height: '44px', background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0f172a" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
-                </div>
+              <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', marginBottom: '20px' }}>
                 Uzmanlık ve Odak Alanları
               </h2>
               {benzersizEtiketler.length > 0 ? (
@@ -672,10 +729,7 @@ export default function TeacherProfilePage() {
             <div style={{ height: '1px', background: '#f1f5f9' }}></div>
 
             <div>
-              <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '44px', height: '44px', background: 'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                </div>
+              <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', marginBottom: '20px' }}>
                 Eğitmen Hakkında
               </h2>
               <p style={{ lineHeight: 1.8, color: '#475569', fontSize: '1.05rem', whiteSpace: 'pre-line', margin: 0 }}>
@@ -686,10 +740,7 @@ export default function TeacherProfilePage() {
             <div style={{ height: '1px', background: '#f1f5f9' }}></div>
 
             <div>
-              <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '44px', height: '44px', background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.9 1.2 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
-                </div>
+              <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', marginBottom: '20px' }}>
                 Öğretim Yaklaşımı
               </h2>
               <p style={{ lineHeight: 1.8, color: '#475569', fontSize: '1.05rem', whiteSpace: 'pre-line', margin: 0 }}>
@@ -741,8 +792,85 @@ export default function TeacherProfilePage() {
               <span style={{ fontSize: '1rem', color: '#64748b', fontWeight: 600, paddingBottom: '4px' }}>/ 50 dk</span>
             </div>
 
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ display: 'flex', border: '1px solid #cbd5e1', borderRadius: '12px', overflow: 'hidden' }}>
+                  <button 
+                    onClick={() => setWeekOffset(0)} 
+                    disabled={weekOffset === 0}
+                    style={{ padding: '8px 12px', background: weekOffset === 0 ? '#f1f5f9' : '#ffffff', border: 'none', borderRight: '1px solid #cbd5e1', cursor: weekOffset === 0 ? 'not-allowed' : 'pointer', color: weekOffset === 0 ? '#94a3b8' : '#0f172a' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                  </button>
+                  <button 
+                    onClick={() => setWeekOffset(1)} 
+                    disabled={weekOffset === 1}
+                    style={{ padding: '8px 12px', background: weekOffset === 1 ? '#f1f5f9' : '#ffffff', border: 'none', cursor: weekOffset === 1 ? 'not-allowed' : 'pointer', color: weekOffset === 1 ? '#94a3b8' : '#0f172a' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                  </button>
+                </div>
+                <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#0f172a' }}>
+                  {getWeekRangeText()}
+                </span>
+              </div>
+
+              <select 
+                value={userTimeZone}
+                onChange={(e) => setUserTimeZone(e.target.value)}
+                style={{ 
+                  padding: '10px 16px', 
+                  borderRadius: '12px', 
+                  border: '2px solid #3b82f6', 
+                  outline: 'none', 
+                  fontSize: '0.9rem', 
+                  fontWeight: 700, 
+                  color: '#0f172a', 
+                  backgroundColor: '#ffffff', 
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 4px rgba(59, 130, 246, 0.1)',
+                  maxWidth: '220px',
+                  textOverflow: 'ellipsis'
+                }}
+              >
+                <option value="Pacific/Midway">Pacific/Midway (GMT-11)</option>
+                <option value="Pacific/Honolulu">Pacific/Honolulu (GMT-10)</option>
+                <option value="America/Anchorage">America/Anchorage (GMT-9)</option>
+                <option value="America/Los_Angeles">America/Los_Angeles (GMT-8)</option>
+                <option value="America/Denver">America/Denver (GMT-7)</option>
+                <option value="America/Chicago">America/Chicago (GMT-6)</option>
+                <option value="America/New_York">America/New_York (GMT-5)</option>
+                <option value="America/Caracas">America/Caracas (GMT-4)</option>
+                <option value="America/Argentina/Buenos_Aires">America/Buenos_Aires (GMT-3)</option>
+                <option value="America/Sao_Paulo">America/Sao_Paulo (GMT-3)</option>
+                <option value="Atlantic/Azores">Atlantic/Azores (GMT-1)</option>
+                <option value="Europe/London">Europe/London (GMT+0)</option>
+                <option value="Europe/Paris">Europe/Paris (GMT+1)</option>
+                <option value="Europe/Berlin">Europe/Berlin (GMT+1)</option>
+                <option value="Europe/Rome">Europe/Rome (GMT+1)</option>
+                <option value="Africa/Cairo">Africa/Cairo (GMT+2)</option>
+                <option value="Europe/Athens">Europe/Athens (GMT+2)</option>
+                <option value="Europe/Istanbul">Europe/Istanbul (GMT+3)</option>
+                <option value="Europe/Moscow">Europe/Moscow (GMT+3)</option>
+                <option value="Asia/Kuwait">Asia/Kuwait (GMT+3)</option>
+                <option value="Asia/Riyadh">Asia/Riyadh (GMT+3)</option>
+                <option value="Asia/Dubai">Asia/Dubai (GMT+4)</option>
+                <option value="Asia/Karachi">Asia/Karachi (GMT+5)</option>
+                <option value="Asia/Dhaka">Asia/Dhaka (GMT+6)</option>
+                <option value="Asia/Bangkok">Asia/Bangkok (GMT+7)</option>
+                <option value="Asia/Shanghai">Asia/Shanghai (GMT+8)</option>
+                <option value="Asia/Singapore">Asia/Singapore (GMT+8)</option>
+                <option value="Asia/Tokyo">Asia/Tokyo (GMT+9)</option>
+                <option value="Asia/Seoul">Asia/Seoul (GMT+9)</option>
+                <option value="Australia/Sydney">Australia/Sydney (GMT+10)</option>
+                <option value="Pacific/Noumea">Pacific/Noumea (GMT+11)</option>
+                <option value="Pacific/Auckland">Pacific/Auckland (GMT+12)</option>
+              </select>
+            </div>
+
             <div style={{ marginBottom: '28px' }}>
               <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a', marginBottom: '16px' }}>Gün Seçin</h3>
+              
+              {/* 🚀 ESKİ GENİŞ VE BÜYÜK KUTU TASARIMINA GERİ DÖNÜLDÜ */}
               <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '12px', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
                 {availableDates.map((item, idx) => {
                   const isSelected = selectedDate?.toDateString() === item.date.toDateString();
@@ -768,46 +896,62 @@ export default function TeacherProfilePage() {
               </div>
 
               <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a', marginBottom: '16px', marginTop: '12px' }}>Saat Seçin</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', maxHeight: '220px', overflowY: 'auto', paddingRight: '8px' }}>
+              
+              {/* 🚀 ESKİ FERAH 3 SÜTUNLU GENİŞ SAAT KUTULARI */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', maxHeight: '240px', overflowY: 'auto', paddingRight: '8px' }}>
                 
-                {/* 🚀 GEÇMİŞ VEYA ÇOK YAKIN SAATLERİ TAMAMEN GİZLEYEN KATİ FİLTRE */}
-                {selectedDate && HOURS.filter(hour => {
-                  const status = checkSlotStatus(selectedDate, hour);
-                  return status.reason !== 'Geçti' && status.reason !== 'Çok Yakın';
-                }).map(hour => {
-                  const status = checkSlotStatus(selectedDate, hour);
-                  const isSelected = selectedHour === hour;
+                {(() => {
+                  const validSlots = [];
+                  if (selectedDate) {
+                    for (let i = 0; i < 24; i++) {
+                      const slotDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), i, 0, 0);
+                      const status = checkSlotStatus(slotDate);
+                      
+                      if (status.reason !== 'Geçti' && status.reason !== 'Çok Yakın') {
+                        validSlots.push({ slotDate, status });
+                      }
+                    }
+                  }
 
-                  return (
-                    <button 
-                      key={hour} 
-                      disabled={status.disabled} 
-                      onClick={() => setSelectedHour(hour)}
-                      title={status.reason ? `${status.reason}` : ''}
-                      style={{
-                        padding: '12px 0', borderRadius: '12px', fontSize: '0.95rem',
-                        cursor: status.disabled ? 'not-allowed' : 'pointer',
-                        background: isSelected ? '#4f46e5' : (status.disabled ? '#f1f5f9' : '#ffffff'),
-                        border: isSelected ? '1px solid #4f46e5' : (status.disabled ? '1px dashed #cbd5e1' : '1px solid #cbd5e1'),
-                        color: isSelected ? 'white' : (status.disabled ? '#94a3b8' : '#0f172a'),
-                        fontWeight: 700,
-                        transition: 'all 0.15s',
-                        opacity: status.disabled ? 0.6 : 1
-                      }}>
-                      {hour}
-                    </button>
-                  );
-                })}
+                  if (validSlots.length === 0) {
+                    return (
+                      <div style={{ gridColumn: 'span 3', padding: '16px', textAlign: 'center', color: '#94a3b8', fontSize: '0.9rem', backgroundColor: '#f8fafc', borderRadius: '12px' }}>
+                        Bu gün için seçilebilir saat bulunmuyor.
+                      </div>
+                    );
+                  }
 
-                {/* Eğer tüm saatler geçtiyse veya 2 saatten az kaldıysa görünecek uyarı */}
-                {selectedDate && HOURS.filter(h => {
-                  const s = checkSlotStatus(selectedDate, h);
-                  return s.reason !== 'Geçti' && s.reason !== 'Çok Yakın';
-                }).length === 0 && (
-                  <div style={{ gridColumn: 'span 3', padding: '16px', textAlign: 'center', color: '#94a3b8', fontSize: '0.9rem', backgroundColor: '#f8fafc', borderRadius: '12px' }}>
-                    Bu gün için seçilebilir saat bulunmuyor.
-                  </div>
-                )}
+                  return validSlots.map(({ slotDate, status }) => {
+                    const hourLabel = slotDate.toLocaleTimeString('tr-TR', { 
+                      timeZone: userTimeZone, 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    });
+                    
+                    const timestampStr = slotDate.getTime().toString();
+                    const isSelected = selectedHour === timestampStr;
+
+                    return (
+                      <button 
+                        key={timestampStr} 
+                        disabled={status.disabled} 
+                        onClick={() => setSelectedHour(timestampStr)}
+                        title={status.reason ? `${status.reason}` : ''}
+                        style={{
+                          padding: '12px 0', borderRadius: '12px', fontSize: '0.95rem',
+                          cursor: status.disabled ? 'not-allowed' : 'pointer',
+                          background: isSelected ? '#4f46e5' : (status.disabled ? '#f1f5f9' : '#ffffff'),
+                          border: isSelected ? '1px solid #4f46e5' : (status.disabled ? '1px dashed #cbd5e1' : '1px solid #cbd5e1'),
+                          color: isSelected ? 'white' : (status.disabled ? '#94a3b8' : '#0f172a'),
+                          fontWeight: 700,
+                          transition: 'all 0.15s',
+                          opacity: status.disabled ? 0.6 : 1
+                        }}>
+                        {hourLabel}
+                      </button>
+                    );
+                  });
+                })()}
               </div>
             </div>
 
@@ -838,7 +982,6 @@ export default function TeacherProfilePage() {
             </button>
 
             <div style={{ display: 'flex', gap: '12px' }}>
-              {/* 🚀 DEĞİŞTİRİLEN BUTON (GİRİŞ KONTROLÜ EKLENDİ) */}
               <button 
                 onClick={() => {
                   if (!currentUserId) {
