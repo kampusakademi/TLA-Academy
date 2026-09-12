@@ -22,8 +22,20 @@ export default function AdminDashboard() {
 
   async function checkAdmin() {
     setAuthChecking(true);
-    const { data: { session } } = await supabase.auth.getSession();
     
+    // 🚀 GÜVENLİK: Sekme kapatıldığında çıkış yapma kontrolü
+    const isTabSessionActive = sessionStorage.getItem('isAdminSessionActive');
+    
+    if (!isTabSessionActive) {
+      // Eğer bu sekmeye özel onay anahtarı yoksa (sekme yeni açılmışsa), Supabase'den zorla çıkış yap
+      await supabase.auth.signOut();
+      setAdminId('');
+      setAuthChecking(false);
+      return;
+    }
+
+    // Sekme onaylıysa normal kontrolü yap
+    const { data: { session } } = await supabase.auth.getSession();
     if (session) {
       setAdminId(session.user.id);
     }
@@ -43,12 +55,15 @@ export default function AdminDashboard() {
       toast.error("Giriş başarısız: Lütfen e-posta veya şifrenizi kontrol edin.");
     } else if (data.session) {
       setAdminId(data.session.user.id);
+      // 🚀 GÜVENLİK: Giriş başarılı olduğunda bu sekmeye özel geçici anahtar oluştur
+      sessionStorage.setItem('isAdminSessionActive', 'true');
     }
     setLoginLoading(false);
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    sessionStorage.removeItem('isAdminSessionActive'); // Sekme anahtarını sil
     setAdminId(''); 
   };
 

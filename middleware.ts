@@ -30,7 +30,9 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  // 🚀 Korunması gereken tüm özel panellerin yolları buraya eklenmeli
+  // 🚀 SADECE tam koruma altındaki sayfalar (Giriş yapmadan asla açılamazlar)
+  // Not: '/admin-dashboard' bilerek buraya eklenmedi çünkü adminlerin giriş yapabilmesi 
+  // için e-posta/şifre formunun dışarıdan açılabilmesi gerekiyor.
   const protectedPaths = ['/dashboard', '/teacher-dashboard', '/student-dashboard'];
   
   const isProtectedPath = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path));
