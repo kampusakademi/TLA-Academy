@@ -211,7 +211,7 @@ export default function HomePage() {
 
   const isEn = t.nav.explore === "Find Teachers";
 
-  // 🚀 YÜZ TANIMALI VE BOYUTLANDIRILMIŞ GÖRSELLER (crop=faces&w=800&h=500)
+  // 🚀 YÜZ TANIMALI VE BOYUTLANDIRILMIŞ GÖRSELLER
   const steps = [
     {
       id: 1,
@@ -245,20 +245,18 @@ export default function HomePage() {
     }
   ];
 
-  // SUPABASE ŞİFRE SIFIRLAMA YAKALAYICISI (DÜZELTİLDİ)
+  // SUPABASE ŞİFRE SIFIRLAMA YAKALAYICISI
   useEffect(() => {
     const hash = window.location.hash;
     const search = window.location.search;
     const fullUrl = window.location.href;
 
-    // SADECE URL'de gerçekten 'type=recovery' (şifre sıfırlama) etiketi varsa yönlendir.
-    // 'code=' kontrolünü kaldırdık ki Google (OAuth) girişini sabote etmesin!
     if (fullUrl.includes('type=recovery')) {
       window.location.href = `/sifre-yenile${search}${hash}`;
     }
   }, []);
 
-  // 2. EĞİTMENLERİ ÇEKEN KOD
+  // EĞİTMENLERİ ÇEKEN KOD
   useEffect(() => {
     async function fetchData() {
       const { data: teacherData, error: teacherError } = await supabase.from('egitmenler').select('*');
@@ -322,7 +320,6 @@ export default function HomePage() {
 
   const handleGoogleAuth = async () => {
     try {
-      // Kullanıcının niyetini (rol ve mod) geri dönüş URL'sine parametre olarak ekliyoruz
       const { error } = await supabase.auth.signInWithOAuth({ 
         provider: 'google', 
         options: { 
@@ -336,11 +333,53 @@ export default function HomePage() {
   const handleSearch = () => router.push('/egitmenler'); 
   const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !loading) handleAuth(); };
 
-  const filteredTeachers = teachers.filter((tItem) => {
-    if (!searchTerm) return true;
-    const lowerTerm = searchTerm.toLowerCase();
-    return ((tItem.tam_ad && tItem.tam_ad.toLowerCase().includes(lowerTerm)) || (tItem.ders_turu && tItem.ders_turu.toLowerCase().includes(lowerTerm)) || (tItem.biyografi && tItem.biyografi.toLowerCase().includes(lowerTerm)));
-  });
+  // FİLTRELEME VE PUANA GÖRE SIRALAMA
+  const filteredTeachers = teachers
+    .filter((tItem) => {
+      if (!searchTerm) return true;
+      const lowerTerm = searchTerm.toLowerCase();
+      return ((tItem.tam_ad && tItem.tam_ad.toLowerCase().includes(lowerTerm)) || (tItem.ders_turu && tItem.ders_turu.toLowerCase().includes(lowerTerm)) || (tItem.biyografi && tItem.biyografi.toLowerCase().includes(lowerTerm)));
+    })
+    .sort((a, b) => {
+      const puanA = parseFloat(a.gercek_puan_ortalamasi) || 0;
+      const puanB = parseFloat(b.gercek_puan_ortalamasi) || 0;
+      return puanB - puanA;
+    })
+    .slice(0, 15);
+
+  // 🚀 STATÜ ROZETİ FONKSİYONU
+  const renderBadge = (etiket: string) => {
+    if(!etiket) return null;
+    const lower = etiket.toLowerCase();
+    
+    let bg = "#f8fafc";
+    let color = "#475569";
+    let border = "#e2e8f0";
+    let icon = null;
+
+    if (lower.includes('süper') || lower.includes('super')) {
+      bg = "#fffbeb"; color = "#d97706"; border = "#fde68a";
+      icon = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/></svg>;
+    } else if (lower.includes('uzman')) {
+      bg = "#eff6ff"; color = "#2563eb"; border = "#bfdbfe";
+      icon = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>;
+    } else if (lower.includes('profesyonel')) {
+      bg = "#f5f3ff"; color = "#6d28d9"; border = "#ddd6fe";
+      icon = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>;
+    }
+
+    return (
+        <span style={{ 
+          padding: '6px 14px', backgroundColor: bg, color: color, borderRadius: '20px', 
+          fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.5px', 
+          display: 'inline-flex', alignItems: 'center', gap: '6px', border: `1px solid ${border}`,
+          whiteSpace: 'nowrap', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)'
+        }}>
+          {icon}
+          {etiket.toUpperCase()}
+        </span>
+    );
+  };
 
   return (
     <div style={{ fontFamily: '"Inter", system-ui, sans-serif', color: '#0f172a', backgroundColor: '#ffffff', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -369,14 +408,13 @@ export default function HomePage() {
       {/* 2. HERO SECTION */}
       <header style={{ padding: '60px 8%', backgroundColor: '#4f46e5', color: '#ffffff', display: 'flex', alignItems: 'center', flexWrap: 'wrap', minHeight: '520px', position: 'relative', overflow: 'hidden' }}>
         
-        {/* ARKA PLAN GÖRSELİ (Daha Canlı ve Belirgin) */}
+        {/* ARKA PLAN GÖRSELİ */}
         <div style={{ position: 'absolute', top: 0, right: 0, width: '60%', height: '100%', zIndex: 0 }}>
           <img 
             src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" 
             alt="Online Language Learning" 
             style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.70, objectPosition: 'center' }} 
           />
-          {/* Mor renk geçişi maskesi: Solda tam renk, sağa doğru anında şeffaflaşıyor */}
           <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(to right, #4f46e5 0%, #4f46e5 15%, transparent 40%)' }}></div>
         </div>
 
@@ -498,9 +536,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* EĞİTMENLER GRID */}
+      {/* ZOOM EFEKTİ UYGULANMIŞ EĞİTMENLER BÖLÜMÜ */}
       <section id="teachers-section" style={{ padding: '100px 8%', backgroundColor: '#f8fafc', flex: 1, borderTop: '1px solid #f1f5f9' }}>
-        <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto', zoom: '0.8' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '48px' }}>
             <div>
               <h3 style={{ fontSize: '2.5rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-1px', margin: 0 }}>{t.home.featuredTitle}</h3>
@@ -509,7 +547,7 @@ export default function HomePage() {
             <button onClick={() => router.push('/egitmenler')} style={{ padding: '12px 24px', backgroundColor: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '12px', fontWeight: 700, color: '#4f46e5', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e0e7ff'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}>{t.home.viewAll}</button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '32px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '32px' }}>
             {filteredTeachers.length > 0 ? (
               filteredTeachers.map((tItem) => {
                 const online = isOnline(tItem.son_gorulme);
@@ -520,52 +558,73 @@ export default function HomePage() {
                 }
 
                 return (
-                  <div key={tItem.id} onClick={() => router.push(`/teachers/${tItem.user_id || tItem.id}`)} style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px', cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', position: 'relative', gap: '16px' }} onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)'; e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.borderColor = '#c7d2fe'; }} onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                      <div style={{ display: 'flex', gap: '16px' }}>
-                        <div style={{ position: 'relative' }}>
-                          <img src={tItem.avatar_url || `https://ui-avatars.com/api/?name=${tItem.tam_ad || 'Eğitmen'}&background=eef2ff&color=4f46e5&size=80&bold=true`} style={{ width: '80px', height: '80px', borderRadius: '16px', objectFit: 'cover', border: '1px solid #f1f5f9' }} />
-                          {online && <div style={{ position: 'absolute', bottom: '-4px', right: '-4px', width: '18px', height: '18px', backgroundColor: '#22c55e', border: '3px solid #ffffff', borderRadius: '50%' }}></div>}
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <h4 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>{tItem.tam_ad}</h4>
-                          <p style={{ margin: '4px 0 8px 0', color: '#64748b', fontSize: '0.95rem', fontWeight: 500 }}>{tItem.ders_turu || 'Türkçe Eğitmeni'}</p>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.9rem' }}>
-                            {tItem.gercek_puan_ortalamasi ? (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><span style={{ color: '#f59e0b', fontSize: '1.1rem' }}>★</span><span style={{ fontWeight: 800, color: '#0f172a' }}>{tItem.gercek_puan_ortalamasi}</span><span style={{ color: '#94a3b8', fontWeight: 500 }}>({tItem.gercek_yorum_sayisi})</span></div>
-                            ) : (
-                              <span style={{ fontWeight: 700, color: '#4f46e5', backgroundColor: '#eef2ff', padding: '2px 8px', borderRadius: '6px', fontSize: '0.75rem' }}>{t.teacherCard?.newTeacher || 'Yeni Eğitmen'}</span>
-                            )}
-                            {tItem.gercek_puan_ortalamasi && <div style={{ width: '4px', height: '4px', backgroundColor: '#cbd5e1', borderRadius: '50%' }}></div>}
-                            <div style={{ color: '#475569', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{color: '#94a3b8'}}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> {tItem.gercek_tamamlanan_ders || 0} Ders</div>
+                  <div key={tItem.id} onClick={() => router.push(`/teachers/${tItem.user_id || tItem.id}`)} style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '24px', padding: '28px', cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', position: 'relative', gap: '20px' }} onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)'; e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.borderColor = '#c7d2fe'; }} onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}>
+                    
+                    {tItem.one_cikan_etiket && (
+                      <div style={{ position: 'absolute', top: '-16px', right: '24px' }}>
+                        {renderBadge(tItem.one_cikan_etiket)}
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', gap: '20px' }}>
+                      <div style={{ position: 'relative', flexShrink: 0 }}>
+                        <img src={tItem.avatar_url || `https://ui-avatars.com/api/?name=${tItem.tam_ad || 'Eğitmen'}&background=eef2ff&color=4f46e5&size=90&bold=true`} style={{ width: '90px', height: '90px', borderRadius: '16px', objectFit: 'cover', border: '1px solid #f1f5f9' }} />
+                        {online && <div style={{ position: 'absolute', bottom: '-4px', right: '-4px', width: '18px', height: '18px', backgroundColor: '#22c55e', border: '3px solid #ffffff', borderRadius: '50%' }}></div>}
+                      </div>
+                      
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <h4 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>{tItem.tam_ad}</h4>
+                        <p style={{ margin: 0, color: '#4f46e5', fontSize: '0.95rem', fontWeight: 700 }}>{tItem.ders_turu || 'Türkçe Eğitmeni'}</p>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.9rem', flexWrap: 'wrap', marginTop: '4px' }}>
+                          {tItem.gercek_puan_ortalamasi ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><span style={{ color: '#f59e0b', fontSize: '1.1rem' }}>★</span><span style={{ fontWeight: 800, color: '#0f172a' }}>{tItem.gercek_puan_ortalamasi}</span><span style={{ color: '#94a3b8', fontWeight: 500 }}>({tItem.gercek_yorum_sayisi})</span></div>
+                          ) : (
+                            <span style={{ fontWeight: 800, color: '#15803d', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                              {t.teacherCard?.newTeacher || 'Yeni Eğitmen'}
+                            </span>
+                          )}
+                          {tItem.gercek_puan_ortalamasi && <div style={{ width: '4px', height: '4px', backgroundColor: '#cbd5e1', borderRadius: '50%' }}></div>}
+                          
+                          <div style={{ color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                            {tItem.gercek_tamamlanan_ders || 0} Ders
                           </div>
                         </div>
                       </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                        {tItem.konum && <span style={{ padding: '4px 10px 4px 6px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', borderRadius: '16px', fontSize: '0.85rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '22px', height: '22px', background: '#e0e7ff', color: '#4f46e5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></div>{tItem.konum}</span>}
-                        {tItem.egitim && <span style={{ padding: '4px 10px 4px 6px', backgroundColor: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', borderRadius: '16px', fontSize: '0.85rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '22px', height: '22px', background: '#fef3c7', color: '#d97706', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>{tItem.egitim}</span>}
-                        {(tItem.amac || tItem.odak || '').split(',').filter((item: string) => item.trim() !== '').slice(0, 3).map((item: string, i: number) => <span key={i} style={{ padding: '6px 12px', backgroundColor: '#eef2ff', border: '1px solid #c7d2fe', color: '#4f46e5', borderRadius: '16px', fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>{item.trim()}</span>)}
-                      </div>
-                      <p style={{ color: '#475569', lineHeight: 1.6, fontSize: '0.95rem', height: '3em', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', margin: 0 }}>{tItem.biyografi || 'Alanında uzman, ana dili Türkçe olan deneyimli eğitmen ile pratik yapmaya hemen başlayın.'}</p>
-                      {dillerArray.length > 0 && (
-                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap', marginTop: '-4px' }}>
-                          <strong style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Konuştuğu Diller:</strong>
-                          {dillerArray.slice(0, 3).map((dil: string, index: number) => {
-                            const isAnaDil = dil.includes('(Ana Dil)');
-                            return <span key={index} style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: isAnaDil ? 700 : 600, backgroundColor: isAnaDil ? '#eef2ff' : '#f8fafc', color: isAnaDil ? '#4f46e5' : '#475569', border: isAnaDil ? '1px solid #c7d2fe' : '1px solid #e2e8f0' }}>{dil.replace('(Ana Dil)', '').trim()}</span>;
-                          })}
-                          {dillerArray.length > 3 && <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600 }}>+{dillerArray.length - 3}</span>}
-                        </div>
-                      )}
                     </div>
-                    <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '20px', marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {tItem.konum && <span style={{ padding: '4px 10px 4px 6px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569', borderRadius: '16px', fontSize: '0.85rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '22px', height: '22px', background: '#e0e7ff', color: '#4f46e5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></div>{tItem.konum}</span>}
+                      {tItem.egitim && <span style={{ padding: '4px 10px 4px 6px', backgroundColor: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', borderRadius: '16px', fontSize: '0.85rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '22px', height: '22px', background: '#fef3c7', color: '#d97706', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>{tItem.egitim}</span>}
+                      {(tItem.amac || tItem.odak || '').split(',').filter((item: string) => item.trim() !== '').slice(0, 3).map((item: string, i: number) => (
+                        <span key={i} style={{ padding: '6px 12px', backgroundColor: '#eef2ff', border: '1px solid #c7d2fe', color: '#4f46e5', borderRadius: '16px', fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center' }}>
+                          {item.trim()}
+                        </span>
+                      ))}
+                    </div>
+                    
+                    <p style={{ color: '#475569', lineHeight: 1.6, fontSize: '0.95rem', height: '3em', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', margin: 0 }}>{tItem.biyografi || 'Alanında uzman, ana dili Türkçe olan deneyimli eğitmen ile pratik yapmaya hemen başlayın.'}</p>
+                    
+                    {dillerArray.length > 0 && (
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap', marginTop: '-4px' }}>
+                        <strong style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Diller:</strong>
+                        {dillerArray.slice(0, 3).map((dil: string, index: number) => {
+                          const isAnaDil = dil.includes('(Ana Dil)');
+                          return <span key={index} style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: isAnaDil ? 700 : 600, backgroundColor: isAnaDil ? '#eef2ff' : '#f8fafc', color: isAnaDil ? '#4f46e5' : '#475569', border: isAnaDil ? '1px solid #c7d2fe' : '1px solid #e2e8f0' }}>{dil.replace('(Ana Dil)', '').trim()}</span>;
+                        })}
+                        {dillerArray.length > 3 && <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600 }}>+{dillerArray.length - 3}</span>}
+                      </div>
+                    )}
+                    
+                    <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '20px', marginTop: 'auto', width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div><span style={{ fontSize: '1.5rem', fontWeight: 900, color: '#0f172a' }}>{formatPrice(tItem.saatlik_ucret)}</span><span style={{ color: '#94a3b8', fontSize: '0.9rem', fontWeight: 500 }}> / {t.teacherCard?.perLesson || 'ders'}</span></div>
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <button onClick={(e) => { e.stopPropagation(); router.push(`/teachers/${tItem.user_id || tItem.id}`); }} style={{ padding: '10px 16px', backgroundColor: '#ffffff', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '10px', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}>{t.teacherCard?.profile || 'Profil'}</button>
                         <button onClick={(e) => { e.stopPropagation(); router.push(`/teachers/${tItem.user_id || tItem.id}`); }} style={{ padding: '10px 20px', backgroundColor: '#4f46e5', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 800, fontSize: '0.9rem', cursor: 'pointer', boxShadow: '0 4px 10px rgba(79, 70, 229, 0.25)', transition: 'all 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#4338ca'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#4f46e5'}>{t.teacherCard?.bookTrial || 'Deneme Dersi'}</button>
                       </div>
                     </div>
-                    {tItem.one_cikan_etiket && <div style={{ position: 'absolute', top: '-12px', right: '24px' }}><span style={{ padding: '4px 12px', backgroundColor: '#0f172a', color: '#ffffff', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.5px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>✨ {tItem.one_cikan_etiket}</span></div>}
                   </div>
                 );
               })
@@ -576,42 +635,129 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 6. KURUMSAL FOOTER */}
-      <footer style={{ backgroundColor: '#0f172a', color: '#94a3b8', padding: '80px 8% 40px 8%' }}>
-        <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: '40px', justifyContent: 'space-between', borderBottom: '1px solid #1e293b', paddingBottom: '40px', marginBottom: '40px' }}>
-          <div style={{ maxWidth: '300px' }}>
-            <h2 style={{ color: '#ffffff', fontSize: '1.5rem', fontWeight: 900, marginBottom: '20px', letterSpacing: '-0.5px' }}>Turkish Learning Academy.</h2>
-            <p style={{ lineHeight: 1.6 }}>Dünyanın dört bir yanından Türkçe öğrenmek isteyenleri uzman eğitmenlerle buluşturan yenilikçi platform.</p>
+      {/* 6. KAPSAMLI KURUMSAL FOOTER (YENİ TASARIM) */}
+      <footer style={{ backgroundColor: '#121212', color: '#e5e7eb', padding: '80px 8% 40px 8%', fontSize: '0.9rem' }}>
+        
+        {/* Üst Kısım: Menü Sütunları */}
+        <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: '60px', justifyContent: 'space-between', borderBottom: '1px solid #333', paddingBottom: '60px', marginBottom: '40px' }}>
+          
+          <div style={{ flex: '1 1 180px' }}>
+            <h4 style={{ color: '#ffffff', fontWeight: 700, marginBottom: '24px', letterSpacing: '0.5px', borderBottom: '1px solid #4f46e5', display: 'inline-block', paddingBottom: '4px' }}>Hakkımızda</h4>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <li style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>Kimiz</li>
+              <li style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>Nasıl çalışıyor?</li>
+              <li style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>TLA değerlendirmeleri</li>
+              <li style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>TLA uygulaması</li>
+              <li style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>TLA'da Çalış!</li>
+              <li style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>TLA Araştırmaları ve Çalışmaları</li>
+              <li style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>Medya kiti</li>
+              <li style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>Ortaklık programı</li>
+            </ul>
           </div>
-          <div style={{ display: 'flex', gap: '80px' }}>
-            <div>
-              <h4 style={{ color: '#ffffff', fontWeight: 700, marginBottom: '20px' }}>Platform</h4>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <li onClick={handleSearch} style={{ cursor: 'pointer' }}>{t.nav.explore}</li>
-                <li style={{ cursor: 'pointer' }} onClick={() => router.push('/blog')}>{isEn ? "Blog" : "Blog"}</li>
-                <li style={{ cursor: 'pointer' }}>{t.home.howItWorksTitle}</li>
-                <li style={{ cursor: 'pointer' }} onClick={() => router.push('/become-teacher')}>{t.nav.becomeTeacher}</li>
-              </ul>
+
+          <div style={{ flex: '1 1 180px' }}>
+            <h4 style={{ color: '#ffffff', fontWeight: 700, marginBottom: '24px', letterSpacing: '0.5px', borderBottom: '1px solid #4f46e5', display: 'inline-block', paddingBottom: '4px' }}>Öğrenciler İçin</h4>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <li onClick={() => router.push('/blog')} style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>TLA Blog</li>
+              <li style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>Sorular ve Cevaplar</li>
+              <li style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>Arkadaşına öner</li>
+              <li style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>Türkçenizi ücretsiz test edin</li>
+              <li style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>Kelime dağarcığınızı test edin</li>
+              <li style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>TLA indirimleri</li>
+            </ul>
+          </div>
+
+          <div style={{ flex: '1 1 180px' }}>
+            <h4 style={{ color: '#ffffff', fontWeight: 700, marginBottom: '24px', letterSpacing: '0.5px', borderBottom: '1px solid #4f46e5', display: 'inline-block', paddingBottom: '4px' }}>Öğretmenler İçin</h4>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <li onClick={() => router.push('/become-teacher')} style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>Online öğretmen ol</li>
+              <li style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>Online Türkçe öğret</li>
+              <li style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>Tüm online öğretmenlik işlerini gör</li>
+            </ul>
+          </div>
+
+          <div style={{ flex: '1 1 180px' }}>
+            <h4 style={{ color: '#ffffff', fontWeight: 700, marginBottom: '24px', letterSpacing: '0.5px', borderBottom: '1px solid #4f46e5', display: 'inline-block', paddingBottom: '4px' }}>Şirketler İçin Eğitimler</h4>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <li style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>Kurumsal dil eğitimi</li>
+              <li style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>Kurumsal Türkçe eğitimleri</li>
+              <li style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>Kurumsal eğitim blogu</li>
+              <li style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>Kaynak merkezi</li>
+              <li style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>Şirketler için dil seviye testi</li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Orta Kısım: Destek, Adres ve Uygulamalar */}
+        <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: '60px', justifyContent: 'space-between', paddingBottom: '40px' }}>
+          
+          <div style={{ flex: '1 1 180px' }}>
+             <h4 style={{ color: '#ffffff', fontWeight: 700, marginBottom: '20px' }}>Destek</h4>
+             <span style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>Daha fazla yardıma mı ihtiyacınız var?</span>
+             <br /><br />
+             <span style={{ cursor: 'pointer', transition: 'color 0.2s', display: 'flex', alignItems: 'center', gap: '6px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981' }}></div> Status
+             </span>
+          </div>
+
+          <div style={{ flex: '1 1 180px' }}>
+            <h4 style={{ color: '#ffffff', fontWeight: 700, marginBottom: '20px' }}>Bağlantılar</h4>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+               <span>🇹🇷</span> <strong>Türkiye</strong>
             </div>
-            <div>
-              <h4 style={{ color: '#ffffff', fontWeight: 700, marginBottom: '20px' }}>Destek / Support</h4>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <li style={{ cursor: 'pointer' }}>SSS / FAQ</li>
-                <li style={{ cursor: 'pointer' }}>İletişim / Contact</li>
-                <li style={{ cursor: 'pointer' }}>Gizlilik Politikası / Privacy</li>
-              </ul>
+            <p style={{ margin: 0, lineHeight: 1.5, opacity: 0.8 }}>
+              Teknokent Bilişim Vadisi,<br/>
+              Ankara, Türkiye, 06800
+            </p>
+          </div>
+
+          <div style={{ flex: '1 1 180px' }}>
+             <h4 style={{ color: '#ffffff', fontWeight: 700, marginBottom: '20px' }}>Sosyal ağlarda TLA</h4>
+             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+               <li style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg> Facebook</li>
+               <li style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg> Instagram</li>
+               <li style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33 2.78 2.78 0 0 0 1.94 2C5.12 19.5 12 19.5 12 19.5s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.33 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" fill="#121212"></polygon></svg> Youtube</li>
+               <li style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg> LinkedIn</li>
+             </ul>
+          </div>
+          
+          <div style={{ flex: '1 1 180px' }}>
+            <h4 style={{ color: '#ffffff', fontWeight: 700, marginBottom: '20px' }}>Apps</h4>
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              <button style={{ backgroundColor: '#000000', border: '1px solid #333', color: '#ffffff', padding: '6px 16px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', height: '46px', transition: 'background 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#111'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#000'}>
+                <svg viewBox="0 0 384 512" width="22" height="22" fill="currentColor"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontSize: '0.65rem', opacity: 0.9, lineHeight: 1 }}>App Store'dan</div>
+                  <div style={{ fontSize: '1rem', fontWeight: 600, lineHeight: 1.1 }}>İndirin</div>
+                </div>
+              </button>
+
+              <button style={{ backgroundColor: '#000000', border: '1px solid #333', color: '#ffffff', padding: '6px 16px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', height: '46px', transition: 'background 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#111'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#000'}>
+                <svg width="22" height="22" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M3.245 2.122A1.854 1.854 0 0 0 2.7 3.655v16.69a1.855 1.855 0 0 0 .546 1.533l.063.06 8.875-8.875v-.126L3.308 2.062l-.063.06z" fill="#42a5f5"/>
+                  <path d="M15.42 16.033l-3.235-3.235v-.126l3.235-3.235.084.048 3.834 2.18c1.094.62 1.094 1.637 0 2.26l-3.834 2.18-.084.048z" fill="#ffca28"/>
+                  <path d="M15.504 15.985L12.185 12.67 3.308 21.55c.348.368.928.413 1.57.048l10.626-6.046z" fill="#4caf50"/>
+                  <path d="M15.504 8.015L4.878 1.97C4.236 1.604 3.656 1.65 3.308 2.018l8.877 8.88 3.32-3.315z" fill="#f44336"/>
+                </svg>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontSize: '0.65rem', opacity: 0.9, lineHeight: 1 }}>HEMEN ALIN</div>
+                  <div style={{ fontSize: '1rem', fontWeight: 600, lineHeight: 1.1 }}>Google Play</div>
+                </div>
+              </button>
             </div>
           </div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
-          <div style={{ display: 'flex', gap: '24px' }}>
-            <a href="#" aria-label="Instagram" style={{ color: '#94a3b8', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.color = '#ffffff'; e.currentTarget.style.transform = 'scale(1.1)'; }} onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.transform = 'scale(1)'; }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg></a>
-            <a href="#" aria-label="Facebook" style={{ color: '#94a3b8', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.color = '#ffffff'; e.currentTarget.style.transform = 'scale(1.1)'; }} onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.transform = 'scale(1)'; }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg></a>
-            <a href="#" aria-label="YouTube" style={{ color: '#94a3b8', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.color = '#ffffff'; e.currentTarget.style.transform = 'scale(1.1)'; }} onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.transform = 'scale(1)'; }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33 2.78 2.78 0 0 0 1.94 2C5.12 19.5 12 19.5 12 19.5s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.33 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg></a>
-            <a href="#" aria-label="X (Twitter)" style={{ color: '#94a3b8', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.color = '#ffffff'; e.currentTarget.style.transform = 'scale(1.1)'; }} onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.transform = 'scale(1)'; }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4l11.73 16h5L9 4H4z"></path><path d="M4 20l6.76-6.76M20 4l-6.76 6.76"></path></svg></a>
+
+        <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '20px', borderTop: '1px solid #333', paddingTop: '30px' }}>
+          <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', fontSize: '0.85rem' }}>
+            <span>&copy; {new Date().getFullYear()} Turkish Learning Academy. Tüm hakları saklıdır.</span>
+            <span style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>Yasal Hususlar</span>
+            <span style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>Gizlilik Politikası</span>
+            <span style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>Çerez Politikası</span>
+            <span style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>Yasal Bildirim</span>
           </div>
-          <div style={{ textAlign: 'center', fontSize: '0.9rem' }}>&copy; {new Date().getFullYear()} Turkish Learning Academy. Tüm hakları saklıdır.</div>
         </div>
+
       </footer>
 
       {/* 7. AUTH MODAL */}
@@ -641,12 +787,12 @@ export default function HomePage() {
                     <input type="email" placeholder={t.authModal.emailPlaceholder} value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={handleKeyDown} style={{ width: '100%', padding: '16px', borderRadius: '14px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontSize: '0.95rem', outline: 'none', fontWeight: 500 }} />
                     <input type="password" placeholder={t.authModal.passwordPlaceholder} value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={handleKeyDown} style={{ width: '100%', padding: '16px', borderRadius: '14px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontSize: '0.95rem', outline: 'none', fontWeight: 500 }} />
                     {authType === 'login' && (
-  <div style={{ textAlign: 'right', marginTop: '-8px' }}>
-    <button onClick={() => { setShowAuthModal(false); router.push('/sifremi-unuttum'); }} style={{ background: 'none', border: 'none', color: '#4f46e5', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}>
-      Şifremi Unuttum?
-    </button>
-  </div>
-)}
+                      <div style={{ textAlign: 'right', marginTop: '-8px' }}>
+                        <button onClick={() => { setShowAuthModal(false); router.push('/sifremi-unuttum'); }} style={{ background: 'none', border: 'none', color: '#4f46e5', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}>
+                          Şifremi Unuttum?
+                        </button>
+                      </div>
+                    )}
                     <button onClick={handleAuth} disabled={loading} style={{ width: '100%', padding: '16px', borderRadius: '14px', backgroundColor: loading ? '#94a3b8' : '#4f46e5', color: '#ffffff', border: 'none', fontWeight: 700, fontSize: '1rem', cursor: loading ? 'not-allowed' : 'pointer', marginTop: '8px', transition: 'background-color 0.2s', boxShadow: '0 4px 14px 0 rgba(79, 70, 229, 0.3)' }}>{loading ? t.authModal.processing : (authType === 'login' ? t.authModal.submitLogin : t.authModal.submitRegister)}</button>
                     <div style={{ display: 'flex', alignItems: 'center', margin: '20px 0', color: '#94a3b8', fontSize: '0.85rem' }}><div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }}></div><span style={{ padding: '0 12px', fontWeight: 600 }}>{t.authModal.or}</span><div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }}></div></div>
                     <button onClick={handleGoogleAuth} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', width: '100%', padding: '14px', borderRadius: '14px', border: '1px solid #e2e8f0', backgroundColor: '#ffffff', color: '#0f172a', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}><svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>{t.authModal.googleBtn}</button>

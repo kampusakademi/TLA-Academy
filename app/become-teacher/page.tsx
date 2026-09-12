@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
@@ -14,6 +14,7 @@ export default function BecomeTeacher() {
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
+    telefon: '', // Supabase telefon alanı eklendi
     price: '',
     bio: '',
     konum: '', // Ülke
@@ -36,9 +37,9 @@ export default function BecomeTeacher() {
 
   // Seçenek Verileri
   const LOCATIONS = ['Türkiye', 'Almanya', 'Amerika Birleşik Devletleri', 'İngiltere', 'Fransa', 'Hollanda', 'Azerbaycan', 'Kuzey Kıbrıs', 'Diğer'];
-  const CITIES = ['Adana', 'Ankara', 'Antalya', 'Bursa', 'Diyarbakır', 'Erzurum', 'Eskişehir', 'Gaziantep', 'İstanbul', 'İzmir', 'Kayseri', 'Kocaeli', 'Konya', 'Mersin', 'Sakarya', 'Samsun', 'Şanlıurfa', 'Trabzon', 'Van', 'Diğer'];
+  const CITIES = ['Adana', 'Adıyaman', 'Afyonkarahisar', 'Ağrı', 'Aksaray', 'Amasya', 'Ankara', 'Antalya', 'Ardahan', 'Artvin', 'Aydın', 'Balıkesir', 'Bartın', 'Batman', 'Bayburt', 'Bilecik', 'Bingöl', 'Bitlis', 'Bolu', 'Burdur', 'Bursa', 'Çanakkale', 'Çankırı', 'Çorum', 'Denizli', 'Diyarbakır', 'Düzce', 'Edirne', 'Elazığ', 'Erzincan', 'Erzurum', 'Eskişehir', 'Gaziantep', 'Giresun', 'Gümüşhane', 'Hakkari', 'Hatay', 'Iğdır', 'Isparta', 'İstanbul', 'İzmir', 'Kahramanmaraş', 'Karabük', 'Karaman', 'Kars', 'Kastamonu', 'Kayseri', 'Kilis', 'Kırıkkale', 'Kırklareli', 'Kırşehir', 'Kocaeli', 'Konya', 'Kütahya', 'Malatya', 'Manisa', 'Mardin', 'Mersin', 'Muğla', 'Muş', 'Nevşehir', 'Niğde', 'Ordu', 'Osmaniye', 'Rize', 'Sakarya', 'Samsun', 'Siirt', 'Sinop', 'Sivas', 'Şanlıurfa', 'Şırnak', 'Tekirdağ', 'Tokat', 'Trabzon', 'Tunceli', 'Uşak', 'Van', 'Yalova', 'Yozgat', 'Zonguldak'];
   const EDUCATIONS = ['Lise', 'Ön Lisans', 'Lisans', 'Yüksek Lisans', 'Doktora'];
-  const LANGUAGES = ['Türkçe', 'İngilizce', 'Almanca', 'Fransızca', 'İspanyolca', 'Arapça', 'Rusça', 'Çince'];
+  const LANGUAGES = ['İngilizce','İspanyolca', 'Fransızca', 'Arapça', 'Portekizce', 'Rusça', 'Endonezce', 'Japonca', 'Türkçe', 'Korece', 'İtalyanca', 'Azerbaycanca', 'Almanca',];
 
   const GOALS = ['Kariyer ve İş', 'Sınav Hazırlığı', 'Çocuklar İçin Türkçe', 'Kültür ve Seyahat', 'Günlük Pratik', 'Akademik Türkçe'];
   const DURATIONS = ['1-4 Hafta', '1-3 Ay', '3-6 Ay', 'Uzun Dönem', 'Tek Seferlik Hızlı Pratik'];
@@ -58,8 +59,8 @@ export default function BecomeTeacher() {
 
   // 1. Adım Doğrulama
   const handleNextStep = () => {
-    if (!formData.fullName.trim() || !formData.email.trim() || !formData.price || !formData.bio.trim() || !formData.konum || !formData.sehir.trim() || !formData.egitim || !formData.okul.trim() || !formData.anaDil) {
-      toast.error("⚠️ Lütfen sonraki adıma geçmeden önce kişisel bilgilerinizi, konumunuzu, dillerinizi ve eğitim bilgilerinizi eksiksiz doldurun.");
+    if (!formData.fullName.trim() || !formData.email.trim() || !formData.telefon.trim() || !formData.price || !formData.bio.trim() || !formData.konum || !formData.sehir.trim() || !formData.egitim || !formData.okul.trim() || !formData.anaDil) {
+      toast.error("⚠️ Lütfen sonraki adıma geçmeden önce kişisel bilgilerinizi, telefon numaranızı, konumunuzu, dillerinizi ve eğitim bilgilerinizi eksiksiz doldurun.");
       return;
     }
     
@@ -118,11 +119,12 @@ export default function BecomeTeacher() {
         .insert([{
           tam_ad: formData.fullName,
           email: formData.email,
+          telefon: formData.telefon, // 🚀 Yeni sütun
           saatlik_ucret: Number(formData.price),
           biyografi: formData.bio,
-          konum: tamKonum,             
-          egitim: tamEgitim,           
-          diller: tumDiller,           
+          konum: tamKonum,            
+          egitim: tamEgitim,          
+          diller: tumDiller,          
           amac: specialties.amac.join(', '),
           sure: specialties.sure.join(', '),
           odak: specialties.odak.join(', '),
@@ -224,7 +226,6 @@ export default function BecomeTeacher() {
           {step === 1 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%', boxSizing: 'border-box' }}>
               
-              {/* Ad Soyad & E-posta */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', width: '100%', boxSizing: 'border-box' }}>
                 <div style={{ width: '100%' }}>
                   <label style={labelStyle}>Adınız Soyadınız</label>
@@ -236,7 +237,15 @@ export default function BecomeTeacher() {
                 </div>
               </div>
 
-              {/* 🚀 DİNAMİK ŞEHİR - KONUM ALANI */}
+              {/* 🚀 EKLENEN TELEFON NUMARASI ALANI */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', width: '100%', boxSizing: 'border-box' }}>
+                <div style={{ width: '100%' }}>
+                  <label style={labelStyle}>Telefon Numarası</label>
+                  <input required type="tel" value={formData.telefon} onChange={e => setFormData({...formData, telefon: e.target.value})} style={inputStyle} placeholder="Örn: +90 5XX XXX XX XX" />
+                </div>
+                <div style={{ width: '100%' }}></div> {/* Satırı hizada tutmak için boş div */}
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', width: '100%', boxSizing: 'border-box' }}>
                 <div style={{ width: '100%' }}>
                   <label style={labelStyle}>Konum (Ülke)</label>
@@ -265,7 +274,6 @@ export default function BecomeTeacher() {
                 </div>
               </div>
 
-              {/* Eğitim Durumu ve Okul Adı */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', width: '100%', boxSizing: 'border-box' }}>
                 <div style={{ width: '100%' }}>
                   <label style={labelStyle}>Eğitim Seviyesi</label>
@@ -280,7 +288,6 @@ export default function BecomeTeacher() {
                 </div>
               </div>
 
-              {/* 🚀 KONUŞULAN DİLLER (1. ADIMA TAŞINDI) */}
               <div style={{ backgroundColor: '#fcfcfe', padding: '16px', borderRadius: '14px', border: '1px solid #f1f5f9', width: '100%', boxSizing: 'border-box' }}>
                 <div style={{ marginBottom: '16px' }}>
                   <label style={labelStyle}>Ana Diliniz</label>
@@ -309,7 +316,6 @@ export default function BecomeTeacher() {
                 </div>
               </div>
 
-              {/* Saatlik Ders Ücreti */}
               <div style={{ width: '100%' }}>
                 <label style={labelStyle}>Saatlik Ders Ücretiniz (₺)</label>
                 <div style={{ position: 'relative', width: '100%' }}>
@@ -318,7 +324,6 @@ export default function BecomeTeacher() {
                 </div>
               </div>
 
-              {/* Biyografi */}
               <div style={{ width: '100%' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                   <label style={{ ...labelStyle, marginBottom: 0 }}>Kısa Biyografi</label>
@@ -327,7 +332,6 @@ export default function BecomeTeacher() {
                 <textarea required rows={4} value={formData.bio} onChange={e => setFormData({...formData, bio: e.target.value})} style={{ ...inputStyle, resize: 'none', lineHeight: 1.5 }} placeholder="Eğitim geçmişinizden, öğretme metodunuzdan ve Türkçe öğretmenliği deneyiminizden bahsedin..." />
               </div>
 
-              {/* Belgeler */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginTop: '4px', width: '100%' }}>
                 <div style={{ width: '100%' }}>
                   <label style={labelStyle}>🎓 Mezuniyet Diploması <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>(PDF, JPG, PNG)</span></label>
@@ -412,7 +416,7 @@ export default function BecomeTeacher() {
       </div>
 
       <p style={{ marginTop: '24px', fontSize: '0.8rem', color: '#94a3b8', textAlign: 'center' }}>
-        🔒 Bilgileriniz ve belgeleriniz yalnızca yönetim ekibi tarafından incelenmek amacıyla güvenle saklanır.
+        Devam et veya Kaydol butonlarına tıklayarak, Abonelik Koşulları ve Gizlilik Politikasını dahil olmak üzere Kullanım Koşullarını kabul etmiş sayılırsın.
       </p>
     </div>
   );

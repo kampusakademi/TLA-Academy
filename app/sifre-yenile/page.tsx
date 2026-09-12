@@ -1,89 +1,269 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import toast from 'react-hot-toast';
+import { Home, Search, GraduationCap, Users, KeyRound, ArrowLeft, Lock } from 'lucide-react';
 
-export default function ResetPassword() {
+export default function ResetPasswordPage() {
   const router = useRouter();
-  const [newPassword, setNewPassword] = useState('');
-  const [message, setMessage] = useState('');
-  const [isError, setIsError] = useState(false);
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-
-  // Supabase'in URL'deki güvenlik kodunu (hash) okuyup oturum açmasını bekle
-  useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        console.log('Şifre sıfırlama moduna geçildi.');
-      }
-    });
-    return () => { authListener.subscription.unsubscribe(); };
-  }, []);
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setMessage('');
-    setIsError(false);
-
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword
-      });
-
-      if (error) throw error;
-
-      setMessage('Şifreniz başarıyla güncellendi! Ana sayfaya yönlendiriliyorsunuz...');
-      
-      setTimeout(() => {
-        router.push('/');
-      }, 3000);
-
-    } catch (error: any) {
-      setIsError(true);
-      setMessage("Hata: " + error.message);
-    } finally {
-      setLoading(false);
+    
+    if (!password || !confirmPassword) {
+      toast.error('Lütfen tüm alanları doldurun.');
+      return;
     }
+
+    if (password !== confirmPassword) {
+      toast.error('Şifreler eşleşmiyor. Lütfen kontrol edin.');
+      return;
+    }
+
+    if (password.length < 6) {
+      toast.error('Şifreniz en az 6 karakter olmalıdır.');
+      return;
+    }
+
+    setLoading(true);
+    
+    // Supabase şifre güncelleme isteği
+    const { error } = await supabase.auth.updateUser({
+      password: password
+    });
+
+    if (error) {
+      toast.error('Şifre güncellenemedi: ' + error.message);
+    } else {
+      toast.success('Harika! Şifreniz başarıyla güncellendi. Giriş yapabilirsiniz.');
+      setTimeout(() => {
+        router.push('/login');
+      }, 2000);
+    }
+    
+    setLoading(false);
   };
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: '"Inter", sans-serif', padding: '20px' }}>
-      <div style={{ backgroundColor: '#ffffff', padding: '40px', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', width: '100%', maxWidth: '440px', border: '1px solid #e2e8f0' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f8fafc', fontFamily: '"Inter", system-ui, sans-serif' }}>
+      
+      {/* SOL KENAR ÇUBUĞU (SIDEBAR) */}
+      <aside style={{ width: '280px', backgroundColor: '#ffffff', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', position: 'sticky', top: 0, height: '100vh', zIndex: 50 }}>
         
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div style={{ fontSize: '40px', marginBottom: '16px' }}>✨</div>
-          <h1 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a', margin: '0 0 8px 0' }}>Yeni Şifre Belirle</h1>
-          <p style={{ color: '#64748b', fontSize: '0.95rem', margin: 0, lineHeight: 1.5 }}>Lütfen hesabınız için yeni ve güvenli bir şifre girin.</p>
+        {/* Logo Alanı */}
+        <div 
+          onClick={() => router.push('/')} 
+          style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
+        >
+          <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'linear-gradient(135deg, #4f46e5, #3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+              <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+            </svg>
+          </div>
+          <h1 style={{ fontSize: '1.2rem', fontWeight: 900, color: '#0f172a', margin: 0, letterSpacing: '-0.5px' }}>
+            Turkish Learning<br/>Academy.
+          </h1>
         </div>
 
-        <form onSubmit={handleUpdatePassword} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <input 
-            required 
-            type="password" 
-            value={newPassword} 
-            onChange={e => setNewPassword(e.target.value)} 
-            placeholder="Yeni Şifreniz (En az 6 karakter)" 
-            minLength={6}
-            style={{ width: '100%', padding: '16px', borderRadius: '14px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontSize: '0.95rem', outline: 'none', fontWeight: 500, boxSizing: 'border-box' }} 
-          />
+        {/* Menü Linkleri */}
+        <div style={{ padding: '24px 16px', flex: 1 }}>
+          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', marginLeft: '12px', display: 'block', marginBottom: '16px' }}>
+            MENÜ
+          </span>
+          
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {[
+              { label: 'Ana Sayfa', icon: <Home size={18} />, path: '/' },
+              { label: 'Eğitmenleri Keşfet', icon: <Search size={18} />, path: '/egitmenler' },
+              { label: 'Öğretmen Ol', icon: <GraduationCap size={18} />, path: '/become-teacher' },
+              { label: 'Eğitmenler', icon: <Users size={18} />, path: '/egitmenler' },
+            ].map((item, idx) => (
+              <div 
+                key={idx} 
+                onClick={() => router.push(item.path)}
+                style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '12px', cursor: 'pointer', color: '#64748b', fontSize: '0.95rem', fontWeight: 600, transition: 'all 0.2s' }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f1f5f9'; e.currentTarget.style.color = '#0f172a'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#64748b'; }}
+              >
+                {item.icon}
+                {item.label}
+              </div>
+            ))}
+          </nav>
+        </div>
+      </aside>
 
-          {message && (
-            <div style={{ padding: '12px 16px', borderRadius: '12px', backgroundColor: isError ? '#fee2e2' : '#dcfce7', color: isError ? '#ef4444' : '#166534', fontSize: '0.9rem', fontWeight: 600, textAlign: 'center' }}>
-              {message}
-            </div>
-          )}
-
+      {/* SAĞ İÇERİK ALANI */}
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+        
+        {/* Üst Header Bar */}
+        <header style={{ backgroundColor: '#ffffff', padding: '16px 40px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', borderBottom: '1px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 40 }}>
           <button 
-            type="submit" 
-            disabled={loading} 
-            style={{ width: '100%', padding: '16px', borderRadius: '14px', border: 'none', backgroundColor: loading ? '#94a3b8' : '#10b981', color: '#ffffff', fontWeight: 700, fontSize: '1rem', cursor: loading ? 'not-allowed' : 'pointer', boxShadow: '0 4px 14px 0 rgba(16, 185, 129, 0.3)', transition: 'background-color 0.2s' }}
+            onClick={() => router.push('/login')}
+            style={{ backgroundColor: '#0f172a', color: '#ffffff', padding: '10px 24px', borderRadius: '30px', fontWeight: 700, fontSize: '0.9rem', border: 'none', cursor: 'pointer', transition: 'background-color 0.2s' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1e293b'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#0f172a'}
           >
-            {loading ? 'Güncelleniyor...' : 'Şifremi Güncelle'}
+            Giriş Yap / Kayıt Ol
           </button>
-        </form>
-      </div>
+        </header>
+
+        {/* Lacivert Banner Alanı */}
+        <div style={{ backgroundColor: '#0f172a', padding: '80px 40px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+          {/* Arka plan deseni için hafif blur/gradient */}
+          <div style={{ position: 'absolute', top: '-50%', left: '50%', transform: 'translateX(-50%)', width: '600px', height: '600px', background: 'radial-gradient(circle, rgba(79, 70, 229, 0.15) 0%, rgba(15, 23, 42, 0) 70%)', borderRadius: '50%', pointerEvents: 'none' }}></div>
+          
+          <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ backgroundColor: 'rgba(255,255,255,0.1)', padding: '16px', borderRadius: '50%', display: 'inline-flex', marginBottom: '24px', backdropFilter: 'blur(10px)' }}>
+              <KeyRound size={36} color="#a5b4fc" />
+            </div>
+            <h2 style={{ fontSize: '3rem', fontWeight: 900, color: '#ffffff', margin: '0 0 16px 0', letterSpacing: '-1px' }}>
+              Yeni Şifre Belirle
+            </h2>
+            <p style={{ fontSize: '1.1rem', color: '#94a3b8', maxWidth: '600px', margin: '0 auto', lineHeight: 1.6 }}>
+              Güvenliğiniz için lütfen yeni ve güçlü bir şifre oluşturun.
+            </p>
+          </div>
+        </div>
+
+        {/* Form Kartı Alanı (Banner'ın hemen altına yerleşir) */}
+        <div style={{ padding: '40px', flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>
+          
+          <div style={{ width: '100%', maxWidth: '480px', backgroundColor: '#ffffff', borderRadius: '24px', padding: '40px', boxShadow: '0 20px 40px -10px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0', marginTop: '-80px', position: 'relative', zIndex: 20 }}>
+            
+            <form onSubmit={handleUpdatePassword} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              
+              <div>
+                <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
+                  Yeni Şifre
+                </label>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <div style={{ position: 'absolute', left: '16px', color: '#94a3b8', pointerEvents: 'none' }}>
+                    <Lock size={20} />
+                  </div>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="En az 6 karakter"
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '16px 16px 16px 48px',
+                      borderRadius: '14px',
+                      border: '1px solid #cbd5e1',
+                      backgroundColor: '#f8fafc',
+                      fontSize: '1rem',
+                      color: '#0f172a',
+                      outline: 'none',
+                      transition: 'all 0.2s',
+                      boxSizing: 'border-box'
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = '#4f46e5';
+                      e.currentTarget.style.backgroundColor = '#ffffff';
+                      e.currentTarget.style.boxShadow = '0 0 0 4px rgba(79, 70, 229, 0.1)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = '#cbd5e1';
+                      e.currentTarget.style.backgroundColor = '#f8fafc';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
+                  Şifreyi Onayla
+                </label>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <div style={{ position: 'absolute', left: '16px', color: '#94a3b8', pointerEvents: 'none' }}>
+                    <Lock size={20} />
+                  </div>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Şifrenizi tekrar girin"
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '16px 16px 16px 48px',
+                      borderRadius: '14px',
+                      border: '1px solid #cbd5e1',
+                      backgroundColor: '#f8fafc',
+                      fontSize: '1rem',
+                      color: '#0f172a',
+                      outline: 'none',
+                      transition: 'all 0.2s',
+                      boxSizing: 'border-box'
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = '#4f46e5';
+                      e.currentTarget.style.backgroundColor = '#ffffff';
+                      e.currentTarget.style.boxShadow = '0 0 0 4px rgba(79, 70, 229, 0.1)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = '#cbd5e1';
+                      e.currentTarget.style.backgroundColor = '#f8fafc';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  padding: '18px',
+                  backgroundColor: loading ? '#94a3b8' : '#10b981',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '14px',
+                  fontWeight: 800,
+                  fontSize: '1.05rem',
+                  cursor: loading ? 'default' : 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: loading ? 'none' : '0 10px 20px -5px rgba(16, 185, 129, 0.4)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginTop: '8px'
+                }}
+                onMouseEnter={(e) => { if (!loading) e.currentTarget.style.transform = 'translateY(-2px)' }}
+                onMouseLeave={(e) => { if (!loading) e.currentTarget.style.transform = 'translateY(0)' }}
+              >
+                {loading ? 'Güncelleniyor...' : 'Şifremi Güncelle'}
+              </button>
+            </form>
+
+            <div style={{ marginTop: '32px', textAlign: 'center', borderTop: '1px solid #f1f5f9', paddingTop: '24px' }}>
+              <button 
+                onClick={() => router.push('/login')}
+                style={{
+                  background: 'none', border: 'none', color: '#64748b', fontSize: '0.95rem', fontWeight: 600, 
+                  cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', transition: 'color 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.color = '#0f172a'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#64748b'}
+              >
+                <ArrowLeft size={16} />
+                Giriş Ekranına Dön
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

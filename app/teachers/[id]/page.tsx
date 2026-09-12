@@ -490,7 +490,7 @@ export default function TeacherProfilePage() {
 
   const benzersizEtiketler = Array.from(new Set(tumUzmanlikEtiketleri));
 
-  // SAĞ ÜST İÇİN STATÜ ROZETİ RENDER FONKSİYONU
+  // 🚀 SAĞ ÜST İÇİN STATÜ ROZETİ RENDER FONKSİYONU (İKONLU TASARIM)
   const renderBadge = (etiket: string) => {
     if(!etiket) return null;
     const lower = etiket.toLowerCase();
@@ -498,32 +498,27 @@ export default function TeacherProfilePage() {
     let bg = "#f8fafc";
     let color = "#475569";
     let border = "#e2e8f0";
+    let icon = null;
 
     if (lower.includes('süper') || lower.includes('super')) {
-      bg = "#fffbeb";
-      color = "#b45309";
-      border = "#fde68a";
+      bg = "#fffbeb"; color = "#d97706"; border = "#fde68a";
+      icon = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/></svg>; // Taç İkonu
     } else if (lower.includes('uzman')) {
-      bg = "#eff6ff";
-      color = "#1d4ed8";
-      border = "#bfdbfe";
+      bg = "#eff6ff"; color = "#2563eb"; border = "#bfdbfe";
+      icon = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>; // Madalya İkonu
     } else if (lower.includes('profesyonel')) {
-      bg = "#f5f3ff";
-      color = "#6d28d9";
-      border = "#ddd6fe";
-    } else if (lower.includes('yeni')) {
-      bg = "#f0fdf4";
-      color = "#15803d";
-      border = "#bbf7d0";
+      bg = "#f5f3ff"; color = "#6d28d9"; border = "#ddd6fe";
+      icon = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>; // Kalkan İkonu
     }
 
     return (
         <span style={{ 
           padding: '8px 16px', backgroundColor: bg, color: color, borderRadius: '16px', 
           fontSize: '0.85rem', fontWeight: 800, letterSpacing: '0.5px', 
-          display: 'flex', alignItems: 'center', border: `1px solid ${border}`,
+          display: 'flex', alignItems: 'center', gap: '6px', border: `1px solid ${border}`,
           whiteSpace: 'nowrap', boxShadow: '0 4px 6px rgba(0,0,0,0.05)'
         }}>
+          {icon}
           {etiket.toUpperCase()}
         </span>
     );
@@ -560,8 +555,9 @@ export default function TeacherProfilePage() {
                   <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>{gecerliPuanlar.length} Yorum</div>
                 </div>
               ) : (
-                <div style={{ background: '#ffffff', padding: '10px 16px', borderRadius: '16px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-                  <span style={{ fontSize: '0.85rem', color: '#1d4ed8', fontWeight: 700 }}>✨ Henüz Puanlanmadı</span>
+                <div style={{ background: '#f0fdf4', padding: '8px 16px', borderRadius: '16px', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#15803d" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                  <span style={{ fontSize: '0.85rem', color: '#15803d', fontWeight: 800 }}>Yeni Eğitmen</span>
                 </div>
               )}
             </div>
@@ -598,8 +594,10 @@ export default function TeacherProfilePage() {
               {/* 🚀 ETİKETLER (Tamamlanan Ders, Konum, Diller) - KESİN SOLA YASLI */}
               <div style={{ marginTop: '28px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '12px', width: '100%' }}>
                 
-                <div style={{ padding: '8px 16px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#ffffff', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 10px rgba(16, 185, 129, 0.25)' }}>
-                  <span style={{ fontSize: '1.1rem' }}></span> {tamamlananDersSayisi} Toplam Ders Sayısı
+                {/* 🚀 YENİDEN TASARLANAN "DERS TAMAMLANDI" ROZETİ */}
+                <div style={{ padding: '6px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#0f172a', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                  {tamamlananDersSayisi} Ders Tamamlandı
                 </div>
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'flex-start', width: '100%' }}>
