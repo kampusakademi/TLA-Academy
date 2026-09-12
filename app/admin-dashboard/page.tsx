@@ -688,6 +688,8 @@ function UserManagement() {
               <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                 <th style={{ padding: '20px 24px', color: '#64748b', fontWeight: 600 }}>Ad Soyad</th>
                 <th style={{ padding: '20px 24px', color: '#64748b', fontWeight: 600 }}>E-posta</th>
+                {/* 🚀 TELEFON SÜTUNU */}
+                <th style={{ padding: '20px 24px', color: '#64748b', fontWeight: 600 }}>Telefon</th>
                 <th style={{ padding: '20px 24px', color: '#64748b', fontWeight: 600 }}>Durum</th>
                 <th style={{ padding: '20px 24px', color: '#64748b', fontWeight: 600, textAlign: 'right' }}>İşlemler</th>
               </tr>
@@ -700,6 +702,8 @@ function UserManagement() {
                   <tr key={user.id || user.user_id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                     <td style={{ padding: '20px 24px', fontWeight: 700, color: '#0f172a' }}>{user.tam_ad || "İsimsiz"}</td>
                     <td style={{ padding: '20px 24px', color: '#475569' }}>{user.email || "-"}</td>
+                    {/* 🚀 TELEFON SÜTUNU */}
+                    <td style={{ padding: '20px 24px', color: '#475569', fontWeight: 500 }}>{user.telefon || "-"}</td>
                     <td style={{ padding: '20px 24px' }}>
                       <span style={{ background: isActive ? '#dcfce7' : '#f1f5f9', color: isActive ? '#16a34a' : '#64748b', padding: '6px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: 700 }}>{user.durum || 'Belirsiz'}</span>
                     </td>
@@ -795,7 +799,7 @@ function ApplicationsManagement() {
           user_id: realUserId, 
           tam_ad: basvuruObj.tam_ad || "İsimsiz", 
           email: basvuruObj.email, 
-          telefon: basvuruObj.telefon || null, // 🚀 Telefon verisi eklendi
+          telefon: basvuruObj.telefon || null,
           ders_turu: "Türkçe Eğitmeni", 
           biyografi: basvuruObj.biyografi || "", 
           saatlik_ucret: Number(basvuruObj.saatlik_ucret) || 250, 
@@ -851,25 +855,31 @@ function ApplicationsManagement() {
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
           <thead>
             <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-              <th style={{ padding: '20px 24px', color: '#64748b' }}>Aday Adı</th>
-              <th style={{ padding: '20px 24px', color: '#64748b' }}>E-posta</th>
-              <th style={{ padding: '20px 24px', color: '#64748b' }}>Durum</th>
-              <th style={{ padding: '20px 24px', textAlign: 'right' }}>Aksiyon</th>
+              <th style={{ padding: '20px 24px', color: '#64748b', fontWeight: 600 }}>Aday Adı</th>
+              <th style={{ padding: '20px 24px', color: '#64748b', fontWeight: 600 }}>E-posta</th>
+              {/* 🚀 TELEFON SÜTUNU */}
+              <th style={{ padding: '20px 24px', color: '#64748b', fontWeight: 600 }}>Telefon</th>
+              <th style={{ padding: '20px 24px', color: '#64748b', fontWeight: 600 }}>Durum</th>
+              <th style={{ padding: '20px 24px', color: '#64748b', fontWeight: 600, textAlign: 'right' }}>Aksiyon</th>
             </tr>
           </thead>
           <tbody>
             {basvurular.map((basvuru) => (
               <tr key={basvuru.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                <td style={{ padding: '20px 24px', fontWeight: 700 }}>{basvuru.tam_ad || "İsimsiz"}</td>
+                <td style={{ padding: '20px 24px', fontWeight: 700, color: '#0f172a' }}>{basvuru.tam_ad || "İsimsiz"}</td>
                 <td style={{ padding: '20px 24px', color: '#475569' }}>{basvuru.email}</td>
-                <td style={{ padding: '20px 24px' }}>{basvuru.durum}</td>
+                {/* 🚀 TELEFON SÜTUNU */}
+                <td style={{ padding: '20px 24px', color: '#475569', fontWeight: 500 }}>{basvuru.telefon || "-"}</td>
+                <td style={{ padding: '20px 24px' }}>
+                  <span style={{ background: '#eef2ff', color: '#4f46e5', padding: '6px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: 700 }}>{basvuru.durum}</span>
+                </td>
                 <td style={{ padding: '20px 24px', textAlign: 'right' }}>
                   <button onClick={() => setSeciliBasvuru(basvuru)} style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>Detaylar</button>
                 </td>
               </tr>
             ))}
             {basvurular.length === 0 && (
-              <tr><td colSpan={4} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>Bekleyen başvuru bulunmuyor.</td></tr>
+              <tr><td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>Bekleyen başvuru bulunmuyor.</td></tr>
             )}
           </tbody>
         </table>
@@ -888,7 +898,7 @@ function ApplicationsManagement() {
                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', background: '#f8fafc', padding: '20px', borderRadius: '16px', border: '1px solid #f1f5f9' }}>
                  <div><strong style={{ display: 'block', color: '#64748b', fontSize: '12px', textTransform: 'uppercase', marginBottom: '6px' }}>Ad Soyad</strong> <span style={{ fontWeight: 600, color: '#0f172a' }}>{seciliBasvuru.tam_ad}</span></div>
                  <div><strong style={{ display: 'block', color: '#64748b', fontSize: '12px', textTransform: 'uppercase', marginBottom: '6px' }}>E-posta</strong> <span style={{ fontWeight: 600, color: '#0f172a' }}>{seciliBasvuru.email}</span></div>
-                 <div><strong style={{ display: 'block', color: '#64748b', fontSize: '12px', textTransform: 'uppercase', marginBottom: '6px' }}>Telefon</strong> <span style={{ fontWeight: 600, color: '#0f172a' }}>{seciliBasvuru.telefon || '-'}</span></div> {/* 🚀 Telefon eklendi */}
+                 <div><strong style={{ display: 'block', color: '#64748b', fontSize: '12px', textTransform: 'uppercase', marginBottom: '6px' }}>Telefon</strong> <span style={{ fontWeight: 600, color: '#0f172a' }}>{seciliBasvuru.telefon || '-'}</span></div>
                  <div><strong style={{ display: 'block', color: '#64748b', fontSize: '12px', textTransform: 'uppercase', marginBottom: '6px' }}>Konum (Ülke)</strong> <span style={{ color: '#0f172a' }}>{parsedKonum.ulke}</span></div>
                  <div><strong style={{ display: 'block', color: '#64748b', fontSize: '12px', textTransform: 'uppercase', marginBottom: '6px' }}>Şehir</strong> <span style={{ color: '#0f172a' }}>{parsedKonum.sehir}</span></div>
                  <div><strong style={{ display: 'block', color: '#64748b', fontSize: '12px', textTransform: 'uppercase', marginBottom: '6px' }}>Eğitim Seviyesi</strong> <span style={{ color: '#0f172a' }}>{parsedEgitim.seviye}</span></div>
