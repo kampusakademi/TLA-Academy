@@ -795,6 +795,7 @@ function ApplicationsManagement() {
           user_id: realUserId, 
           tam_ad: basvuruObj.tam_ad || "İsimsiz", 
           email: basvuruObj.email, 
+          telefon: basvuruObj.telefon || null, // 🚀 Telefon verisi eklendi
           ders_turu: "Türkçe Eğitmeni", 
           biyografi: basvuruObj.biyografi || "", 
           saatlik_ucret: Number(basvuruObj.saatlik_ucret) || 250, 
@@ -887,6 +888,7 @@ function ApplicationsManagement() {
                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', background: '#f8fafc', padding: '20px', borderRadius: '16px', border: '1px solid #f1f5f9' }}>
                  <div><strong style={{ display: 'block', color: '#64748b', fontSize: '12px', textTransform: 'uppercase', marginBottom: '6px' }}>Ad Soyad</strong> <span style={{ fontWeight: 600, color: '#0f172a' }}>{seciliBasvuru.tam_ad}</span></div>
                  <div><strong style={{ display: 'block', color: '#64748b', fontSize: '12px', textTransform: 'uppercase', marginBottom: '6px' }}>E-posta</strong> <span style={{ fontWeight: 600, color: '#0f172a' }}>{seciliBasvuru.email}</span></div>
+                 <div><strong style={{ display: 'block', color: '#64748b', fontSize: '12px', textTransform: 'uppercase', marginBottom: '6px' }}>Telefon</strong> <span style={{ fontWeight: 600, color: '#0f172a' }}>{seciliBasvuru.telefon || '-'}</span></div> {/* 🚀 Telefon eklendi */}
                  <div><strong style={{ display: 'block', color: '#64748b', fontSize: '12px', textTransform: 'uppercase', marginBottom: '6px' }}>Konum (Ülke)</strong> <span style={{ color: '#0f172a' }}>{parsedKonum.ulke}</span></div>
                  <div><strong style={{ display: 'block', color: '#64748b', fontSize: '12px', textTransform: 'uppercase', marginBottom: '6px' }}>Şehir</strong> <span style={{ color: '#0f172a' }}>{parsedKonum.sehir}</span></div>
                  <div><strong style={{ display: 'block', color: '#64748b', fontSize: '12px', textTransform: 'uppercase', marginBottom: '6px' }}>Eğitim Seviyesi</strong> <span style={{ color: '#0f172a' }}>{parsedEgitim.seviye}</span></div>
