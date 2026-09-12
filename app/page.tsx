@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabaseClient';
 import LanguageToggle from '@/app/components/LanguageToggle';
 import { useTranslation } from '@/lib/useTranslation';
 import { useCurrency, currencies, CurrencyCode } from '@/lib/CurrencyContext';
-import { Search, CalendarCheck, PlayCircle, ChevronDown, Globe } from 'lucide-react';
+import { Search, CalendarCheck, PlayCircle } from 'lucide-react';
 
 // ==============================================================================
 // PARA BİRİMİ SEÇİM MENÜSÜ
@@ -211,7 +211,6 @@ export default function HomePage() {
 
   const isEn = t.nav.explore === "Find Teachers";
 
-  // 🚀 YÜZ TANIMALI VE BOYUTLANDIRILMIŞ GÖRSELLER
   const steps = [
     {
       id: 1,
@@ -245,7 +244,6 @@ export default function HomePage() {
     }
   ];
 
-  // SUPABASE ŞİFRE SIFIRLAMA YAKALAYICISI
   useEffect(() => {
     const hash = window.location.hash;
     const search = window.location.search;
@@ -256,7 +254,7 @@ export default function HomePage() {
     }
   }, []);
 
-  // EĞİTMENLERİ ÇEKEN KOD
+  // 🚀 EĞİTMENLERİ ÇEKEN OPTİMİZE EDİLMİŞ KOD (Hatalar giderildi)
   useEffect(() => {
     async function fetchData() {
       const { data: teacherData, error: teacherError } = await supabase.from('egitmenler').select('*');
@@ -270,13 +268,28 @@ export default function HomePage() {
         const teachersWithStats = await Promise.all(
           aktifEgitmenler.map(async (item) => {
             const targetId = item.user_id || item.id;
-            const { data: lessonData } = await supabase.from('dersler').select('durum').eq('user_id', targetId).eq('durum', 'Tamamlanan');
-            const tamamlananDers = lessonData ? lessonData.length : 0;
-            const { data: dersYorumlari } = await supabase.from('dersler').select('puan').eq('user_id', targetId).not('puan', 'is', null);
-            const { data: digerYorumlar } = await supabase.from('yorumlar').select('puan').eq('egitmen_id', targetId);
-            const tumPuanlar = [...(dersYorumlari || []).map((y) => Number(y.puan)), ...(digerYorumlar || []).map((y) => Number(y.puan))].filter((p) => p > 0 && p <= 5);
+            
+            // SADECE dersler tablosuna tek sorgu atılıyor (Yorumlar tablosu kaldırıldı)
+            const { data: lessonData } = await supabase.from('dersler').select('durum, puan').eq('user_id', targetId);
+            
+            let tamamlananDers = 0;
+            let tumPuanlar: number[] = [];
+
+            if (lessonData) {
+              tamamlananDers = lessonData.filter(l => l.durum === 'Tamamlanan').length;
+              tumPuanlar = lessonData
+                .map(l => Number(l.puan))
+                .filter(p => !isNaN(p) && p > 0 && p <= 5);
+            }
+            
             const dinamikPuan = tumPuanlar.length > 0 ? (tumPuanlar.reduce((acc, val) => acc + val, 0) / tumPuanlar.length).toFixed(1) : null;
-            return { ...item, gercek_tamamlanan_ders: tamamlananDers, gercek_puan_ortalamasi: dinamikPuan, gercek_yorum_sayisi: tumPuanlar.length };
+            
+            return { 
+                ...item, 
+                gercek_tamamlanan_ders: tamamlananDers, 
+                gercek_puan_ortalamasi: dinamikPuan, 
+                gercek_yorum_sayisi: tumPuanlar.length 
+            };
           })
         );
         setTeachers(teachersWithStats);
@@ -333,7 +346,6 @@ export default function HomePage() {
   const handleSearch = () => router.push('/egitmenler'); 
   const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !loading) handleAuth(); };
 
-  // FİLTRELEME VE PUANA GÖRE SIRALAMA
   const filteredTeachers = teachers
     .filter((tItem) => {
       if (!searchTerm) return true;
@@ -347,7 +359,6 @@ export default function HomePage() {
     })
     .slice(0, 15);
 
-  // 🚀 STATÜ ROZETİ FONKSİYONU
   const renderBadge = (etiket: string) => {
     if(!etiket) return null;
     const lower = etiket.toLowerCase();
@@ -407,8 +418,6 @@ export default function HomePage() {
 
       {/* 2. HERO SECTION */}
       <header style={{ padding: '60px 8%', backgroundColor: '#4f46e5', color: '#ffffff', display: 'flex', alignItems: 'center', flexWrap: 'wrap', minHeight: '520px', position: 'relative', overflow: 'hidden' }}>
-        
-        {/* ARKA PLAN GÖRSELİ */}
         <div style={{ position: 'absolute', top: 0, right: 0, width: '60%', height: '100%', zIndex: 0 }}>
           <img 
             src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" 
@@ -418,7 +427,6 @@ export default function HomePage() {
           <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(to right, #4f46e5 0%, #4f46e5 15%, transparent 40%)' }}></div>
         </div>
 
-        {/* ÖN PLANDAKİ YAZILAR VE BUTONLAR */}
         <div style={{ position: 'relative', flex: '1 1 100%', maxWidth: '650px', zIndex: 10 }}>
           <h2 style={{ fontSize: '3.5rem', fontWeight: 900, lineHeight: 1.1, color: '#ffffff', marginBottom: '20px', letterSpacing: '-1.5px' }}>{t.home.heroTitle1} <br/><span style={{ color: '#4ade80' }}>{t.home.heroTitle2}</span></h2>
           <p style={{ fontSize: '1.15rem', color: '#e0e7ff', marginBottom: '32px', lineHeight: 1.5, fontWeight: 500 }}>{t.home.heroDesc}</p>
@@ -757,7 +765,6 @@ export default function HomePage() {
             <span style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>Yasal Bildirim</span>
           </div>
         </div>
-
       </footer>
 
       {/* 7. AUTH MODAL */}
