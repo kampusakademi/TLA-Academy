@@ -30,8 +30,12 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user && (request.nextUrl.pathname.startsWith('/dashboard') || 
-                request.nextUrl.pathname.startsWith('/teacher-dashboard'))) {
+  // 🚀 Korunması gereken tüm özel panellerin yolları buraya eklenmeli
+  const protectedPaths = ['/dashboard', '/teacher-dashboard', '/student-dashboard', '/admin-dashboard'];
+  
+  const isProtectedPath = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path));
+
+  if (!user && isProtectedPath) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 

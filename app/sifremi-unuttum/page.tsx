@@ -13,23 +13,46 @@ export default function ForgotPasswordPage() {
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) {
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanEmail) {
       toast.error('Lütfen e-posta adresinizi girin.');
       return;
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/sifre-yenile`,
-    });
 
-    if (error) {
-      toast.error('Bir hata oluştu: ' + error.message);
-    } else {
-      toast.success('Şifre sıfırlama bağlantısı e-posta adresinize gönderildi! Lütfen gelen kutunuzu kontrol edin.');
-      setEmail('');
+    try {
+      // 1. Öğrenci veya Eğitmen tablosunda bu e-posta kayıtlı mı kontrol et
+      const [studentRes, teacherRes] = await Promise.all([
+        supabase.from('ogrenciler').select('id').eq('email', cleanEmail).maybeSingle(),
+        supabase.from('egitmenler').select('id').eq('email', cleanEmail).maybeSingle()
+      ]);
+
+      const userExists = Boolean(studentRes.data || teacherRes.data);
+
+      if (!userExists) {
+        toast.error('Bu e-posta adresine ait kayıtlı bir hesap bulunamadı.');
+        setLoading(false);
+        return;
+      }
+
+      // 2. Kullanıcı mevcutsa sıfırlama bağlantısını gönder
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo: `${window.location.origin}/sifre-yenile`,
+      });
+
+      if (error) {
+        toast.error('Bir hata oluştu: ' + error.message);
+      } else {
+        toast.success('Şifre sıfırlama bağlantısı e-posta adresinize gönderildi! Lütfen gelen kutunuzu kontrol edin.');
+        setEmail('');
+      }
+    } catch (err: any) {
+      toast.error('Sistem hatası: ' + err.message);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -97,9 +120,8 @@ export default function ForgotPasswordPage() {
           </button>
         </header>
 
-        {/* Lacivert Banner Alanı */}
+        {/* Banner Alanı */}
         <div style={{ backgroundColor: '#0f172a', padding: '80px 40px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
-          {/* Arka plan deseni için hafif blur/gradient */}
           <div style={{ position: 'absolute', top: '-50%', left: '50%', transform: 'translateX(-50%)', width: '600px', height: '600px', background: 'radial-gradient(circle, rgba(79, 70, 229, 0.15) 0%, rgba(15, 23, 42, 0) 70%)', borderRadius: '50%', pointerEvents: 'none' }}></div>
           
           <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -116,11 +138,9 @@ export default function ForgotPasswordPage() {
           </div>
         </div>
 
-        {/* Form Kartı Alanı (Banner'ın hemen altına yerleşir) */}
+        {/* Form Kartı Alanı */}
         <div style={{ padding: '40px', flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>
-          
           <div style={{ width: '100%', maxWidth: '480px', backgroundColor: '#ffffff', borderRadius: '24px', padding: '40px', boxShadow: '0 20px 40px -10px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0', marginTop: '-80px', position: 'relative', zIndex: 20 }}>
-            
             <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
@@ -184,7 +204,7 @@ export default function ForgotPasswordPage() {
                 onMouseEnter={(e) => { if (!loading) e.currentTarget.style.transform = 'translateY(-2px)' }}
                 onMouseLeave={(e) => { if (!loading) e.currentTarget.style.transform = 'translateY(0)' }}
               >
-                {loading ? 'Gönderiliyor...' : 'Sıfırlama Bağlantısı Gönder'}
+                {loading ? 'Kontrol Ediliyor...' : 'Sıfırlama Bağlantısı Gönder'}
               </button>
             </form>
 
@@ -202,7 +222,6 @@ export default function ForgotPasswordPage() {
                 Giriş Ekranına Dön
               </button>
             </div>
-
           </div>
         </div>
       </main>

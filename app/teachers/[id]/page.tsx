@@ -838,8 +838,15 @@ export default function TeacherProfilePage() {
             </button>
 
             <div style={{ display: 'flex', gap: '12px' }}>
+              {/* 🚀 DEĞİŞTİRİLEN BUTON (GİRİŞ KONTROLÜ EKLENDİ) */}
               <button 
-                onClick={() => setShowMsgModal(true)}
+                onClick={() => {
+                  if (!currentUserId) {
+                    toast.error("⚠️ Eğitmene mesaj göndermek için lütfen önce giriş yapın veya kayıt olun.");
+                    return;
+                  }
+                  setShowMsgModal(true);
+                }}
                 style={{ 
                   flex: 1, padding: '16px', background: '#ffffff', color: '#0f172a', 
                   borderRadius: '16px', border: '1px solid #cbd5e1', fontWeight: 700, cursor: 'pointer', 
