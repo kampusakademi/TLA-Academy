@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import LanguageToggle from '@/app/components/LanguageToggle';
 import { useTranslation } from '@/lib/useTranslation';
@@ -254,7 +255,6 @@ export default function HomePage() {
     }
   }, []);
 
-  // 🚀 EĞİTMENLERİ ÇEKEN OPTİMİZE EDİLMİŞ KOD (Hatalar giderildi)
   useEffect(() => {
     async function fetchData() {
       const { data: teacherData, error: teacherError } = await supabase.from('egitmenler').select('*');
@@ -269,7 +269,6 @@ export default function HomePage() {
           aktifEgitmenler.map(async (item) => {
             const targetId = item.user_id || item.id;
             
-            // SADECE dersler tablosuna tek sorgu atılıyor (Yorumlar tablosu kaldırıldı)
             const { data: lessonData } = await supabase.from('dersler').select('durum, puan').eq('user_id', targetId);
             
             let tamamlananDers = 0;
@@ -756,13 +755,26 @@ export default function HomePage() {
           </div>
         </div>
 
+        {/* 🚀 DÜZENLENEN YASAL BİLDİRİMLER (LINK EKLENDİ VE TIKLANABİLİR YAPILDI) */}
         <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '20px', borderTop: '1px solid #333', paddingTop: '30px' }}>
           <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', fontSize: '0.85rem' }}>
             <span>&copy; {new Date().getFullYear()} Turkish Learning Academy. Tüm hakları saklıdır.</span>
-            <span style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>Yasal Hususlar</span>
-            <span style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>Gizlilik Politikası</span>
-            <span style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>Çerez Politikası</span>
-            <span style={{ cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'underline', textUnderlineOffset: '4px' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>Yasal Bildirim</span>
+            
+            <Link href="/yasal-hususlar" style={{ color: '#e5e7eb', textDecoration: 'underline', textUnderlineOffset: '4px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>
+              Yasal Hususlar
+            </Link>
+            
+            <Link href="/gizlilik-politikasi" style={{ color: '#e5e7eb', textDecoration: 'underline', textUnderlineOffset: '4px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>
+              Gizlilik Politikası
+            </Link>
+            
+            <Link href="/cerez-politikasi" style={{ color: '#e5e7eb', textDecoration: 'underline', textUnderlineOffset: '4px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>
+              Çerez Politikası
+            </Link>
+            
+            <Link href="/yasal-bildirim" style={{ color: '#e5e7eb', textDecoration: 'underline', textUnderlineOffset: '4px', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'} onMouseLeave={(e) => e.currentTarget.style.color = '#e5e7eb'}>
+              Yasal Bildirim
+            </Link>
           </div>
         </div>
       </footer>

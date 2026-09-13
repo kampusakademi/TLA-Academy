@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { Home, Search, UserPlus, Users } from 'lucide-react';
 
 export default function BecomeTeacher() {
   const router = useRouter();
@@ -14,14 +15,14 @@ export default function BecomeTeacher() {
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
-    telefon: '', // Supabase telefon alanı eklendi
+    telefon: '',
     price: '',
     bio: '',
-    konum: '', // Ülke
-    sehir: '', // Dinamik Şehir
-    egitim: '', // Derece (Lisans vs)
-    okul: '', // Üniversite/Okul adı
-    anaDil: '' // Ana Dil
+    konum: '',
+    sehir: '',
+    egitim: '',
+    okul: '',
+    anaDil: ''
   });
 
   const [diplomaFile, setDiplomaFile] = useState<File | null>(null);
@@ -32,14 +33,14 @@ export default function BecomeTeacher() {
     sure: [],
     odak: [],
     seviye: [],
-    diller: [] // Ana dil haricindeki diğer yabancı diller
+    diller: []
   });
 
   // Seçenek Verileri
   const LOCATIONS = ['Türkiye', 'Almanya', 'Amerika Birleşik Devletleri', 'İngiltere', 'Fransa', 'Hollanda', 'Azerbaycan', 'Kuzey Kıbrıs', 'Diğer'];
   const CITIES = ['Adana', 'Adıyaman', 'Afyonkarahisar', 'Ağrı', 'Aksaray', 'Amasya', 'Ankara', 'Antalya', 'Ardahan', 'Artvin', 'Aydın', 'Balıkesir', 'Bartın', 'Batman', 'Bayburt', 'Bilecik', 'Bingöl', 'Bitlis', 'Bolu', 'Burdur', 'Bursa', 'Çanakkale', 'Çankırı', 'Çorum', 'Denizli', 'Diyarbakır', 'Düzce', 'Edirne', 'Elazığ', 'Erzincan', 'Erzurum', 'Eskişehir', 'Gaziantep', 'Giresun', 'Gümüşhane', 'Hakkari', 'Hatay', 'Iğdır', 'Isparta', 'İstanbul', 'İzmir', 'Kahramanmaraş', 'Karabük', 'Karaman', 'Kars', 'Kastamonu', 'Kayseri', 'Kilis', 'Kırıkkale', 'Kırklareli', 'Kırşehir', 'Kocaeli', 'Konya', 'Kütahya', 'Malatya', 'Manisa', 'Mardin', 'Mersin', 'Muğla', 'Muş', 'Nevşehir', 'Niğde', 'Ordu', 'Osmaniye', 'Rize', 'Sakarya', 'Samsun', 'Siirt', 'Sinop', 'Sivas', 'Şanlıurfa', 'Şırnak', 'Tekirdağ', 'Tokat', 'Trabzon', 'Tunceli', 'Uşak', 'Van', 'Yalova', 'Yozgat', 'Zonguldak'];
   const EDUCATIONS = ['Lise', 'Ön Lisans', 'Lisans', 'Yüksek Lisans', 'Doktora'];
-  const LANGUAGES = ['İngilizce','İspanyolca', 'Fransızca', 'Arapça', 'Portekizce', 'Rusça', 'Endonezce', 'Japonca', 'Türkçe', 'Korece', 'İtalyanca', 'Azerbaycanca', 'Almanca',];
+  const LANGUAGES = ['İngilizce','İspanyolca', 'Fransızca', 'Arapça', 'Portekizce', 'Rusça', 'Endonezce', 'Japonca', 'Türkçe', 'Korece', 'İtalyanca', 'Azerbaycanca', 'Almanca'];
 
   const GOALS = ['Kariyer ve İş', 'Sınav Hazırlığı', 'Çocuklar İçin Türkçe', 'Kültür ve Seyahat', 'Günlük Pratik', 'Akademik Türkçe'];
   const DURATIONS = ['1-4 Hafta', '1-3 Ay', '3-6 Ay', 'Uzun Dönem', 'Tek Seferlik Hızlı Pratik'];
@@ -57,10 +58,9 @@ export default function BecomeTeacher() {
     });
   };
 
-  // 1. Adım Doğrulama
   const handleNextStep = () => {
     if (!formData.fullName.trim() || !formData.email.trim() || !formData.telefon.trim() || !formData.price || !formData.bio.trim() || !formData.konum || !formData.sehir.trim() || !formData.egitim || !formData.okul.trim() || !formData.anaDil) {
-      toast.error("⚠️ Lütfen sonraki adıma geçmeden önce kişisel bilgilerinizi, telefon numaranızı, konumunuzu, dillerinizi ve eğitim bilgilerinizi eksiksiz doldurun.");
+      toast.error("⚠️ Lütfen sonraki adıma geçmeden önce bilgilerinizi eksiksiz doldurun.");
       return;
     }
     
@@ -78,7 +78,7 @@ export default function BecomeTeacher() {
     
     const hasSelection = specialties.amac.length > 0 || specialties.odak.length > 0 || specialties.seviye.length > 0;
     if (!hasSelection) {
-      toast.error("⚠️ Lütfen başvurunuzu tamamlamadan önce en az bir hedef kitle, seviye veya odak alanı seçin.");
+      toast.error("⚠️ Lütfen başvurunuzu tamamlamadan önce en az bir alan seçin.");
       return;
     }
 
@@ -119,7 +119,7 @@ export default function BecomeTeacher() {
         .insert([{
           tam_ad: formData.fullName,
           email: formData.email,
-          telefon: formData.telefon, // 🚀 Yeni sütun
+          telefon: formData.telefon,
           saatlik_ucret: Number(formData.price),
           biyografi: formData.bio,
           konum: tamKonum,            
@@ -136,7 +136,7 @@ export default function BecomeTeacher() {
 
       if (error) throw error;
 
-      toast.success("🎉 Başvurunuz ve belgeleriniz başarıyla alındı! Bilgileriniz yönetim ekibine iletildi. İnceleme sonrası giriş bilgileriniz e-posta adresinize gönderilecektir.");
+      toast.success("🎉 Başvurunuz başarıyla alındı! Giriş bilgileriniz e-posta adresinize gönderilecektir.");
       router.push('/');
 
     } catch (error: any) {
@@ -169,17 +169,7 @@ export default function BecomeTeacher() {
           boxSizing: 'border-box'
         }}
       >
-        <div style={{
-          width: '18px',
-          height: '18px',
-          borderRadius: '5px',
-          border: isSelected ? 'none' : '1.5px solid #94a3b8',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: isSelected ? '#4f46e5' : 'transparent',
-          flexShrink: 0
-        }}>
+        <div style={{ width: '18px', height: '18px', borderRadius: '5px', border: isSelected ? 'none' : '1.5px solid #94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isSelected ? '#4f46e5' : 'transparent', flexShrink: 0 }}>
           {isSelected && <span style={{ color: 'white', fontSize: '11px', fontWeight: 800 }}>✓</span>}
         </div>
         <span>{label}</span>
@@ -188,241 +178,288 @@ export default function BecomeTeacher() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '60px 20px', fontFamily: '"Inter", sans-serif', boxSizing: 'border-box' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f8fafc', fontFamily: '"Inter", sans-serif' }}>
       
-      <div style={{ width: '100%', maxWidth: '720px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <button type="button" onClick={() => router.push('/')} style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          ← Ana Sayfaya Dön
-        </button>
-        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#94a3b8', backgroundColor: '#f1f5f9', padding: '4px 12px', borderRadius: '20px' }}>
-          Eğitmen Başvuru Formu
-        </span>
-      </div>
+      {/* SOL SİDEBAR MENÜ */}
+      <aside style={{ width: '260px', backgroundColor: '#ffffff', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', position: 'sticky', top: 0, height: '100vh', zIndex: 20 }}>
+        <div style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={() => router.push('/')}>
+          <img src="/logo.png" alt="Logo" style={{ width: '36px', height: '36px', objectFit: 'contain' }} />
+          <h1 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', margin: 0, lineHeight: 1.2 }}>Turkish Learning<br/>Academy.</h1>
+        </div>
 
-      <div style={{ width: '100%', maxWidth: '720px', backgroundColor: '#ffffff', borderRadius: '20px', padding: '44px', boxShadow: '0 10px 30px -5px rgba(0,0,0,0.05), 0 4px 10px -5px rgba(0,0,0,0.03)', border: '1px solid #f1f5f9', boxSizing: 'border-box' }}>
+        <nav style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
+          <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 700, marginBottom: '8px', letterSpacing: '0.5px' }}>MENÜ</span>
+          
+          <button onClick={() => router.push('/')} style={sidebarLinkStyle(false)}>
+            <Home size={20} /> Ana Sayfa
+          </button>
+          
+          <button onClick={() => router.push('/egitmen-bul')} style={sidebarLinkStyle(false)}>
+            <Search size={20} /> Eğitmenleri Keşfet
+          </button>
+          
+          <button onClick={() => router.push('/become-teacher')} style={sidebarLinkStyle(true)}>
+            <UserPlus size={20} /> Öğretmen Ol
+          </button>
+          
+          <button onClick={() => router.push('/egitmenler')} style={sidebarLinkStyle(false)}>
+            <Users size={20} /> Eğitmenler
+          </button>
+        </nav>
+      </aside>
+
+      {/* SAĞ ANA İÇERİK ALANI */}
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
         
-        <div style={{ marginBottom: '36px', textAlign: 'center' }}>
-          <h1 style={{ fontSize: '1.85rem', fontWeight: 800, color: '#0f172a', margin: '0 0 8px 0', letterSpacing: '-0.5px' }}>
-            Eğitmen Ağımıza Katılın
+        {/* ÜST BAR */}
+        <header style={{ height: '70px', backgroundColor: '#ffffff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '0 32px', position: 'sticky', top: 0, zIndex: 10 }}>
+          <button onClick={() => router.push('/?login=true')} style={{ backgroundColor: '#0f172a', color: '#ffffff', border: 'none', padding: '10px 20px', borderRadius: '10px', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'background 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1e293b'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#0f172a'}>
+            Giriş Yap / Kayıt Ol
+          </button>
+        </header>
+
+        {/* 🚀 KOYU MAVİ BANNER (Form ile tamamen ayrıldı) */}
+        <div style={{ backgroundColor: '#0f172a', color: '#ffffff', padding: '35px 20px', textAlign: 'center' }}>
+          <h1 style={{ fontSize: '2.0rem', fontWeight: 800, letterSpacing: '-1px', margin: '0 0 1px 0' }}>
+            Turkish Learning Academy <span style={{ color: '#4f46e5' }}>Eğitmeni Ol</span>
           </h1>
-          <p style={{ color: '#64748b', margin: 0, fontSize: '0.98rem', lineHeight: 1.5 }}>
-            Dünyanın dört bir yanından Türkçe öğrenmek isteyen öğrencilerle buluşun.
+          <p style={{ color: '#94a3b8', fontSize: '1.1rem', maxWidth: '600px', margin: '0 auto', lineHeight: 1.6 }}>
+            Uzmanlığınızı paylaşın, dünyanın dört bir yanından Türkçe öğrenmek isteyen öğrencilerle buluşun ve kariyerinizi büyütün.
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '36px', padding: '0 10px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#4f46e5', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 700 }}>1</div>
-            <span style={{ fontSize: '0.9rem', fontWeight: step === 1 ? 700 : 500, color: step === 1 ? '#0f172a' : '#64748b' }}>Kişisel Bilgiler & Belgeler</span>
-          </div>
-          <div style={{ flex: 1, height: '2px', background: step === 2 ? '#4f46e5' : '#e2e8f0', margin: '0 16px', transition: 'background 0.3s' }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: step === 2 ? '#4f46e5' : '#f1f5f9', color: step === 2 ? '#ffffff' : '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 700, transition: 'all 0.3s' }}>2</div>
-            <span style={{ fontSize: '0.9rem', fontWeight: step === 2 ? 700 : 500, color: step === 2 ? '#0f172a' : '#94a3b8' }}>Uzmanlık & Tercihler</span>
+        {/* 🚀 FORM ALANI (Siyah bölümün altında ferah alan) */}
+        <div style={{ padding: '40px 32px 80px 32px', display: 'flex', justifyContent: 'center', backgroundColor: '#f8fafc' }}>
+          <div style={{ width: '100%', maxWidth: '800px', backgroundColor: '#ffffff', borderRadius: '20px', padding: '44px', boxShadow: '0 10px 30px -5px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0', boxSizing: 'border-box' }}>
+            
+            {/* Adım Göstergesi */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '36px', padding: '0 10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#4f46e5', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 700 }}>1</div>
+                <span style={{ fontSize: '0.9rem', fontWeight: step === 1 ? 700 : 500, color: step === 1 ? '#0f172a' : '#64748b' }}>Kişisel Bilgiler</span>
+              </div>
+              <div style={{ flex: 1, height: '2px', background: step === 2 ? '#4f46e5' : '#e2e8f0', margin: '0 16px', transition: 'background 0.3s' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: step === 2 ? '#4f46e5' : '#f1f5f9', color: step === 2 ? '#ffffff' : '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 700, transition: 'all 0.3s' }}>2</div>
+                <span style={{ fontSize: '0.9rem', fontWeight: step === 2 ? 700 : 500, color: step === 2 ? '#0f172a' : '#94a3b8' }}>Uzmanlık Alanları</span>
+              </div>
+            </div>
+
+            <form onSubmit={handleApply} style={{ width: '100%', boxSizing: 'border-box' }}>
+              {step === 1 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%', boxSizing: 'border-box' }}>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', width: '100%' }}>
+                    <div style={{ width: '100%' }}>
+                      <label style={labelStyle}>Adınız Soyadınız</label>
+                      <input required value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} style={inputStyle} placeholder="Örn: Ayşe Yılmaz" />
+                    </div>
+                    <div style={{ width: '100%' }}>
+                      <label style={labelStyle}>E-posta Adresiniz</label>
+                      <input required type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} style={inputStyle} placeholder="ornek@email.com" />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', width: '100%' }}>
+                    <div style={{ width: '100%' }}>
+                      <label style={labelStyle}>Telefon Numarası</label>
+                      <input required type="tel" value={formData.telefon} onChange={e => setFormData({...formData, telefon: e.target.value})} style={inputStyle} placeholder="Örn: +90 5XX XXX XX XX" />
+                    </div>
+                    <div style={{ width: '100%' }}>
+                      <label style={labelStyle}>Saatlik Ders Ücretiniz (₺)</label>
+                      <div style={{ position: 'relative', width: '100%' }}>
+                        <input required type="number" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} style={{ ...inputStyle, paddingRight: '75px' }} placeholder="Örn: 450" />
+                        <span style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', fontWeight: 600, fontSize: '0.88rem', pointerEvents: 'none' }}>₺ / saat</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', width: '100%' }}>
+                    <div style={{ width: '100%' }}>
+                      <label style={labelStyle}>Konum (Ülke)</label>
+                      <select required value={formData.konum} onChange={e => setFormData({...formData, konum: e.target.value, sehir: ''})} style={selectStyle}>
+                        <option value="" disabled>Ülke Seçiniz...</option>
+                        {LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                      </select>
+                    </div>
+                    <div style={{ width: '100%' }}>
+                      <label style={labelStyle}>Şehir</label>
+                      {formData.konum === 'Türkiye' ? (
+                        <select required value={formData.sehir} onChange={e => setFormData({...formData, sehir: e.target.value})} style={selectStyle}>
+                          <option value="" disabled>Şehir Seçiniz...</option>
+                          {CITIES.map(city => <option key={city} value={city}>{city}</option>)}
+                        </select>
+                      ) : (
+                        <input 
+                          required 
+                          value={formData.sehir} 
+                          onChange={e => setFormData({...formData, sehir: e.target.value})} 
+                          style={inputStyle} 
+                          placeholder={formData.konum ? `${formData.konum} içindeki şehriniz...` : 'Önce ülke seçiniz...'} 
+                          disabled={!formData.konum}
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', width: '100%' }}>
+                    <div style={{ width: '100%' }}>
+                      <label style={labelStyle}>Eğitim Seviyesi</label>
+                      <select required value={formData.egitim} onChange={e => setFormData({...formData, egitim: e.target.value})} style={selectStyle}>
+                        <option value="" disabled>Eğitim Seviyesi Seçiniz...</option>
+                        {EDUCATIONS.map(ed => <option key={ed} value={ed}>{ed}</option>)}
+                      </select>
+                    </div>
+                    <div style={{ width: '100%' }}>
+                      <label style={labelStyle}>Üniversite / Okul Adı</label>
+                      <input required value={formData.okul} onChange={e => setFormData({...formData, okul: e.target.value})} style={inputStyle} placeholder="Örn: Gazi Üniversitesi" />
+                    </div>
+                  </div>
+
+                  <div style={{ backgroundColor: '#fcfcfe', padding: '16px', borderRadius: '14px', border: '1px solid #f1f5f9', width: '100%', boxSizing: 'border-box' }}>
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={labelStyle}>Ana Diliniz</label>
+                      <select
+                        required
+                        value={formData.anaDil}
+                        onChange={e => {
+                          setFormData({...formData, anaDil: e.target.value});
+                          if (specialties.diller.includes(e.target.value)) {
+                            setSpecialties(prev => ({ ...prev, diller: prev.diller.filter(d => d !== e.target.value) }));
+                          }
+                        }}
+                        style={selectStyle}
+                      >
+                        <option value="" disabled>Ana Dilinizi Seçiniz...</option>
+                        {LANGUAGES.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ ...labelStyle, marginBottom: '8px' }}>Bildiğiniz Diğer Diller <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>(Birden fazla seçebilirsiniz)</span></label>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                        {LANGUAGES.filter(l => l !== formData.anaDil).map(l => (
+                          <OptionCheckbox key={l} label={l} group="diller" />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ width: '100%' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <label style={{ ...labelStyle, marginBottom: 0 }}>Kısa Biyografi</label>
+                      <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Profilinizde gösterilecektir</span>
+                    </div>
+                    <textarea required rows={4} value={formData.bio} onChange={e => setFormData({...formData, bio: e.target.value})} style={{ ...inputStyle, resize: 'none', lineHeight: 1.5 }} placeholder="Eğitim geçmişinizden, öğretme metodunuzdan ve Türkçe öğretmenliği deneyiminizden bahsedin..." />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginTop: '4px', width: '100%' }}>
+                    <div style={{ width: '100%' }}>
+                      <label style={labelStyle}>🎓 Mezuniyet Diploması <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>(PDF, JPG)</span></label>
+                      <div style={fileUploadContainerStyle}>
+                        <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e => setDiplomaFile(e.target.files?.[0] || null)} style={{ display: 'none' }} id="diploma-upload" />
+                        <label htmlFor="diploma-upload" style={fileUploadLabelStyle}>
+                          <span style={{ fontSize: '1.4rem' }}>📑</span>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#334155' }}>{diplomaFile ? diplomaFile.name.substring(0,20)+'...' : 'Diploma Seç / Sürükle'}</span>
+                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{diplomaFile ? `${(diplomaFile.size / 1024 / 1024).toFixed(2)} MB` : 'Maksimum 5 MB'}</span>
+                          </div>
+                        </label>
+                        {diplomaFile && <button type="button" onClick={() => setDiplomaFile(null)} style={removeFileBtnStyle} title="Dosyayı Kaldır">✕</button>}
+                      </div>
+                    </div>
+
+                    <div style={{ width: '100%' }}>
+                      <label style={labelStyle}>📜 TÖMER / Sertifika <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>(Opsiyonel)</span></label>
+                      <div style={fileUploadContainerStyle}>
+                        <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e => setCertificateFile(e.target.files?.[0] || null)} style={{ display: 'none' }} id="certificate-upload" />
+                        <label htmlFor="certificate-upload" style={fileUploadLabelStyle}>
+                          <span style={{ fontSize: '1.4rem' }}>🏅</span>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#334155' }}>{certificateFile ? certificateFile.name.substring(0,20)+'...' : 'Sertifika Seç / Sürükle'}</span>
+                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{certificateFile ? `${(certificateFile.size / 1024 / 1024).toFixed(2)} MB` : 'Maksimum 5 MB'}</span>
+                          </div>
+                        </label>
+                        {certificateFile && <button type="button" onClick={() => setCertificateFile(null)} style={removeFileBtnStyle} title="Dosyayı Kaldır">✕</button>}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button type="button" onClick={handleNextStep} style={{ ...primaryBtnStyle, marginTop: '10px' }}>
+                    Sonraki Adım: Uzmanlık Alanları →
+                  </button>
+                </div>
+              )}
+
+              {step === 2 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', width: '100%', boxSizing: 'border-box' }}>
+                  
+                  <div style={sectionBoxStyle}>
+                    <div style={{ marginBottom: '14px' }}>
+                      <h3 style={sectionTitleStyle}>1. Hedef Kitle</h3>
+                      <p style={sectionDescStyle}>Çalışmak istediğiniz öğrenci profillerini seçin</p>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                      {GOALS.map(g => <OptionCheckbox key={g} label={g} group="amac" />)}
+                    </div>
+                  </div>
+
+                  <div style={sectionBoxStyle}>
+                    <div style={{ marginBottom: '14px' }}>
+                      <h3 style={sectionTitleStyle}>2. Öğrenci Seviyesi</h3>
+                      <p style={sectionDescStyle}>Ders verebileceğiniz Türkçe yetkinlik seviyelerini belirtin</p>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                      {LEVELS.map(l => <OptionCheckbox key={l} label={l} group="seviye" />)}
+                    </div>
+                  </div>
+
+                  <div style={sectionBoxStyle}>
+                    <div style={{ marginBottom: '14px' }}>
+                      <h3 style={sectionTitleStyle}>3. Odak Alanlarınız</h3>
+                      <p style={sectionDescStyle}>Derslerinizde yoğunlaştığınız özel alanlar</p>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                      {FOCUS_AREAS.map(f => <OptionCheckbox key={f} label={f} group="odak" />)}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '14px', marginTop: '10px', width: '100%', boxSizing: 'border-box' }}>
+                    <button type="button" onClick={() => setStep(1)} style={backBtnStyle}>← Geri Dön</button>
+                    <button type="submit" disabled={loading} style={{ ...primaryBtnStyle, flex: 1, backgroundColor: loading ? '#94a3b8' : '#4f46e5', cursor: loading ? 'not-allowed' : 'pointer' }}>
+                      {loading ? 'Belgeler İletiliyor...' : 'Başvurumu Tamamla ✨'}
+                    </button>
+                  </div>
+
+                </div>
+              )}
+            </form>
           </div>
         </div>
-
-        <form onSubmit={handleApply} style={{ width: '100%', boxSizing: 'border-box' }}>
-          {step === 1 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%', boxSizing: 'border-box' }}>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', width: '100%', boxSizing: 'border-box' }}>
-                <div style={{ width: '100%' }}>
-                  <label style={labelStyle}>Adınız Soyadınız</label>
-                  <input required value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} style={inputStyle} placeholder="Örn: Ayşe Yılmaz" />
-                </div>
-                <div style={{ width: '100%' }}>
-                  <label style={labelStyle}>E-posta Adresiniz</label>
-                  <input required type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} style={inputStyle} placeholder="ornek@email.com" />
-                </div>
-              </div>
-
-              {/* 🚀 EKLENEN TELEFON NUMARASI ALANI */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', width: '100%', boxSizing: 'border-box' }}>
-                <div style={{ width: '100%' }}>
-                  <label style={labelStyle}>Telefon Numarası</label>
-                  <input required type="tel" value={formData.telefon} onChange={e => setFormData({...formData, telefon: e.target.value})} style={inputStyle} placeholder="Örn: +90 5XX XXX XX XX" />
-                </div>
-                <div style={{ width: '100%' }}></div> {/* Satırı hizada tutmak için boş div */}
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', width: '100%', boxSizing: 'border-box' }}>
-                <div style={{ width: '100%' }}>
-                  <label style={labelStyle}>Konum (Ülke)</label>
-                  <select required value={formData.konum} onChange={e => setFormData({...formData, konum: e.target.value, sehir: ''})} style={selectStyle}>
-                    <option value="" disabled>Ülke Seçiniz...</option>
-                    {LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
-                  </select>
-                </div>
-                <div style={{ width: '100%' }}>
-                  <label style={labelStyle}>Şehir</label>
-                  {formData.konum === 'Türkiye' ? (
-                    <select required value={formData.sehir} onChange={e => setFormData({...formData, sehir: e.target.value})} style={selectStyle}>
-                      <option value="" disabled>Şehir Seçiniz...</option>
-                      {CITIES.map(city => <option key={city} value={city}>{city}</option>)}
-                    </select>
-                  ) : (
-                    <input 
-                      required 
-                      value={formData.sehir} 
-                      onChange={e => setFormData({...formData, sehir: e.target.value})} 
-                      style={inputStyle} 
-                      placeholder={formData.konum ? `${formData.konum} içindeki şehriniz...` : 'Önce ülke seçiniz...'} 
-                      disabled={!formData.konum}
-                    />
-                  )}
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', width: '100%', boxSizing: 'border-box' }}>
-                <div style={{ width: '100%' }}>
-                  <label style={labelStyle}>Eğitim Seviyesi</label>
-                  <select required value={formData.egitim} onChange={e => setFormData({...formData, egitim: e.target.value})} style={selectStyle}>
-                    <option value="" disabled>Eğitim Seviyesi Seçiniz...</option>
-                    {EDUCATIONS.map(ed => <option key={ed} value={ed}>{ed}</option>)}
-                  </select>
-                </div>
-                <div style={{ width: '100%' }}>
-                  <label style={labelStyle}>Üniversite / Okul Adı</label>
-                  <input required value={formData.okul} onChange={e => setFormData({...formData, okul: e.target.value})} style={inputStyle} placeholder="Örn: Gazi Üniversitesi" />
-                </div>
-              </div>
-
-              <div style={{ backgroundColor: '#fcfcfe', padding: '16px', borderRadius: '14px', border: '1px solid #f1f5f9', width: '100%', boxSizing: 'border-box' }}>
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={labelStyle}>Ana Diliniz</label>
-                  <select
-                    required
-                    value={formData.anaDil}
-                    onChange={e => {
-                      setFormData({...formData, anaDil: e.target.value});
-                      if (specialties.diller.includes(e.target.value)) {
-                        setSpecialties(prev => ({ ...prev, diller: prev.diller.filter(d => d !== e.target.value) }));
-                      }
-                    }}
-                    style={selectStyle}
-                  >
-                    <option value="" disabled>Ana Dilinizi Seçiniz...</option>
-                    {LANGUAGES.map(loc => <option key={loc} value={loc}>{loc}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={{ ...labelStyle, marginBottom: '8px' }}>Bildiğiniz Diğer Diller <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>(Birden fazla seçebilirsiniz)</span></label>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                    {LANGUAGES.filter(l => l !== formData.anaDil).map(l => (
-                      <OptionCheckbox key={l} label={l} group="diller" />
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ width: '100%' }}>
-                <label style={labelStyle}>Saatlik Ders Ücretiniz (₺)</label>
-                <div style={{ position: 'relative', width: '100%' }}>
-                  <input required type="number" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} style={{ ...inputStyle, paddingRight: '75px' }} placeholder="Örn: 450" />
-                  <span style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', fontWeight: 600, fontSize: '0.88rem', pointerEvents: 'none' }}>₺ / saat</span>
-                </div>
-              </div>
-
-              <div style={{ width: '100%' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <label style={{ ...labelStyle, marginBottom: 0 }}>Kısa Biyografi</label>
-                  <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Profilinizde gösterilecektir</span>
-                </div>
-                <textarea required rows={4} value={formData.bio} onChange={e => setFormData({...formData, bio: e.target.value})} style={{ ...inputStyle, resize: 'none', lineHeight: 1.5 }} placeholder="Eğitim geçmişinizden, öğretme metodunuzdan ve Türkçe öğretmenliği deneyiminizden bahsedin..." />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginTop: '4px', width: '100%' }}>
-                <div style={{ width: '100%' }}>
-                  <label style={labelStyle}>🎓 Mezuniyet Diploması <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>(PDF, JPG, PNG)</span></label>
-                  <div style={fileUploadContainerStyle}>
-                    <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e => setDiplomaFile(e.target.files?.[0] || null)} style={{ display: 'none' }} id="diploma-upload" />
-                    <label htmlFor="diploma-upload" style={fileUploadLabelStyle}>
-                      <span style={{ fontSize: '1.4rem' }}>📑</span>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#334155' }}>{diplomaFile ? diplomaFile.name : 'Diploma Seç / Sürükle'}</span>
-                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{diplomaFile ? `${(diplomaFile.size / 1024 / 1024).toFixed(2)} MB` : 'Maksimum 5 MB'}</span>
-                      </div>
-                    </label>
-                    {diplomaFile && <button type="button" onClick={() => setDiplomaFile(null)} style={removeFileBtnStyle} title="Dosyayı Kaldır">✕</button>}
-                  </div>
-                </div>
-
-                <div style={{ width: '100%' }}>
-                  <label style={labelStyle}>📜 TÖMER / Sertifika <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>(Opsiyonel)</span></label>
-                  <div style={fileUploadContainerStyle}>
-                    <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e => setCertificateFile(e.target.files?.[0] || null)} style={{ display: 'none' }} id="certificate-upload" />
-                    <label htmlFor="certificate-upload" style={fileUploadLabelStyle}>
-                      <span style={{ fontSize: '1.4rem' }}>🏅</span>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#334155' }}>{certificateFile ? certificateFile.name : 'Sertifika Seç / Sürükle'}</span>
-                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{certificateFile ? `${(certificateFile.size / 1024 / 1024).toFixed(2)} MB` : 'Maksimum 5 MB'}</span>
-                      </div>
-                    </label>
-                    {certificateFile && <button type="button" onClick={() => setCertificateFile(null)} style={removeFileBtnStyle} title="Dosyayı Kaldır">✕</button>}
-                  </div>
-                </div>
-              </div>
-
-              <button type="button" onClick={handleNextStep} style={{ ...primaryBtnStyle, marginTop: '10px' }}>
-                Sonraki Adım: Uzmanlık Alanları →
-              </button>
-            </div>
-          )}
-
-          {step === 2 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', width: '100%', boxSizing: 'border-box' }}>
-              
-              <div style={sectionBoxStyle}>
-                <div style={{ marginBottom: '14px' }}>
-                  <h3 style={sectionTitleStyle}>1. Hedef Kitle</h3>
-                  <p style={sectionDescStyle}>Çalışmak istediğiniz öğrenci profillerini seçin</p>
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                  {GOALS.map(g => <OptionCheckbox key={g} label={g} group="amac" />)}
-                </div>
-              </div>
-
-              <div style={sectionBoxStyle}>
-                <div style={{ marginBottom: '14px' }}>
-                  <h3 style={sectionTitleStyle}>2. Öğrenci Seviyesi</h3>
-                  <p style={sectionDescStyle}>Ders verebileceğiniz Türkçe yetkinlik seviyelerini belirtin</p>
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                  {LEVELS.map(l => <OptionCheckbox key={l} label={l} group="seviye" />)}
-                </div>
-              </div>
-
-              <div style={sectionBoxStyle}>
-                <div style={{ marginBottom: '14px' }}>
-                  <h3 style={sectionTitleStyle}>3. Odak Alanlarınız</h3>
-                  <p style={sectionDescStyle}>Derslerinizde yoğunlaştığınız özel alanlar</p>
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                  {FOCUS_AREAS.map(f => <OptionCheckbox key={f} label={f} group="odak" />)}
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '14px', marginTop: '10px', width: '100%', boxSizing: 'border-box' }}>
-                <button type="button" onClick={() => setStep(1)} style={backBtnStyle}>← Geri Dön</button>
-                <button type="submit" disabled={loading} style={{ ...primaryBtnStyle, flex: 1, backgroundColor: loading ? '#94a3b8' : '#4f46e5', cursor: loading ? 'not-allowed' : 'pointer' }}>
-                  {loading ? 'Belgeler ve Başvuru İletiliyor...' : 'Başvurumu Tamamla ✨'}
-                </button>
-              </div>
-
-            </div>
-          )}
-        </form>
-      </div>
-
-      <p style={{ marginTop: '24px', fontSize: '0.8rem', color: '#94a3b8', textAlign: 'center' }}>
-        Devam et veya Kaydol butonlarına tıklayarak, Abonelik Koşulları ve Gizlilik Politikasını dahil olmak üzere Kullanım Koşullarını kabul etmiş sayılırsın.
-      </p>
+      </main>
     </div>
   );
 }
 
-// Stiller
+// ==========================================
+// STYLES (ESKİ GENİŞ VERSİYON)
+// ==========================================
+
+const sidebarLinkStyle = (isActive: boolean): React.CSSProperties => ({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '12px',
+  padding: '12px 16px',
+  borderRadius: '12px',
+  border: 'none',
+  backgroundColor: isActive ? '#f8fafc' : 'transparent',
+  color: isActive ? '#0f172a' : '#475569',
+  fontWeight: isActive ? 700 : 600,
+  fontSize: '0.95rem',
+  cursor: 'pointer',
+  transition: 'all 0.2s',
+  textAlign: 'left'
+});
+
 const labelStyle: React.CSSProperties = {
   display: 'block',
   fontWeight: 600,
